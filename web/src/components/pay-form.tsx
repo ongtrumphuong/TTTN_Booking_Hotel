@@ -28,7 +28,7 @@ function Options({ name, items }: { name: string; items: { value: string; label:
           key={value || "any"}
           className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-white px-4 py-3 text-sm font-medium has-[:checked]:border-brand has-[:checked]:bg-brand/5"
         >
-          <input type="radio" name={name} value={value} defaultChecked={i === 0} className="accent-[#0b5fff]" />
+          <input type="radio" name={name} value={value} defaultChecked={i === 0} className="accent-[#0e7490]" />
           <Icon size={18} className="text-brand" aria-hidden />
           {label}
         </label>

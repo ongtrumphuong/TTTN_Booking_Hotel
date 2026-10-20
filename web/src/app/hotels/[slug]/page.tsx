@@ -127,7 +127,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
           <span className="flex items-center gap-1"><MapPin size={14} aria-hidden /> {hotel.address}, {hotel.city}</span>
         </div>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-extrabold tracking-tight">{hotel.name}</h1>
+          <h1 className="font-display text-3xl font-semibold md:text-4xl">{hotel.name}</h1>
           <FavoriteButton hotelId={hotel.id} variant="pill" />
         </div>
         {hotel.avgRating && (
@@ -143,7 +143,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
       <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_320px]">
         <div className="space-y-10">
           <section>
-            <h2 className="mb-2 text-xl font-extrabold">Giới thiệu</h2>
+            <h2 className="mb-2 font-display text-2xl font-semibold">Giới thiệu</h2>
             <p className="leading-relaxed text-muted">{hotel.description}</p>
             <ul className="mt-4 flex flex-wrap gap-2">
               {hotel.amenities.map((a) => (
@@ -156,13 +156,13 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
 
           {hotel.latitude !== null && hotel.longitude !== null && (
             <section>
-              <h2 className="mb-3 text-xl font-extrabold">Vị trí</h2>
+              <h2 className="mb-3 font-display text-2xl font-semibold">Vị trí</h2>
               <HotelMap lat={hotel.latitude} lng={hotel.longitude} name={hotel.name} address={`${hotel.address}, ${hotel.city}`} />
             </section>
           )}
 
           <section id="rooms" className="scroll-mt-24">
-            <h2 className="mb-4 text-xl font-extrabold">Chọn phòng</h2>
+            <h2 className="mb-4 font-display text-2xl font-semibold">Chọn phòng</h2>
             <StayBar defaults={{ checkIn: one(sp.checkIn), checkOut: one(sp.checkOut), guests }} />
             {!stay && <p className="mt-3 text-sm text-muted">Chọn ngày nhận/trả phòng để xem phòng trống và đặt phòng.</p>}
 
@@ -217,14 +217,14 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-extrabold">Chính sách hủy phòng</h2>
+            <h2 className="mb-3 font-display text-2xl font-semibold">Chính sách hủy phòng</h2>
             <p className="rounded-2xl border border-border bg-white p-4 text-sm text-muted">
               {policyText(hotel.freeCancelDays, hotel.lateCancelFeePercent)} Đơn chưa thanh toán hủy lúc nào cũng không mất phí.
             </p>
           </section>
 
           <section>
-            <h2 className="mb-4 text-xl font-extrabold">Đánh giá của khách</h2>
+            <h2 className="mb-4 font-display text-2xl font-semibold">Đánh giá của khách</h2>
             <Suspense fallback={null}>
               <ReviewBox hotelId={hotel.id} hotelSlug={hotel.slug} />
             </Suspense>

@@ -119,6 +119,10 @@ npm run lint          # ESLint
 - Chưa có kiểm thử giao diện trên trình duyệt tự động (Playwright); các luồng giao diện được thử thủ công.
 - Workflow CI ở `.github/workflows/ci.yml` chạy kiểm tra kiểu, lint, kiểm thử và build mỗi lần push/PR (build chạy khi **không có** cơ sở dữ liệu để chứng minh build không phụ thuộc cơ sở dữ liệu).
 
+### Ảnh mẫu
+
+Dữ liệu mẫu dùng **ảnh thật từ Unsplash** (miễn phí theo giấy phép Unsplash) cho từng khách sạn và loại phòng, khai báo ở `web/prisma/photos.ts`. Nếu cơ sở dữ liệu đã seed từ trước bằng ảnh ngẫu nhiên, chạy `npx tsx prisma/update-images.ts` để xem và thêm `--apply` để thay (chỉ thay ảnh mẫu cũ, không đụng ảnh quản trị viên đã tải lên). Cần có Internet để hiển thị ảnh.
+
 ## 4. Tài khoản mẫu (chỉ dùng khi phát triển)
 
 | Vai trò | Email | Mật khẩu |

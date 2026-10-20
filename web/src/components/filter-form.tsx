@@ -106,7 +106,7 @@ export function FilterForm({
         <div className="space-y-2">
           {options.amenities.map((a) => (
             <label key={a} className="flex cursor-pointer items-center gap-2.5 text-sm">
-              <input type="checkbox" name="amenity" value={a} defaultChecked={state.amenities.includes(a)} className="size-4 accent-[#0b5fff]" />
+              <input type="checkbox" name="amenity" value={a} defaultChecked={state.amenities.includes(a)} className="size-4 accent-[#0e7490]" />
               {a}
             </label>
           ))}

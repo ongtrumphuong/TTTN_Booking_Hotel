@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { decode } from "next-auth/jwt";
 
@@ -17,6 +18,7 @@ export type SessionUser = { id: string; role: "USER" | "ADMIN"; name: string; em
  * Không dùng auth() vì nó mã hóa lại token bằng giá trị ngẫu nhiên, bị Next.js cảnh báo khi prefetch.
  */
 export async function getCurrentUser(): Promise<SessionUser | null> {
+  await connection(); // kiểm tra hạn token dùng thời gian hiện tại nên luôn chạy lúc có yêu cầu, không dựng sẵn
   const store = await cookies();
   for (const name of SESSION_COOKIES) {
     const token = store.get(name)?.value;

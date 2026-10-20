@@ -28,7 +28,7 @@ async function Content({ mode, searchParams }: { mode: "login" | "register"; sea
 export function AuthShell({ mode, searchParams }: { mode: "login" | "register"; searchParams: SP }) {
   return (
     <div className="mx-auto grid min-h-[70vh] max-w-5xl items-center gap-10 px-4 py-12 md:grid-cols-2">
-      <div className="hidden rounded-3xl bg-gradient-to-br from-[#0a3fa8] to-brand p-10 text-white md:block">
+      <div className="hidden rounded-3xl bg-gradient-to-br from-ink to-brand p-10 text-white md:block">
         <Logo light />
         <p className="mt-10 text-3xl font-extrabold leading-snug">Đặt phòng khách sạn nhanh, giá tốt, an tâm trọn vẹn.</p>
         <ul className="mt-6 space-y-2 text-sm text-white/80">

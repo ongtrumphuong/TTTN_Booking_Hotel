@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
+import { hotelImages, roomImages } from "./photos";
 import { REVIEWERS, reviewsForHotel } from "./sample-reviews";
 
 const prisma = new PrismaClient();
@@ -8,9 +9,6 @@ const prisma = new PrismaClient();
 // Tài khoản mẫu cho môi trường phát triển (đổi trước khi triển khai thật).
 const ADMIN = { email: "admin@khongiansos.vn", name: "Quản trị viên", password: "Admin@123456" };
 const USER = { email: "khach@khongiansos.vn", name: "Nguyễn Văn Khách", password: "Khach@123456" };
-
-const img = (seed: string, n = 4) =>
-  Array.from({ length: n }, (_, i) => `https://picsum.photos/seed/${seed}-${i + 1}/1200/800`);
 
 const HOTEL_AMENITIES = ["Wi-Fi miễn phí", "Hồ bơi", "Bữa sáng", "Đưa đón sân bay", "Spa", "Phòng gym", "Nhà hàng", "Bãi đỗ xe"];
 const ROOM_AMENITIES = ["Điều hòa", "TV màn hình phẳng", "Minibar", "Máy sấy tóc", "Két an toàn", "Ban công"];
@@ -70,7 +68,7 @@ async function main() {
         starRating: h.star,
         latitude: h.lat,
         longitude: h.lng,
-        images: img(h.slug),
+        images: hotelImages(h.slug),
         amenities: HOTEL_AMENITIES.slice(0, 4 + (h.star % 5)),
       },
     });
@@ -90,7 +88,7 @@ async function main() {
           capacity: r.cap,
           bedType: r.bed,
           sizeM2: r.size,
-          images: img(`${h.slug}-${r.name}`, 3),
+          images: roomImages(r.name, index),
           amenities: ROOM_AMENITIES,
           quantity: r.qty,
         },

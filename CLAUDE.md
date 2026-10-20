@@ -42,6 +42,8 @@ Next.js 16 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 
 **Quyết định phạm vi:** dự án là đồ án thực tập tốt nghiệp (báo cáo, KHÔNG kinh doanh thật). Dừng thêm tính năng; ưu tiên kịch bản demo và tài liệu báo cáo. Đừng đề xuất thuê VPS/SMTP/hợp đồng VNPay thật trừ khi chủ dự án hỏi.
 
+**Giao diện (2026-10-20):** đã làm lại theo phong cách "biển nhiệt đới + tạp chí du lịch": token màu ở `web/src/app/globals.css` (`brand` xanh ngọc, `ink` xanh đêm, `sun` san hô cho nút chính, `accent` vàng cho sao, nền cát), phông chữ có chân Playfair Display (`font-display`) cho tiêu đề + Be Vietnam Pro cho nội dung. Trang chủ: hero tối có ảnh hình vòm, ô tìm kiếm nổi, 4 lợi ích, lưới điểm đến kiểu bento, thẻ khách sạn lấy ảnh làm trọng tâm, khối số liệu thật (`getSiteStats`), đánh giá, CTA. **Ảnh mẫu là ảnh thật Unsplash** (trước đó là picsum ngẫu nhiên, nhìn như trang sách/cánh đồng): bộ ảnh theo khách sạn/loại phòng ở `web/prisma/photos.ts`, `seed.ts` dùng nó; DB đã có sẵn thì chạy `npx tsx prisma/update-images.ts --apply` (chỉ thay ảnh còn là picsum, không đụng ảnh admin tải lên). Đừng viết cứng số liệu (điểm đánh giá, số khách sạn) vào giao diện; lấy từ DB. Sau khi sửa token/CSS mà trình duyệt vẫn hiện kiểu cũ thì khởi động lại server dev. Đã thêm `connection()` vào `getCurrentUser` để hết lỗi `new Date()` khi prerender ở dev.
+
 Chưa làm/chưa kiểm:
 - **IPN VNPay chưa thử** (cần tunnel/địa chỉ công khai và đăng ký URL IPN với VNPay); mới thử luồng quay về trình duyệt.
 - Chưa thử VNPay với đơn có voucher và với trường hợp hủy giữa chừng trên trang VNPay.

@@ -231,3 +231,16 @@ export async function getSitemapData(): Promise<{ hotels: { slug: string; create
   });
   return { hotels: hotels.map((h) => ({ slug: h.slug, createdAt: h.createdAt })), cities: [...new Set(hotels.map((h) => h.city))].sort() };
 }
+
+/** Số liệu tổng quan hiển thị ở trang chủ (khách sạn, loại phòng, đánh giá). */
+export async function getSiteStats() {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("hotels");
+  const [hotels, rooms, reviews] = await Promise.all([
+    prisma.hotel.count({ where: { isActive: true } }),
+    prisma.room.count({ where: { isActive: true, hotel: { isActive: true } } }),
+    prisma.review.aggregate({ where: { isHidden: false, hotel: { isActive: true } }, _avg: { rating: true }, _count: true }),
+  ]);
+  return { hotels, rooms, reviews: reviews._count, avgRating: reviews._avg.rating };
+}

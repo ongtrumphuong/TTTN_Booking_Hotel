@@ -14,6 +14,7 @@ Tài liệu dùng cho buổi báo cáo thực tập tốt nghiệp. Phần 1 là
 | Chạy bản production cho mượt | `npm run build` rồi `npm run start` (mặc định cổng 3000) |
 | Mở sẵn 2 cửa sổ trình duyệt: một thường (khách), một ẩn danh (admin) | tránh phải đăng nhập đi đăng nhập lại |
 | Kiểm tra mạng nếu demo VNPay | trang VNPay sandbox cần Internet |
+| Kiểm tra Internet | ảnh khách sạn tải từ Unsplash nên cần mạng để hiển thị đẹp |
 
 **Tài khoản mẫu** (chỉ dùng khi phát triển):
 
