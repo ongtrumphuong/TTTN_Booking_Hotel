@@ -15,6 +15,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // Có nhiều root layout (khách, quản trị, đối tác) nên cần trang 404 toàn cục riêng: app/global-not-found.tsx.
+  experimental: { globalNotFound: true },
   partialPrefetching: true,
   poweredByHeader: false,
   // Bản đóng gói tối giản cho Docker (xem web/Dockerfile). Mặc định tắt vì `next start` không chạy được với chế độ này.

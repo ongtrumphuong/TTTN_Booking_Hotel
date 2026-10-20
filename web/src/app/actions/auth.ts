@@ -11,6 +11,7 @@ import { sendPasswordResetEmail } from "@/lib/email";
 import { consumeResetToken, createResetToken } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
 import { hit } from "@/lib/rate-limit";
+import { afterLoginPath } from "@/lib/role-routing";
 import { requireUser, safeRedirect } from "@/lib/session";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string>; email?: string; done?: boolean; values?: Record<string, string> };
@@ -55,11 +56,12 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
   const parsed = loginSchema.safeParse({ email: formData.get("email"), password: formData.get("password") });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), email: String(formData.get("email") ?? "") };
 
+  // Mỗi vai trò vào đúng giao diện của mình: đối tác về /host, quản trị viên về /admin, khách về trang họ định vào.
+  const account = await prisma.user.findUnique({ where: { email: parsed.data.email }, select: { role: true } });
+  const target = afterLoginPath(account?.role ?? "USER", safeRedirect(String(formData.get("callbackUrl") ?? "")));
+
   try {
-    await signIn("credentials", {
-      ...parsed.data,
-      redirectTo: safeRedirect(String(formData.get("callbackUrl") ?? "")),
-    });
+    await signIn("credentials", { ...parsed.data, redirectTo: target });
   } catch (e) {
     if (e instanceof AuthError) {
       if ((e as { code?: string }).code === "too_many_attempts") {
@@ -98,7 +100,7 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
   });
 
   try {
-    await signIn("credentials", { email, password, redirectTo: safeRedirect(String(formData.get("callbackUrl") ?? "")) });
+    await signIn("credentials", { email, password, redirectTo: afterLoginPath(role, safeRedirect(String(formData.get("callbackUrl") ?? ""))) });
   } catch (e) {
     if (e instanceof AuthError) return { error: "Đăng ký xong nhưng đăng nhập tự động thất bại, vui lòng đăng nhập lại." };
     throw e;

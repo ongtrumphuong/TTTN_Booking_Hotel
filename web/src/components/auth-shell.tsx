@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AuthForm } from "./auth-form";
 import { Logo } from "./logo";
+import { afterLoginPath } from "@/lib/role-routing";
 import { getCurrentUser, safeRedirect } from "@/lib/session";
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
@@ -13,7 +14,8 @@ async function Content({ mode, searchParams, partner }: { mode: "login" | "regis
   const raw = Array.isArray(sp.callbackUrl) ? sp.callbackUrl[0] : sp.callbackUrl;
   const callbackUrl = safeRedirect(raw, partner ? "/host" : "/");
 
-  if (await getCurrentUser()) redirect(callbackUrl);
+  const current = await getCurrentUser();
+  if (current) redirect(afterLoginPath(current.role, callbackUrl)); // đã đăng nhập thì vào thẳng giao diện của vai trò mình
 
   const isLogin = mode === "login";
   return (

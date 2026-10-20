@@ -325,6 +325,11 @@ VNPay chỉ gọi IPN vào địa chỉ công khai HTTPS nên **IPN không vào 
 
 Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống kiểm tra lại còn phòng hay không.
 
+**Giao diện tách theo vai trò** (không bao giờ lẫn nhau)
+- **Khách và người chưa đăng nhập**: giao diện khách (thanh menu, chân trang, trợ lý ảo). **Đối tác**: chỉ có `/host` với thanh trên và menu riêng. **Quản trị viên**: chỉ có `/admin`, cũng với thanh trên và menu riêng. Đối tác và quản trị viên không thấy menu khách, chân trang, trợ lý ảo, yêu thích hay đặt phòng.
+- Đăng nhập xong vào thẳng giao diện của vai trò mình (đối tác về `/host`, quản trị viên về `/admin`). Nếu quản trị viên/đối tác cố vào đường dẫn của khách thì bị đưa về khu vực của mình; khách vào `/admin`, `/host` bị đưa về trang chủ; người chưa đăng nhập bị đưa sang trang đăng nhập. Hồ sơ cá nhân của quản trị viên/đối tác nằm ở `/admin/account`, `/host/account`.
+- Cài đặt: **ba root layout riêng** (`app/(site)`, `app/admin`, `app/host`) nên chuyển giữa các khu vực luôn tải lại cả trang (khung của khu vực này không thể còn sót ở khu vực kia); lớp chuyển hướng sớm ở `src/proxy.ts` (quy tắc thuần ở `src/lib/role-routing.ts`); 404 toàn cục ở `app/global-not-found.tsx`. Việc kiểm tra quyền thật vẫn ở máy chủ (`requireAdmin/requireHost/requireStaff`, `canManage*`), proxy chỉ là lớp chuyển hướng sớm.
+
 **Sàn trung gian, đối tác và đối soát**
 - Ba vai trò: `USER` (khách), `HOST` (đối tác), `ADMIN` (sàn). Đối tác chỉ thao tác trên khách sạn có `ownerId` là mình; mọi hành động quản trị kiểm tra quyền **theo từng khách sạn ở máy chủ** (`src/lib/access.ts`), không chỉ ẩn nút trên giao diện. Khách sạn không có chủ là khách sạn do sàn tự vận hành (không có hoa hồng).
 - Khách sạn của đối tác tạo ra với `approval = PENDING` và `isActive = false`; quản trị viên duyệt thì mới hiển thị. Bị từ chối kèm lý do; đối tác sửa lại và lưu là gửi duyệt lại.

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart, LayoutDashboard, UserRound } from "lucide-react";
+import { Heart, UserRound } from "lucide-react";
 import { LogoutButton } from "./logout-button";
 import { getCurrentUser } from "@/lib/session";
 
@@ -21,16 +21,6 @@ export async function UserMenu() {
 
   return (
     <div className="flex items-center gap-1 whitespace-nowrap text-sm font-semibold">
-      {user.role === "HOST" && (
-        <Link href="/host" className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-brand hover:bg-brand/10">
-          <LayoutDashboard size={16} aria-hidden /> <span className="hidden sm:inline">Đối tác</span>
-        </Link>
-      )}
-      {user.role === "ADMIN" && (
-        <Link href="/admin" className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-brand hover:bg-brand/10">
-          <LayoutDashboard size={16} aria-hidden /> <span className="hidden sm:inline">Quản trị</span>
-        </Link>
-      )}
       <Link href="/favorites" aria-label="Khách sạn yêu thích" title="Yêu thích" className="rounded-lg px-3 py-2 hover:bg-background">
         <Heart size={16} aria-hidden />
       </Link>

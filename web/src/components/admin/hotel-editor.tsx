@@ -39,7 +39,6 @@ export async function HotelEditor({ id, user }: { id: string; user: Pick<Session
       <Link href={`${base}/hotels`} className="text-sm font-semibold text-muted hover:text-foreground">← Danh sách khách sạn</Link>
       <div className="mb-6 mt-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl font-semibold">{hotel.name}</h1>
-        <Link href={`/hotels/${hotel.slug}`} className="text-sm font-semibold text-brand hover:underline">Xem trang công khai →</Link>
       </div>
 
       {hotel.ownerId && hotel.approval === "PENDING" && (

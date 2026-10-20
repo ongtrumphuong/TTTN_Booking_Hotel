@@ -16,6 +16,8 @@ Tài liệu dùng cho buổi báo cáo thực tập tốt nghiệp. Phần 1 là
 | Kiểm tra mạng nếu demo VNPay | trang VNPay sandbox cần Internet |
 | Kiểm tra Internet | ảnh khách sạn tải từ Unsplash nên cần mạng để hiển thị đẹp |
 
+**Mỗi vai trò có giao diện riêng:** đăng nhập khách ở giao diện khách; đăng nhập đối tác tự vào `/host`; đăng nhập quản trị tự vào `/admin`. Khi chuyển vai trò trong lúc demo, hãy **đăng xuất rồi đăng nhập lại** (hoặc dùng cửa sổ ẩn danh riêng cho từng vai trò); quản trị viên và đối tác không xem được trang của khách.
+
 **Tài khoản mẫu** (chỉ dùng khi phát triển):
 
 | Vai trò | Email | Mật khẩu |

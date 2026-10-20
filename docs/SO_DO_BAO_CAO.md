@@ -29,6 +29,17 @@ flowchart LR
   S -- "4. chi trả = doanh thu - hoa hồng" --> D
 ```
 
+**Giao diện tách theo vai trò.** Mỗi bên chỉ dùng giao diện của mình, không lẫn nhau:
+
+```mermaid
+flowchart LR
+  P["Proxy: đọc vai trò từ phiên đăng nhập"] --> A["Khách / chưa đăng nhập: giao diện khách (site)"]
+  P --> B["Đối tác: giao diện /host"]
+  P --> C["Quản trị viên: giao diện /admin"]
+```
+
+Mỗi giao diện có root layout riêng (khách có thanh menu, chân trang, trợ lý ảo; đối tác và quản trị viên có thanh trên và menu riêng). Quản trị viên/đối tác vào trang của khách sẽ bị đưa về khu vực của mình; khách vào `/admin`, `/host` bị đưa về trang chủ; chưa đăng nhập thì sang trang đăng nhập. Quyền thật vẫn kiểm tra ở máy chủ.
+
 ---
 
 ## 1. Tác nhân và use case

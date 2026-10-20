@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarCheck, Handshake, LayoutDashboard, MessageSquareText, TicketPercent, Users, Wallet } from "lucide-react";
+import { BedDouble, CalendarCheck, Handshake, LayoutDashboard, MessageSquareText, TicketPercent, UserRound, Users, Wallet } from "lucide-react";
 
 const HOST_ITEMS = [
   { href: "/host", label: "Tổng quan", icon: LayoutDashboard, exact: true },
   { href: "/host/hotels", label: "Khách sạn của tôi", icon: BedDouble },
   { href: "/host/bookings", label: "Đơn đặt phòng", icon: CalendarCheck },
   { href: "/host/payouts", label: "Đối soát & chi trả", icon: Wallet },
+  { href: "/host/account", label: "Tài khoản", icon: UserRound },
 ];
 
 const ITEMS = [
@@ -20,6 +21,7 @@ const ITEMS = [
   { href: "/admin/partners", label: "Đối tác", icon: Handshake },
   { href: "/admin/payouts", label: "Đối soát", icon: Wallet },
   { href: "/admin/users", label: "Người dùng", icon: Users },
+  { href: "/admin/account", label: "Tài khoản", icon: UserRound },
 ];
 
 export function AdminNav({ variant = "admin" }: { variant?: "admin" | "host" }) {

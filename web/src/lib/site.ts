@@ -23,3 +23,16 @@ const PARA_SEP = new RegExp(String.fromCharCode(0x2029), "g");
 export function jsonLd(data: unknown) {
   return JSON.stringify(data).replace(/</g, "\\u003c").replace(LINE_SEP, "\\u2028").replace(PARA_SEP, "\\u2029");
 }
+
+/** Metadata nền của toàn ứng dụng; mỗi root layout dùng lại và ghi đè phần cần khác (ví dụ robots cho khu vực quản lý). */
+export const BASE_METADATA: Metadata = {
+  metadataBase: new URL(siteUrl()),
+  applicationName: SITE_NAME,
+  openGraph: { type: "website", siteName: SITE_NAME, locale: "vi_VN" },
+  twitter: { card: "summary_large_image" },
+  title: {
+    default: "Không Gian Số Stay – Đặt phòng khách sạn dễ dàng",
+    template: "%s | Không Gian Số Stay",
+  },
+  description: "Tìm và đặt khách sạn tại Việt Nam với giá tốt, xác nhận nhanh chóng cùng Không Gian Số Stay.",
+};
