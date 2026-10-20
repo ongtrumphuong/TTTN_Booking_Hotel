@@ -1,6 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { prisma } from "./prisma";
-import { holdingWhere, parseStay } from "./booking";
+import { holdingWhere, maxBlockedRooms, parseStay, type BlockSpan } from "./booking";
 
 export type HotelSummary = {
   id: string;
@@ -105,6 +105,15 @@ export async function searchHotels(params: HotelSearch): Promise<HotelSummary[]>
       select: { roomId: true, rooms: true },
     });
     busy = overlapping.reduce((m, b) => m.set(b.roomId, (m.get(b.roomId) ?? 0) + b.rooms), new Map<string, number>());
+
+    // Phòng bị quản trị viên chặn cũng không bán được trong các đêm đó.
+    const blocks = await prisma.roomBlock.findMany({
+      where: { startDate: { lt: stay.checkOut }, endDate: { gt: stay.checkIn }, room: { hotel: city ? { city } : {} } },
+      select: { roomId: true, startDate: true, endDate: true, rooms: true },
+    });
+    const byRoom = new Map<string, BlockSpan[]>();
+    for (const b of blocks) byRoom.set(b.roomId, [...(byRoom.get(b.roomId) ?? []), b]);
+    for (const [roomId, spans] of byRoom) busy.set(roomId, (busy.get(roomId) ?? 0) + maxBlockedRooms(spans, stay.checkIn, stay.checkOut));
   }
 
   const result = hotels

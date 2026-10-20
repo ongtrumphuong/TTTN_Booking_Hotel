@@ -37,7 +37,7 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
   const refundOnly = picked === "REFUND";
 
   const bookings = await prisma.booking.findMany({
-    where: refundOnly ? { status: "CANCELLED", paymentStatus: "PAID" } : status ? { status } : {},
+    where: refundOnly ? { status: "CANCELLED", paymentStatus: "PAID", OR: [{ refundAmount: null }, { refundAmount: { gt: 0 } }] } : status ? { status } : {},
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { user: { select: { name: true, email: true } }, room: { include: { hotel: { select: { name: true } } } } },
@@ -84,12 +84,20 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
                 <td className="px-4 py-3"><p className="font-semibold">{b.user.name}</p><p className="text-xs text-muted">{b.user.email}</p></td>
                 <td className="px-4 py-3"><p className="font-semibold">{b.room.hotel.name}</p><p className="text-xs text-muted">{b.room.name} × {b.rooms}</p></td>
                 <td className="px-4 py-3 text-xs">{formatDate(b.checkIn)}<br />→ {formatDate(b.checkOut)}</td>
-                <td className="px-4 py-3"><p className="font-bold">{formatVND(b.totalPrice)}</p><p className={`text-xs ${needsRefund(b.status, b.paymentStatus) ? "font-bold text-amber-700" : "text-muted"}`}>{paymentLabel(b.status, b.paymentStatus)}</p></td>
+                <td className="px-4 py-3">
+                  <p className="font-bold">{formatVND(b.totalPrice)}</p>
+                  {b.voucherCode && <p className="text-xs text-emerald-700">Mã {b.voucherCode}: -{formatVND(b.discount)}</p>}
+                  <p className={`text-xs ${needsRefund(b.status, b.paymentStatus, b.refundAmount) ? "font-bold text-amber-700" : "text-muted"}`}>
+                    {paymentLabel(b.status, b.paymentStatus, b.refundAmount)}
+                    {needsRefund(b.status, b.paymentStatus, b.refundAmount) && ` ${formatVND(b.refundAmount ?? b.totalPrice)}`}
+                  </p>
+                  {b.status === "CANCELLED" && b.paymentStatus === "PAID" && b.refundAmount === 0 && <p className="text-xs text-muted">Hủy muộn: giữ toàn bộ tiền</p>}
+                </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_LABEL[b.status].cls}`}>{STATUS_LABEL[b.status].text}</span>
                 </td>
                 <td className="px-4 py-3">
-                  {needsRefund(b.status, b.paymentStatus) ? (
+                  {needsRefund(b.status, b.paymentStatus, b.refundAmount) ? (
                     <RefundButton bookingId={b.id} />
                   ) : (
                   <SelectAction

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { HotelForm } from "@/components/admin/hotel-form";
+import { RoomBlocks } from "@/components/admin/room-blocks";
 import { RoomForm } from "@/components/admin/room-form";
 import { ToggleButton } from "@/components/admin/toggle-button";
 import { formatVND } from "@/lib/format";
@@ -18,7 +19,12 @@ async function EditHotel({ params }: Pick<PageProps<"/admin/hotels/[id]">, "para
 
   const hotel = await prisma.hotel.findUnique({
     where: { id },
-    include: { rooms: { orderBy: { pricePerNight: "asc" } } },
+    include: {
+      rooms: {
+        orderBy: { pricePerNight: "asc" },
+        include: { blocks: { where: { endDate: { gt: new Date() } }, orderBy: { startDate: "asc" } } },
+      },
+    },
   });
   if (!hotel) notFound();
 
@@ -45,6 +51,7 @@ async function EditHotel({ params }: Pick<PageProps<"/admin/hotels/[id]">, "para
             </summary>
             <div className="border-t border-border p-4">
               <RoomForm hotelId={hotel.id} room={r} />
+              <RoomBlocks roomId={r.id} quantity={r.quantity} blocks={r.blocks.map((b) => ({ id: b.id, start: b.startDate.toISOString().slice(0, 10), end: new Date(b.endDate.getTime() - 86_400_000).toISOString().slice(0, 10), rooms: b.rooms, reason: b.reason }))} />
             </div>
           </details>
         ))}

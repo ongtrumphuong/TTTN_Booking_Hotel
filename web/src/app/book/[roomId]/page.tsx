@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { BookingForm } from "@/components/booking-form";
-import { bookedQuantity, parseStay, todayUTC } from "@/lib/booking";
+import { unavailableQuantity, parseStay, todayUTC } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
@@ -32,7 +32,7 @@ async function BookContent({ params, searchParams }: { params: Promise<{ roomId:
   const stay = parseStay(checkInStr, checkOutStr);
   if (!stay || stay.checkIn < todayUTC()) redirect(`/hotels/${room.hotel.slug}#rooms`);
 
-  const left = room.quantity - (await bookedQuantity(prisma, room.id, stay.checkIn, stay.checkOut));
+  const left = room.quantity - (await unavailableQuantity(prisma, room.id, stay.checkIn, stay.checkOut));
   const maxRooms = Math.min(left, 5);
   const fits = left > 0 && guests <= room.capacity;
 

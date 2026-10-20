@@ -37,55 +37,60 @@ enum PaymentTxnStatus {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
+  id           String               @id @default(cuid())
+  email        String               @unique
   name         String
   phone        String?
   passwordHash String
-  role         Role       @default(USER)
-  createdAt    DateTime   @default(now())
+  role         Role                 @default(USER)
+  createdAt    DateTime             @default(now())
   bookings     Booking[]
   reviews      Review[]
   favorites    Favorite[]
+  resetTokens  PasswordResetToken[]
 }
 
 model Hotel {
-  id          String     @id @default(cuid())
-  slug        String     @unique
-  name        String
-  description String
-  address     String
-  city        String
-  country     String     @default("Việt Nam")
-  latitude    Float?
-  longitude   Float?
-  starRating  Int        @default(3)
-  images      String[]
-  amenities   String[]
-  isActive    Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  rooms       Room[]
-  reviews     Review[]
-  favorites   Favorite[]
+  id                   String     @id @default(cuid())
+  slug                 String     @unique
+  name                 String
+  description          String
+  address              String
+  city                 String
+  country              String     @default("Việt Nam")
+  latitude             Float?
+  longitude            Float?
+  starRating           Int        @default(3)
+  images               String[]
+  amenities            String[]
+  isActive             Boolean    @default(true)
+  // Chính sách hủy: hủy trước ngày nhận phòng ít nhất freeCancelDays ngày thì hoàn đủ, muộn hơn bị trừ lateCancelFeePercent% tiền đã trả.
+  freeCancelDays       Int        @default(1)
+  lateCancelFeePercent Int        @default(50)
+  createdAt            DateTime   @default(now())
+  rooms                Room[]
+  reviews              Review[]
+  favorites            Favorite[]
 
   @@index([city])
 }
 
 model Room {
-  id            String    @id @default(cuid())
+  id            String      @id @default(cuid())
   hotelId       String
-  hotel         Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  hotel         Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
   name          String
   description   String
   pricePerNight Int
-  capacity      Int       @default(2)
+  capacity      Int         @default(2)
   bedType       String
   sizeM2        Int?
   images        String[]
   amenities     String[]
-  quantity      Int       @default(1)
-  isActive      Boolean   @default(true)
+  quantity      Int         @default(1)
+  isActive      Boolean     @default(true)
   bookings      Booking[]
+  blocks        RoomBlock[]
 
   @@index([hotelId])
 }
@@ -105,6 +110,10 @@ model Booking {
   status        BookingStatus @default(PENDING)
   paymentStatus PaymentStatus @default(UNPAID)
   note          String?
+  voucherCode   String?
+  discount      Int           @default(0)
+  refundAmount  Int?
+  cancelledAt   DateTime?
   createdAt     DateTime      @default(now())
   payments      Payment[]
 
@@ -167,4 +176,45 @@ model RateLimit {
   windowStart DateTime @default(now())
 
   @@index([windowStart])
+}
+
+model Voucher {
+  id           String    @id @default(cuid())
+  code         String    @unique
+  description  String    @default("")
+  percentOff   Int?
+  amountOff    Int?
+  maxDiscount  Int?
+  minSubtotal  Int       @default(0)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  usageLimit   Int?
+  perUserLimit Int       @default(1)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model RoomBlock {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  endDate   DateTime
+  rooms     Int
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([roomId, startDate, endDate])
 }

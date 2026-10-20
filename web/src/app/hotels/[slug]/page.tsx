@@ -13,7 +13,7 @@ import { StayBar } from "@/components/stay-bar";
 import { canReviewHotel } from "@/lib/reviews";
 import { getCurrentUser } from "@/lib/session";
 import { NOINDEX, absoluteUrl, jsonLd } from "@/lib/site";
-import { bookedQuantity, parseStay, isoDate } from "@/lib/booking";
+import { unavailableQuantity, parseStay, isoDate } from "@/lib/booking";
 import { formatVND } from "@/lib/format";
 import { getHotelDetail } from "@/lib/hotels";
 import { prisma } from "@/lib/prisma";
@@ -82,7 +82,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
   if (stay) await connection(); // phòng trống phụ thuộc thời điểm hiện tại (hạn giữ chỗ), không dựng sẵn
   const rooms = await Promise.all(
     hotel.rooms.map(async (r) => {
-      const left = stay ? r.quantity - (await bookedQuantity(prisma, r.id, stay.checkIn, stay.checkOut)) : null;
+      const left = stay ? r.quantity - (await unavailableQuantity(prisma, r.id, stay.checkIn, stay.checkOut)) : null;
       return { ...r, left };
     }),
   );

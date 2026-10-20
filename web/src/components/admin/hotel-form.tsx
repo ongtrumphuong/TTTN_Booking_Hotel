@@ -15,6 +15,8 @@ type Hotel = {
   amenities: string[];
   latitude: number | null;
   longitude: number | null;
+  freeCancelDays: number;
+  lateCancelFeePercent: number;
 };
 
 const input = "w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20";
@@ -57,6 +59,14 @@ export function HotelForm({ hotel }: { hotel?: Hotel }) {
         <div>
           <label htmlFor="longitude" className={label}>Kinh độ (không bắt buộc)</label>
           <input id="longitude" name="longitude" type="number" step="any" defaultValue={hotel?.longitude ?? ""} className={input} />
+        </div>
+        <div>
+          <label htmlFor="freeCancelDays" className={label}>Hủy miễn phí trước ngày nhận phòng (ngày)</label>
+          <input id="freeCancelDays" name="freeCancelDays" type="number" min={0} max={60} required defaultValue={hotel?.freeCancelDays ?? 1} className={input} />
+        </div>
+        <div>
+          <label htmlFor="lateCancelFeePercent" className={label}>Phí hủy muộn (% tiền đã trả)</label>
+          <input id="lateCancelFeePercent" name="lateCancelFeePercent" type="number" min={0} max={100} required defaultValue={hotel?.lateCancelFeePercent ?? 50} className={input} />
         </div>
         <div className="md:col-span-2">
           <label htmlFor="description" className={label}>Mô tả</label>

@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { CheckCircle2 } from "lucide-react";
 import { CancelButton } from "@/components/cancel-button";
 import { STATUS_LABEL, needsRefund, paymentLabel, todayUTC } from "@/lib/booking";
+import { cancelQuote, policyText } from "@/lib/cancellation";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
@@ -20,6 +21,15 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
 
   const status = STATUS_LABEL[b.status];
   const canCancel = (b.status === "PENDING" || b.status === "CONFIRMED") && b.checkIn > todayUTC();
+  const { freeCancelDays, lateCancelFeePercent } = b.room.hotel;
+  const quote = cancelQuote({ checkIn: b.checkIn, today: todayUTC(), paid: b.paymentStatus === "PAID" ? b.totalPrice : 0, freeCancelDays, lateFeePercent: lateCancelFeePercent });
+  const confirmText =
+    b.paymentStatus !== "PAID"
+      ? "Bạn chắc chắn muốn hủy đơn đặt phòng này?"
+      : quote.free
+        ? `Hủy đơn này sẽ được hoàn đủ ${formatVND(quote.refund)}. Bạn chắc chắn muốn hủy?`
+        : `Đã quá hạn hủy miễn phí: khách sạn giữ ${formatVND(quote.fee)}, bạn được hoàn ${formatVND(quote.refund)}. Bạn vẫn muốn hủy?`;
+  const refunding = needsRefund(b.status, b.paymentStatus, b.refundAmount);
 
   return (
     <>
@@ -38,10 +48,10 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           </div>
         </div>
       )}
-      {needsRefund(b.status, b.paymentStatus) && (
+      {refunding && (
         <div role="status" className="mb-6 rounded-2xl bg-amber-50 p-5 text-sm text-amber-900">
           <p className="font-bold">Đơn đã hủy, đang chờ hoàn tiền.</p>
-          <p>Bộ phận hỗ trợ sẽ hoàn lại {formatVND(b.totalPrice)} về phương thức bạn đã dùng và cập nhật trạng thái tại đây.</p>
+          <p>Bộ phận hỗ trợ sẽ hoàn lại {formatVND(b.refundAmount ?? b.totalPrice)} về phương thức bạn đã dùng và cập nhật trạng thái tại đây.</p>
         </div>
       )}
       <div className="rounded-2xl border border-border bg-white p-6">
@@ -60,16 +70,21 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           <div><p className="text-muted">Số khách</p><p className="font-semibold">{b.guests}</p></div>
           <div><p className="text-muted">Nhận phòng</p><p className="font-semibold">{formatDate(b.checkIn)}</p></div>
           <div><p className="text-muted">Trả phòng</p><p className="font-semibold">{formatDate(b.checkOut)}</p></div>
-          <div><p className="text-muted">Thanh toán</p><p className="font-semibold">{paymentLabel(b.status, b.paymentStatus)}</p></div>
+          <div><p className="text-muted">Thanh toán</p><p className="font-semibold">{paymentLabel(b.status, b.paymentStatus, b.refundAmount)}</p></div>
+          {b.discount > 0 && <div><p className="text-muted">Mã giảm giá {b.voucherCode}</p><p className="font-semibold text-emerald-700">-{formatVND(b.discount)}</p></div>}
+          {b.status === "CANCELLED" && b.paymentStatus === "PAID" && b.refundAmount === 0 && (
+            <div className="sm:col-span-2"><p className="text-muted">Hoàn tiền</p><p className="font-semibold">Hủy sau hạn miễn phí nên không được hoàn tiền theo chính sách.</p></div>
+          )}
           <div><p className="text-muted">Tổng tiền</p><p className="text-lg font-extrabold text-brand">{formatVND(b.totalPrice)}</p></div>
           {b.note && <div className="sm:col-span-2"><p className="text-muted">Yêu cầu</p><p className="font-semibold">{b.note}</p></div>}
         </div>
 
+        {canCancel && <p className="mt-6 rounded-xl bg-background px-4 py-3 text-xs text-muted">Chính sách hủy: {policyText(freeCancelDays, lateCancelFeePercent)}</p>}
         <div className="mt-6 flex flex-wrap gap-3 border-t border-border pt-5">
           {b.status === "PENDING" && b.paymentStatus === "UNPAID" && (
             <Link href={`/bookings/${b.id}/pay`} className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-dark">Thanh toán ngay</Link>
           )}
-          {canCancel && <CancelButton bookingId={b.id} />}
+          {canCancel && <CancelButton bookingId={b.id} confirmText={confirmText} />}
           <Link href="/bookings" className="rounded-lg px-4 py-2 text-sm font-semibold text-muted hover:bg-background">← Tất cả đặt phòng</Link>
         </div>
       </div>

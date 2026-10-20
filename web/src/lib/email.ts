@@ -125,3 +125,35 @@ export async function sendBookingConfirmation(bookingId: string): Promise<{ sent
     return { sent: false, reason: "Gửi thất bại" };
   }
 }
+
+/**
+ * Gửi liên kết đặt lại mật khẩu. Khi chưa cấu hình SMTP, ở môi trường phát triển in liên kết ra console để thử nghiệm;
+ * ở production tuyệt đối không ghi liên kết vào log vì ai đọc được log sẽ chiếm được tài khoản.
+ */
+export async function sendPasswordResetEmail(to: string, name: string, link: string): Promise<{ sent: boolean }> {
+  try {
+    const transport = createTransport();
+    if (!transport) {
+      if (process.env.NODE_ENV !== "production") console.info(`[email] SMTP chưa cấu hình. Liên kết đặt lại mật khẩu cho ${to}: ${link}`);
+      return { sent: false };
+    }
+    const html = `<!doctype html><html lang="vi"><body style="font-family:Arial,Helvetica,sans-serif;color:#0f1b33;background:#f7f9fc;margin:0">
+<div style="max-width:520px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border:1px solid #e2e8f3;border-radius:16px;padding:24px">
+<p>Xin chào <b>${esc(name)}</b>,</p>
+<p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Liên kết dưới đây có hiệu lực trong 60 phút và chỉ dùng được một lần.</p>
+<p><a href="${esc(link)}" style="display:inline-block;background:#0b5fff;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:700">Đặt lại mật khẩu</a></p>
+<p style="font-size:12px;color:#5b6b86">Nếu bạn không yêu cầu, hãy bỏ qua email này; mật khẩu của bạn vẫn an toàn.</p>
+</div></div></body></html>`;
+    await transport.sendMail({
+      from: process.env.EMAIL_FROM?.trim() || "Không Gian Số Stay <no-reply@localhost>",
+      to,
+      subject: "Đặt lại mật khẩu - Không Gian Số Stay",
+      text: `Xin chào ${name},\nĐặt lại mật khẩu (hiệu lực 60 phút, dùng một lần): ${link}\nNếu bạn không yêu cầu, hãy bỏ qua email này.`,
+      html,
+    });
+    return { sent: true };
+  } catch (e) {
+    console.error("[email] Gửi email đặt lại mật khẩu thất bại:", e instanceof Error ? e.message : e);
+    return { sent: false };
+  }
+}

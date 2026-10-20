@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { createBookingAction, type BookingState } from "@/app/actions/booking";
+import { useActionState, useState, useTransition } from "react";
+import { createBookingAction, previewVoucherAction, type BookingState, type VoucherPreview } from "@/app/actions/booking";
 import { formatVND } from "@/lib/format";
 
 type Props = {
@@ -17,6 +17,11 @@ type Props = {
 export function BookingForm({ roomId, checkIn, checkOut, guests, nights, pricePerNight, maxRooms }: Props) {
   const [state, action, pending] = useActionState<BookingState, FormData>(createBookingAction, {});
   const [rooms, setRooms] = useState(1);
+  const [code, setCode] = useState("");
+  const [preview, setPreview] = useState<VoucherPreview | null>(null);
+  const [checking, startCheck] = useTransition();
+  const subtotal = pricePerNight * nights * rooms;
+  const discount = preview?.discount ?? 0;
 
   return (
     <form action={action} className="space-y-4">
@@ -37,7 +42,10 @@ export function BookingForm({ roomId, checkIn, checkOut, guests, nights, pricePe
           id="rooms"
           name="rooms"
           value={rooms}
-          onChange={(e) => setRooms(Number(e.target.value))}
+          onChange={(e) => {
+            setRooms(Number(e.target.value));
+            setPreview(null);
+          }}
           className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-brand"
         >
           {Array.from({ length: maxRooms }, (_, i) => i + 1).map((n) => (
@@ -58,9 +66,45 @@ export function BookingForm({ roomId, checkIn, checkOut, guests, nights, pricePe
         />
       </div>
 
-      <div className="flex items-center justify-between rounded-xl bg-brand/5 px-4 py-3">
-        <span className="text-sm text-muted">Tổng ({nights} đêm × {rooms} phòng)</span>
-        <span className="text-xl font-extrabold text-brand">{formatVND(pricePerNight * nights * rooms)}</span>
+      <div>
+        <label htmlFor="voucher" className="mb-1.5 block text-sm font-semibold">Mã giảm giá (không bắt buộc)</label>
+        <div className="flex gap-2">
+          <input
+            id="voucher"
+            name="voucher"
+            value={code}
+            maxLength={40}
+            onChange={(e) => {
+              setCode(e.target.value.toUpperCase());
+              setPreview(null);
+            }}
+            className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm uppercase outline-none focus:border-brand"
+            placeholder="Nhập mã"
+          />
+          <button
+            type="button"
+            disabled={checking || !code.trim()}
+            onClick={() => startCheck(async () => setPreview(await previewVoucherAction(roomId, nights, rooms, code)))}
+            className="shrink-0 rounded-xl border border-brand px-4 text-sm font-bold text-brand hover:bg-brand/5 disabled:opacity-60"
+          >
+            {checking ? "Đang kiểm tra..." : "Áp dụng"}
+          </button>
+        </div>
+        {preview?.error && <p role="alert" className="mt-1 text-xs font-medium text-red-600">{preview.error}</p>}
+        {discount > 0 && <p role="status" className="mt-1 text-xs font-medium text-emerald-700">Đã áp dụng mã {preview?.code}: giảm {formatVND(discount)}.</p>}
+      </div>
+
+      <div className="space-y-1 rounded-xl bg-brand/5 px-4 py-3">
+        {discount > 0 && (
+          <div className="flex justify-between text-sm text-muted"><span>Tạm tính</span><span>{formatVND(subtotal)}</span></div>
+        )}
+        {discount > 0 && (
+          <div className="flex justify-between text-sm text-emerald-700"><span>Giảm giá</span><span>-{formatVND(discount)}</span></div>
+        )}
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted">Tổng ({nights} đêm × {rooms} phòng)</span>
+          <span className="text-xl font-extrabold text-brand">{formatVND(subtotal - discount)}</span>
+        </div>
       </div>
 
       <button

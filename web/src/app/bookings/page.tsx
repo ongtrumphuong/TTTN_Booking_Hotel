@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { STATUS_LABEL } from "@/lib/booking";
+import { STATUS_LABEL, expireStaleBookings } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
@@ -21,6 +21,7 @@ async function PaymentNotice({ searchParams }: Pick<PageProps<"/bookings">, "sea
 
 async function List() {
   const user = await requireUser("/bookings");
+  await expireStaleBookings(prisma);
   const bookings = await prisma.booking.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },

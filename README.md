@@ -26,6 +26,8 @@
 - Trang chi tiết khách sạn: thư viện ảnh xem phóng to (phím mũi tên, thanh ảnh nhỏ), bản đồ vị trí (OpenStreetMap), tiện nghi, danh sách phòng kèm số phòng còn trống theo ngày chọn, đánh giá.
 - Trang chủ có phần "Khách hàng nói gì" lấy từ các đánh giá tốt gần đây.
 - Đăng ký, đăng nhập, đăng xuất; trang tài khoản.
+- **Quên mật khẩu**: gửi liên kết đặt lại qua email (hiệu lực 60 phút, dùng một lần, chỉ lưu bản băm, có giới hạn số lần yêu cầu). Chưa cấu hình SMTP thì ở môi trường phát triển liên kết được in ra console.
+- Nhập **mã giảm giá** khi đặt phòng, xem chính sách hủy và số tiền hoàn trước khi hủy.
 - Đặt phòng → thanh toán (VNPay sandbox, hoặc giả lập khi chưa có khóa) → email xác nhận; xem lịch sử, hủy đơn (trước ngày nhận phòng).
 - Yêu thích khách sạn (nút tim trên thẻ và trang chi tiết, trang `/favorites`).
 - Viết hoặc sửa đánh giá sau khi đã hoàn tất kỳ lưu trú.
@@ -36,6 +38,7 @@
 - Đơn đặt phòng: lọc theo trạng thái, đổi trạng thái theo quy tắc, bộ lọc **Cần hoàn tiền** và nút **Đã hoàn tiền** kèm ghi chú.
 - Đánh giá: **ẩn/hiện hoặc xóa** đánh giá không phù hợp; đánh giá bị ẩn không hiện công khai và không tính vào điểm trung bình.
 - Người dùng: xem danh sách, cấp/thu hồi quyền quản trị.
+- Mã giảm giá: tạo, bật/tắt, xem số lượt đã dùng. Lịch chặn phòng theo từng loại phòng. Chính sách hủy theo từng khách sạn.
 
 ## 3. Cài đặt và chạy
 
@@ -271,6 +274,10 @@ VNPay chỉ gọi IPN vào địa chỉ công khai HTTPS nên **IPN không vào 
 - Kiểm tra phòng trống và tạo đơn trong **một giao dịch mức Serializable** để hai người đặt cùng lúc không vượt quá số phòng hiện có.
 - Đơn mới ở trạng thái **Chờ thanh toán** và **giữ phòng 30 phút**; quá hạn mà chưa thanh toán thì không còn giữ phòng và không thanh toán được nữa.
 - Thanh toán: nếu chưa cấu hình VNPay thì là **giả lập** (không thu tiền thật, không nhận thông tin thẻ); nếu đã cấu hình VNPay thì chỉ xác nhận khi cổng báo thành công (xem mục 6).
+- **Hết hạn giữ phòng**: đơn chờ thanh toán quá 30 phút được chuyển sang **Đã hủy** (khi có người đặt phòng, khi khách mở danh sách đơn, hoặc khi gọi `POST /api/cron/expire-bookings` với `Authorization: Bearer <CRON_SECRET>`; nên gọi mỗi 5 phút). Phòng được trả lại ngay từ lúc quá hạn dù chưa chạy dọn.
+- **Mã giảm giá** (`/admin/vouchers`): giảm theo % (có thể đặt trần) hoặc số tiền cố định; có đơn tối thiểu, thời hạn, tổng lượt dùng và lượt dùng mỗi khách. Mã được kiểm tra lại ở máy chủ trong cùng giao dịch tạo đơn; lượt dùng chỉ tính các đơn còn hiệu lực nên đơn hủy hoặc hết hạn tự trả lượt. `totalPrice` là số tiền khách phải trả sau giảm, `discount` lưu mức giảm.
+- **Chặn phòng**: quản trị viên đóng một số phòng của một loại phòng trong khoảng ngày (bảo trì, ngày không bán) ở trang sửa khách sạn; phòng bị chặn không bán được và không hiện trong tìm kiếm. Đơn đã đặt trước không bị ảnh hưởng.
+- **Chính sách hủy** (cấu hình theo từng khách sạn: số ngày hủy miễn phí và % phí hủy muộn; mặc định 1 ngày và 50%): khách hủy sớm hơn hạn thì hoàn đủ, muộn hơn thì khách sạn giữ % tiền đã trả. Số tiền hoàn được tính và lưu vào `refundAmount` tại thời điểm hủy; hoàn 0 thì không còn khoản cần hoàn. Quản trị viên hủy đơn thì luôn hoàn đủ. Đơn chưa trả tiền hủy không mất phí.
 - Khách hủy đơn trước ngày nhận phòng. Đơn **chưa trả tiền thật** (giả lập) chuyển ngay sang Đã hoàn tiền; đơn **đã trả qua VNPay** giữ trạng thái **Chờ hoàn tiền** cho tới khi quản trị viên hoàn tiền (ngoài hệ thống) rồi bấm **Đã hoàn tiền** để ghi nhận kèm ghi chú.
 
 **Quản trị đơn đặt phòng** – chuyển trạng thái một chiều:

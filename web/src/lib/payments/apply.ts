@@ -1,7 +1,7 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { PENDING_HOLD_MINUTES, bookedQuantity } from "@/lib/booking";
+import { PENDING_HOLD_MINUTES, unavailableQuantity } from "@/lib/booking";
 
 export type GatewayResult = {
   txnRef: string;
@@ -58,7 +58,7 @@ export async function applyGatewayResult(r: GatewayResult): Promise<ApplyResult>
         if (booking.status === "PENDING") {
           // Đơn còn trong thời gian giữ phòng thì phòng vẫn của khách; quá hạn thì phải kiểm tra lại còn phòng không.
           const holding = booking.createdAt.getTime() > Date.now() - PENDING_HOLD_MINUTES * 60_000;
-          const left = booking.room.quantity - (await bookedQuantity(tx, booking.roomId, booking.checkIn, booking.checkOut));
+          const left = booking.room.quantity - (await unavailableQuantity(tx, booking.roomId, booking.checkIn, booking.checkOut));
           if (holding || left >= booking.rooms) {
             await tx.booking.update({ where: { id: booking.id }, data: { status: "CONFIRMED", paymentStatus: "PAID" } });
             return { ...base, outcome: "paid", confirmedNow: true };
@@ -66,7 +66,7 @@ export async function applyGatewayResult(r: GatewayResult): Promise<ApplyResult>
         }
 
         // Đã nhận tiền nhưng không giữ được phòng (đơn đã hủy hoặc phòng đã hết): đánh dấu để quản trị viên hoàn tiền thủ công.
-        await tx.booking.update({ where: { id: booking.id }, data: { status: "CANCELLED", paymentStatus: "PAID" } });
+        await tx.booking.update({ where: { id: booking.id }, data: { status: "CANCELLED", paymentStatus: "PAID", cancelledAt: new Date(), refundAmount: booking.totalPrice } });
         await tx.payment.update({ where: { id: payment.id }, data: { note: "Đã nhận tiền nhưng không giữ được phòng: cần hoàn tiền thủ công." } });
         return { ...base, outcome: "needs-refund" };
       },

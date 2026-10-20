@@ -51,6 +51,52 @@ export async function bookedQuantity(
   return agg._sum.rooms ?? 0;
 }
 
+export type BlockSpan = { startDate: Date; endDate: Date; rooms: number };
+
+/** Số phòng bị chặn nhiều nhất trong một đêm bất kỳ của kỳ lưu trú (đêm cuối là đêm trước ngày trả phòng). */
+export function maxBlockedRooms(blocks: BlockSpan[], checkIn: Date, checkOut: Date) {
+  let max = 0;
+  for (let t = checkIn.getTime(); t < checkOut.getTime(); t += DAY_MS) {
+    const night = blocks.reduce((sum, b) => (b.startDate.getTime() <= t && t < b.endDate.getTime() ? sum + b.rooms : sum), 0);
+    if (night > max) max = night;
+  }
+  return max;
+}
+
+export async function blockedQuantity(
+  db: Pick<Prisma.TransactionClient, "roomBlock">,
+  roomId: string,
+  checkIn: Date,
+  checkOut: Date,
+) {
+  const blocks = await db.roomBlock.findMany({
+    where: { roomId, startDate: { lt: checkOut }, endDate: { gt: checkIn } },
+    select: { startDate: true, endDate: true, rooms: true },
+  });
+  return maxBlockedRooms(blocks, checkIn, checkOut);
+}
+
+/** Số phòng không bán được trong khoảng ngày: đang bị giữ bởi đơn đặt cộng với phòng bị quản trị viên chặn. */
+export async function unavailableQuantity(
+  db: Pick<Prisma.TransactionClient, "booking" | "roomBlock">,
+  roomId: string,
+  checkIn: Date,
+  checkOut: Date,
+) {
+  const [booked, blocked] = await Promise.all([bookedQuantity(db, roomId, checkIn, checkOut), blockedQuantity(db, roomId, checkIn, checkOut)]);
+  return booked + blocked;
+}
+
+/** Hủy các đơn chờ thanh toán đã quá thời gian giữ phòng để danh sách đơn phản ánh đúng thực tế. Trả về số đơn đã hủy. */
+export async function expireStaleBookings(db: Pick<Prisma.TransactionClient, "booking">) {
+  const cutoff = new Date(Date.now() - PENDING_HOLD_MINUTES * 60_000);
+  const res = await db.booking.updateMany({
+    where: { status: "PENDING", paymentStatus: "UNPAID", createdAt: { lte: cutoff } },
+    data: { status: "CANCELLED", cancelledAt: new Date() },
+  });
+  return res.count;
+}
+
 // Trạng thái kế tiếp admin được phép chuyển; CANCELLED và COMPLETED là trạng thái cuối.
 export const NEXT_STATUS: Record<BookingStatus, BookingStatus[]> = {
   PENDING: ["CONFIRMED", "CANCELLED"],
@@ -65,10 +111,12 @@ export const PAYMENT_LABEL: Record<string, string> = { UNPAID: "Chưa thanh toá
 /** Đơn đã quá thời gian giữ phòng chưa (tính từ lúc tạo đơn). */
 export const holdExpired = (createdAt: Date) => createdAt.getTime() < Date.now() - PENDING_HOLD_MINUTES * 60_000;
 
-export const needsRefund = (status: string, paymentStatus: string) => status === "CANCELLED" && paymentStatus === "PAID";
+/** refundAmount = 0 nghĩa là đơn bị giữ lại toàn bộ tiền theo chính sách hủy nên không có gì để hoàn. */
+export const needsRefund = (status: string, paymentStatus: string, refundAmount?: number | null) =>
+  status === "CANCELLED" && paymentStatus === "PAID" && refundAmount !== 0;
 
-export function paymentLabel(status: string, paymentStatus: string) {
-  return needsRefund(status, paymentStatus) ? "Chờ hoàn tiền" : PAYMENT_LABEL[paymentStatus];
+export function paymentLabel(status: string, paymentStatus: string, refundAmount?: number | null) {
+  return needsRefund(status, paymentStatus, refundAmount) ? "Chờ hoàn tiền" : PAYMENT_LABEL[paymentStatus];
 }
 
 /**
@@ -79,8 +127,10 @@ export async function paymentStatusAfterCancel(
   db: Pick<Prisma.TransactionClient, "payment">,
   bookingId: string,
   current: "UNPAID" | "PAID" | "REFUNDED",
+  refundAmount?: number | null,
 ): Promise<"UNPAID" | "PAID" | "REFUNDED"> {
   if (current !== "PAID") return current;
+  if (refundAmount === 0) return "PAID"; // giữ toàn bộ tiền theo chính sách hủy: không có khoản nào để hoàn
   const real = await db.payment.count({ where: { bookingId, provider: "VNPAY", status: "SUCCESS" } });
   return real > 0 ? "PAID" : "REFUNDED";
 }

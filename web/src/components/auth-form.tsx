@@ -95,6 +95,11 @@ export function AuthForm({ mode, callbackUrl }: { mode: Mode; callbackUrl: strin
         error={fe.password}
         hint={isLogin ? undefined : "Tối thiểu 8 ký tự, gồm chữ và số"}
       />
+      {isLogin && (
+        <p className="-mt-2 text-right text-sm">
+          <Link href="/forgot-password" className="font-semibold text-brand hover:underline">Quên mật khẩu?</Link>
+        </p>
+      )}
 
       <button
         type="submit"
