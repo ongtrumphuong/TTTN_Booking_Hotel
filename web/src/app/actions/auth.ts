@@ -2,9 +2,12 @@
 
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { signIn, signOut } from "@/auth";
+import { clientIpFrom } from "@/lib/login-throttle";
 import { prisma } from "@/lib/prisma";
+import { hit } from "@/lib/rate-limit";
 import { safeRedirect } from "@/lib/session";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string>; email?: string };
@@ -49,7 +52,12 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
       redirectTo: safeRedirect(String(formData.get("callbackUrl") ?? "")),
     });
   } catch (e) {
-    if (e instanceof AuthError) return { error: "Email hoặc mật khẩu không đúng", email: parsed.data.email };
+    if (e instanceof AuthError) {
+      if ((e as { code?: string }).code === "too_many_attempts") {
+        return { error: "Bạn đã nhập sai quá nhiều lần. Vì lý do an toàn, vui lòng thử lại sau khoảng 15 phút.", email: parsed.data.email };
+      }
+      return { error: "Email hoặc mật khẩu không đúng", email: parsed.data.email };
+    }
     throw e; // NEXT_REDIRECT phải được ném lại
   }
   return {};
@@ -63,6 +71,12 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
     password: formData.get("password"),
   });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), email: String(formData.get("email") ?? "") };
+
+  // Chống tạo tài khoản hàng loạt: tối đa 10 lần đăng ký mỗi giờ từ một địa chỉ IP.
+  const ip = clientIpFrom(await headers());
+  if ((await hit(`register:ip:${ip}`, 3_600_000)) > 10) {
+    return { error: "Bạn đã thử đăng ký quá nhiều lần. Vui lòng thử lại sau." };
+  }
 
   const { name, email, phone, password } = parsed.data;
   const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });

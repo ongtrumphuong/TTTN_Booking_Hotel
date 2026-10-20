@@ -18,7 +18,12 @@ export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  useEffect(() => setOpen(false), [pathname]);
+  // Đóng menu khi chuyển trang: điều chỉnh state ngay trong lúc render thay vì gọi setState trong effect.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setOpen(false);
+  }
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);

@@ -5,8 +5,9 @@ import { STATUS_LABEL } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { NOINDEX } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Đặt phòng của tôi" };
+export const metadata: Metadata = { title: "Đặt phòng của tôi", robots: NOINDEX };
 
 async function PaymentNotice({ searchParams }: Pick<PageProps<"/bookings">, "searchParams">) {
   const sp = await searchParams;

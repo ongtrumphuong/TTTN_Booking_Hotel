@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-function toISO(d: Date) {
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-}
+import { useState } from "react";
+import { useToday } from "@/lib/use-today";
 
 export function StayBar({ defaults }: { defaults: { checkIn?: string; checkOut?: string; guests: number } }) {
-  const [today, setToday] = useState("");
   const [checkIn, setCheckIn] = useState(defaults.checkIn ?? "");
   const [checkOut, setCheckOut] = useState(defaults.checkOut ?? "");
-  useEffect(() => setToday(toISO(new Date())), []);
+  const today = useToday();
 
   const box = "rounded-xl border border-border bg-white px-3 py-2 text-sm font-medium outline-none focus:border-brand";
   const lbl = "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted";

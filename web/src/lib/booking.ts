@@ -62,6 +62,9 @@ export const NEXT_STATUS: Record<BookingStatus, BookingStatus[]> = {
 export const PAYMENT_LABEL: Record<string, string> = { UNPAID: "Chưa thanh toán", PAID: "Đã thanh toán", REFUNDED: "Đã hoàn tiền" };
 
 /** Đơn đã hủy mà tiền vẫn ở trạng thái đã thanh toán nghĩa là đang chờ hoàn tiền. */
+/** Đơn đã quá thời gian giữ phòng chưa (tính từ lúc tạo đơn). */
+export const holdExpired = (createdAt: Date) => createdAt.getTime() < Date.now() - PENDING_HOLD_MINUTES * 60_000;
+
 export const needsRefund = (status: string, paymentStatus: string) => status === "CANCELLED" && paymentStatus === "PAID";
 
 export function paymentLabel(status: string, paymentStatus: string) {

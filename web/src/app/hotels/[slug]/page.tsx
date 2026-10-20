@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import type { Metadata } from "next";
 import { BedDouble, Check, MapPin, Maximize2, Star, Users } from "lucide-react";
 import { FavoriteButton } from "@/components/favorite-button";
@@ -11,6 +12,7 @@ import { ReviewForm } from "@/components/review-form";
 import { StayBar } from "@/components/stay-bar";
 import { canReviewHotel } from "@/lib/reviews";
 import { getCurrentUser } from "@/lib/session";
+import { NOINDEX, absoluteUrl, jsonLd } from "@/lib/site";
 import { bookedQuantity, parseStay, isoDate } from "@/lib/booking";
 import { formatVND } from "@/lib/format";
 import { getHotelDetail } from "@/lib/hotels";
@@ -22,7 +24,18 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) 
 export async function generateMetadata({ params }: PageProps<"/hotels/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const hotel = await getHotelDetail(slug);
-  return hotel ? { title: hotel.name, description: hotel.description } : { title: "Không tìm thấy khách sạn" };
+  if (!hotel) return { title: "Không tìm thấy khách sạn", robots: NOINDEX };
+
+  const url = `/hotels/${hotel.slug}`;
+  const description = `${hotel.name} tại ${hotel.city}, ${hotel.starRating} sao. ${hotel.description}`.slice(0, 200);
+  const image = hotel.images[0] ? absoluteUrl(hotel.images[0]) : undefined;
+  return {
+    title: hotel.name,
+    description,
+    alternates: { canonical: url }, // địa chỉ chuẩn: bỏ các tham số ngày, số khách
+    openGraph: { type: "website", title: hotel.name, description, url, images: image ? [{ url: image, alt: hotel.name }] : undefined },
+    twitter: { card: "summary_large_image", title: hotel.name, description, images: image ? [image] : undefined },
+  };
 }
 
 /** Ô viết đánh giá: phụ thuộc người dùng đang đăng nhập nên nằm riêng trong Suspense, không làm chậm phần còn lại. */
@@ -66,6 +79,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
   const stay = parseStay(one(sp.checkIn), one(sp.checkOut));
   const guests = Math.min(Math.max(Number(one(sp.guests)) || 2, 1), 10);
 
+  if (stay) await connection(); // phòng trống phụ thuộc thời điểm hiện tại (hạn giữ chỗ), không dựng sẵn
   const rooms = await Promise.all(
     hotel.rooms.map(async (r) => {
       const left = stay ? r.quantity - (await bookedQuantity(prisma, r.id, stay.checkIn, stay.checkOut)) : null;
@@ -78,8 +92,30 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
     return `/book/${roomId}?${p.toString()}`;
   };
 
+  const lowest = Math.min(...hotel.rooms.map((r) => r.pricePerNight));
+  const highest = Math.max(...hotel.rooms.map((r) => r.pricePerNight));
+  const structured = {
+    "@context": "https://schema.org",
+    "@type": "Hotel",
+    name: hotel.name,
+    description: hotel.description,
+    url: absoluteUrl(`/hotels/${hotel.slug}`),
+    image: hotel.images.slice(0, 5).map(absoluteUrl),
+    address: { "@type": "PostalAddress", streetAddress: hotel.address, addressLocality: hotel.city, addressCountry: "VN" },
+    ...(hotel.latitude !== null && hotel.longitude !== null
+      ? { geo: { "@type": "GeoCoordinates", latitude: hotel.latitude, longitude: hotel.longitude } }
+      : {}),
+    starRating: { "@type": "Rating", ratingValue: hotel.starRating },
+    priceRange: lowest === highest ? `${lowest} VND` : `${lowest}-${highest} VND`,
+    amenityFeature: hotel.amenities.map((a) => ({ "@type": "LocationFeatureSpecification", name: a, value: true })),
+    ...(hotel.avgRating
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Number(hotel.avgRating.toFixed(1)), reviewCount: hotel.reviews.length, bestRating: 5, worstRating: 1 } }
+      : {}),
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(structured) }} />
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
           <span className="flex items-center gap-0.5 font-semibold text-accent">

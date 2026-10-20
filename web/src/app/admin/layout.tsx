@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 import { AdminNav } from "@/components/admin/admin-nav";
+import type { Metadata } from "next";
+import { NOINDEX } from "@/lib/site";
 import { requireAdmin } from "@/lib/session";
+
+export const metadata: Metadata = { robots: NOINDEX };
 
 async function AdminGuard({ children }: { children: React.ReactNode }) {
   await requireAdmin("/admin");

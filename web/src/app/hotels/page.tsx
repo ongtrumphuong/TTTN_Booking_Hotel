@@ -8,8 +8,6 @@ import { HotelCard } from "@/components/hotel-card";
 import { formatVND } from "@/lib/format";
 import { getCities, getFilterOptions, searchHotels, type HotelSearch } from "@/lib/hotels";
 
-export const metadata: Metadata = { title: "Tìm khách sạn" };
-
 type SP = Record<string, string | string[] | undefined>;
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
@@ -25,6 +23,19 @@ const SORTS: { value: NonNullable<HotelSearch["sort"]>; label: string }[] = [
   { value: "price-desc", label: "Giá cao đến thấp" },
   { value: "rating", label: "Đánh giá cao nhất" },
 ];
+
+/** Trang theo thành phố được lập chỉ mục; mọi tổ hợp bộ lọc, ngày, sắp xếp chỉ để người dùng nên không lập chỉ mục (tránh nội dung trùng lặp). */
+export async function generateMetadata({ searchParams }: PageProps<"/hotels">): Promise<Metadata> {
+  const sp = await searchParams;
+  const city = one(sp.city);
+  const filtered = ["checkIn", "checkOut", "guests", "minPrice", "maxPrice", "minStars", "amenity", "sort"].some((k) => sp[k] !== undefined);
+  return {
+    title: city ? `Khách sạn tại ${city}` : "Tìm khách sạn",
+    description: city ? `Đặt phòng khách sạn tại ${city} giá tốt, xác nhận nhanh cùng Không Gian Số Stay.` : "Tìm và đặt khách sạn trên khắp Việt Nam với giá tốt cùng Không Gian Số Stay.",
+    alternates: { canonical: city ? `/hotels?city=${encodeURIComponent(city)}` : "/hotels" },
+    robots: filtered ? { index: false, follow: true } : undefined,
+  };
+}
 
 function parse(sp: SP): FilterState {
   const guests = Number(one(sp.guests)) || 2;
@@ -146,7 +157,9 @@ async function Results({ searchParams }: { searchParams: Promise<SP> }) {
 }
 
 async function Form({ searchParams }: { searchParams: Promise<SP> }) {
-  const [sp, cities] = await Promise.all([searchParams, getCities()]);
+  // Tuần tự: chờ searchParams (thông tin của yêu cầu) rồi mới đọc cơ sở dữ liệu, để lúc build không chạy truy vấn nào.
+  const sp = await searchParams;
+  const cities = await getCities();
   const q = parse(sp);
   return <SearchForm compact cities={cities.map((c) => c.city)} defaults={q} />;
 }

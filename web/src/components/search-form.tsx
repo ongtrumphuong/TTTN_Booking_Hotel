@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CalendarDays, MapPin, Search, Users } from "lucide-react";
+import { useToday } from "@/lib/use-today";
 
 type Props = {
   cities: string[];
@@ -9,17 +10,11 @@ type Props = {
   compact?: boolean;
 };
 
-function toISO(d: Date) {
-  const off = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - off).toISOString().slice(0, 10);
-}
-
 export function SearchForm({ cities, defaults = {}, compact = false }: Props) {
-  const [today, setToday] = useState("");
   const [checkIn, setCheckIn] = useState(defaults.checkIn ?? "");
   const [checkOut, setCheckOut] = useState(defaults.checkOut ?? "");
 
-  useEffect(() => setToday(toISO(new Date())), []);
+  const today = useToday();
 
   const fieldBase =
     "flex items-center gap-3 rounded-xl border border-border bg-white px-4 py-2.5 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20";

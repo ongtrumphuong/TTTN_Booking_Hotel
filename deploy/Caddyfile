@@ -1,0 +1,25 @@
+# Ví dụ Caddy làm reverse proxy có HTTPS tự động (Let's Encrypt) phía trước ứng dụng.
+# Đổi stay.example.com thành tên miền thật, trỏ bản ghi DNS A về địa chỉ máy chủ.
+#
+# Quan trọng cho tính năng giới hạn đăng nhập sai: ứng dụng lấy IP khách từ tiêu đề X-Forwarded-For,
+# nên proxy PHẢI ghi đè tiêu đề này bằng IP thật của người gọi (Caddy làm vậy theo mặc định, vì mặc định không tin tiêu đề do khách gửi).
+# Nếu dùng Nginx hãy dùng:  proxy_set_header X-Forwarded-For $remote_addr;   (không dùng $proxy_add_x_forwarded_for)
+
+stay.example.com {
+	encode zstd gzip
+
+	# Khớp giới hạn tải lên của ứng dụng (30 MB mỗi yêu cầu); chỉ áp dụng cho đường dẫn tải ảnh.
+	@upload path /api/admin/uploads
+	request_body @upload {
+		max_size 32MB
+	}
+
+	reverse_proxy 127.0.0.1:3000 {
+		health_uri /api/health
+		health_interval 30s
+	}
+
+	header {
+		-Server
+	}
+}

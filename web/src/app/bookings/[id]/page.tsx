@@ -8,8 +8,9 @@ import { STATUS_LABEL, needsRefund, paymentLabel, todayUTC } from "@/lib/booking
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { NOINDEX } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Chi tiết đặt phòng" };
+export const metadata: Metadata = { title: "Chi tiết đặt phòng", robots: NOINDEX };
 
 async function Detail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ paid?: string; payment?: string }> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);

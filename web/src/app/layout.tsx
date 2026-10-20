@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
+import { SITE_NAME, siteUrl } from "@/lib/site";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 
@@ -11,6 +12,10 @@ const beVietnam = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
+  applicationName: SITE_NAME,
+  openGraph: { type: "website", siteName: SITE_NAME, locale: "vi_VN" },
+  twitter: { card: "summary_large_image" },
   title: {
     default: "Không Gian Số Stay – Đặt phòng khách sạn dễ dàng",
     template: "%s | Không Gian Số Stay",

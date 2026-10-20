@@ -209,3 +209,16 @@ export async function getFeaturedReviews(limit = 3) {
     .slice(0, limit)
     .map((r) => ({ id: r.id, rating: r.rating, comment: r.comment, author: r.user.name, hotel: r.hotel }));
 }
+
+/** Dữ liệu cho sitemap.xml: khách sạn đang hoạt động và các thành phố có khách sạn. */
+export async function getSitemapData(): Promise<{ hotels: { slug: string; createdAt: Date }[]; cities: string[] }> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("hotels");
+  const hotels = await prisma.hotel.findMany({
+    where: { isActive: true, rooms: { some: { isActive: true } } },
+    select: { slug: true, city: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return { hotels: hotels.map((h) => ({ slug: h.slug, createdAt: h.createdAt })), cities: [...new Set(hotels.map((h) => h.city))].sort() };
+}

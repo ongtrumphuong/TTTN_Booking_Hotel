@@ -8,8 +8,9 @@ import { bookedQuantity, parseStay, todayUTC } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { NOINDEX } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Đặt phòng" };
+export const metadata: Metadata = { title: "Đặt phòng", robots: NOINDEX };
 
 type SP = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || "";

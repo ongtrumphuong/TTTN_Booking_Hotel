@@ -2,13 +2,14 @@ import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { PayForm } from "@/components/pay-form";
-import { PENDING_HOLD_MINUTES } from "@/lib/booking";
+import { holdExpired } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { isVnpayConfigured } from "@/lib/payments/vnpay";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { NOINDEX } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Thanh toán" };
+export const metadata: Metadata = { title: "Thanh toán", robots: NOINDEX };
 
 const PAY_ERRORS: Record<string, string> = {
   cancelled: "Bạn đã hủy thanh toán trên VNPay. Đơn vẫn được giữ phòng, bạn có thể thanh toán lại.",
@@ -25,7 +26,7 @@ async function PayContent({ params, searchParams }: { params: Promise<{ id: stri
   if (!booking) notFound();
   if (booking.status !== "PENDING" || booking.paymentStatus !== "UNPAID") redirect(`/bookings/${id}`);
 
-  const expired = booking.createdAt.getTime() < Date.now() - PENDING_HOLD_MINUTES * 60_000;
+  const expired = holdExpired(booking.createdAt);
 
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_360px]">

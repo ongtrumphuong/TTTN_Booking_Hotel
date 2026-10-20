@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import Image from "next/image";
 import Link from "next/link";
 import { BadgePercent, Headset, Quote, ShieldCheck, Star } from "lucide-react";
@@ -7,11 +8,13 @@ import { HotelCard } from "@/components/hotel-card";
 import { getCities, getFeaturedHotels, getFeaturedReviews } from "@/lib/hotels";
 
 async function HeroSearch() {
+  await connection(); // đọc cơ sở dữ liệu lúc có yêu cầu, không phải lúc build (build không cần cơ sở dữ liệu)
   const cities = await getCities();
   return <SearchForm cities={cities.map((c) => c.city)} />;
 }
 
 async function Destinations() {
+  await connection(); // đọc cơ sở dữ liệu lúc có yêu cầu, không phải lúc build (build không cần cơ sở dữ liệu)
   const cities = await getCities();
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
@@ -34,6 +37,7 @@ async function Destinations() {
 }
 
 async function Featured() {
+  await connection(); // đọc cơ sở dữ liệu lúc có yêu cầu, không phải lúc build (build không cần cơ sở dữ liệu)
   const hotels = await getFeaturedHotels(6);
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -55,6 +59,7 @@ function GridSkeleton({ n }: { n: number }) {
 }
 
 async function Testimonials() {
+  await connection(); // đọc cơ sở dữ liệu lúc có yêu cầu, không phải lúc build (build không cần cơ sở dữ liệu)
   const reviews = await getFeaturedReviews(3);
   if (reviews.length === 0) return null;
   return (

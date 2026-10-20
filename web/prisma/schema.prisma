@@ -110,6 +110,8 @@ model Booking {
 
   @@index([userId])
   @@index([roomId, checkIn, checkOut])
+  @@index([createdAt])
+  @@index([status, paymentStatus])
 }
 
 model Review {
@@ -124,6 +126,8 @@ model Review {
   createdAt DateTime @default(now())
 
   @@unique([hotelId, userId])
+  @@index([hotelId, isHidden])
+  @@index([isHidden, createdAt])
 }
 
 model Favorite {
@@ -154,4 +158,13 @@ model Payment {
   refundNote    String?
 
   @@index([bookingId])
+}
+
+// Bộ đếm cho giới hạn số lần thử (đăng nhập sai...): mỗi khóa có một cửa sổ thời gian cố định.
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+
+  @@index([windowStart])
 }

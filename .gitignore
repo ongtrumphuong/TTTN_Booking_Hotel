@@ -1,0 +1,7 @@
+# Cấu hình chứa bí mật khi triển khai thật
+.env.prod
+.env.*.local
+
+# Sao lưu cơ sở dữ liệu và ảnh
+/backups/
+*.sql.gz

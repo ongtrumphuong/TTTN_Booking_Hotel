@@ -2,8 +2,9 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { NOINDEX } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Tài khoản của tôi" };
+export const metadata: Metadata = { title: "Tài khoản của tôi", robots: NOINDEX };
 
 async function Profile() {
   const session = await requireUser("/account");

@@ -5,8 +5,9 @@ import { HotelCard } from "@/components/hotel-card";
 import { getHotelsByIds } from "@/lib/hotels";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { NOINDEX } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Khách sạn yêu thích" };
+export const metadata: Metadata = { title: "Khách sạn yêu thích", robots: NOINDEX };
 
 async function List() {
   const user = await requireUser("/favorites");
