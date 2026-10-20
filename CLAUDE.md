@@ -54,6 +54,7 @@ Chưa làm/chưa kiểm:
 - Trong công cụ trình duyệt, nút submit đôi khi cần bấm bằng `ref` thay vì tọa độ; ô nhập React nên gõ bằng thao tác `type` để state cập nhật.
 
 ## Việc tiếp theo (backlog theo thứ tự đề xuất)
-1. **Kịch bản demo** từng bước kèm dữ liệu mẫu sạch (khách + admin), và tóm tắt điểm nhấn kỹ thuật để báo cáo (chống đặt trùng phòng bằng giao dịch Serializable, chữ ký VNPay, giới hạn tốc độ, phân quyền).
-2. **Tài liệu báo cáo**: use case, sơ đồ tuần tự đặt phòng + thanh toán, bảng kết quả kiểm thử (285 test), ảnh chụp màn hình.
+Đã có `docs/KICH_BAN_DEMO.md` (kịch bản demo, điểm nhấn kỹ thuật, Q&A hội đồng). Khi tính năng đổi, cập nhật file này cho khớp (nhất là số lượng test và các bước demo).
+1. **Tài liệu báo cáo**: use case, sơ đồ tuần tự đặt phòng + thanh toán (có thể dùng Mermaid), ảnh chụp màn hình các màn hình chính.
+2. Chạy thử trọn kịch bản demo một lần trên bản `npm run build && npm run start` và sửa chỗ vấp nếu có.
 3. Tùy chọn, chỉ khi chủ dự án muốn: giá động (cuối tuần, mùa cao điểm), email nhắc nhận phòng, thông tin người ở/hóa đơn, IPN VNPay qua tunnel.
