@@ -1,5 +1,6 @@
 import { NextResponse, after, connection, type NextRequest } from "next/server";
 import { sendBookingConfirmation } from "@/lib/email";
+import { notifyBookingEvent } from "@/lib/notify";
 import { applyGatewayResult, type Rsp } from "@/lib/payments/apply";
 import { verifySignature, vnpayConfig } from "@/lib/payments/vnpay";
 
@@ -35,7 +36,10 @@ export async function GET(req: NextRequest) {
       bankCode: q.vnp_BankCode,
     });
     const bookingId = res.bookingId;
-    if (res.confirmedNow && bookingId) after(() => sendBookingConfirmation(bookingId));
+    if (res.confirmedNow && bookingId) {
+    after(() => sendBookingConfirmation(bookingId));
+    after(() => notifyBookingEvent(bookingId, "PAID"));
+  }
     return reply(res.rsp);
   } catch (e) {
     console.error("[vnpay ipn]", e instanceof Error ? e.message : e);

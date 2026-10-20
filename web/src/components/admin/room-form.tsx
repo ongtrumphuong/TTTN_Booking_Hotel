@@ -9,6 +9,7 @@ type Room = {
   name: string;
   description: string;
   pricePerNight: number;
+  weekendPercent: number;
   capacity: number;
   bedType: string;
   sizeM2: number | null;
@@ -41,6 +42,10 @@ export function RoomForm({ hotelId, room }: { hotelId: string; room?: Room }) {
       <div>
         <label className={label}>Giá mỗi đêm (₫)</label>
         <input name="pricePerNight" type="number" min={10000} step={1000} required defaultValue={room?.pricePerNight} className={input} />
+      </div>
+      <div>
+        <label className={label}>Phụ thu cuối tuần (%, đêm thứ Sáu và thứ Bảy)</label>
+        <input name="weekendPercent" type="number" min={-50} max={200} step={1} defaultValue={room?.weekendPercent ?? 0} className={input} />
       </div>
       <div>
         <label className={label}>Loại giường</label>

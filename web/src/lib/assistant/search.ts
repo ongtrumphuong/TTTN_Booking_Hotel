@@ -2,6 +2,8 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { holdingWhere, isoDate, maxBlockedRooms, parseStay, todayUTC } from "@/lib/booking";
 import { policyText } from "@/lib/cancellation";
+import { stayPrice } from "@/lib/pricing";
+import { loadPricing } from "@/lib/pricing-db";
 import { prisma } from "@/lib/prisma";
 import { signProposal } from "./proposal";
 
@@ -101,7 +103,7 @@ async function unavailableByRoom(db: Pick<Prisma.TransactionClient, "booking" | 
  * Chỉ trả về phòng đang bán, còn trống đúng khoảng ngày và đủ sức chứa. Giá luôn tính ở máy chủ.
  * `exact` là phòng khớp mọi điều kiện; `alternatives` là phòng gần đúng (vượt ngân sách một chút, hoặc thiếu một vài từ khóa) để trợ lý gợi ý.
  */
-export async function searchRooms(input: SearchInput, db: Pick<Prisma.TransactionClient, "hotel" | "booking" | "roomBlock" | "review"> = prisma): Promise<SearchResult> {
+export async function searchRooms(input: SearchInput, db: Pick<Prisma.TransactionClient, "hotel" | "booking" | "roomBlock" | "review" | "priceRule"> = prisma): Promise<SearchResult> {
   const stay = parseStay(input.checkIn, input.checkOut);
   if (!stay) return { ok: false, error: "Ngày nhận/trả phòng không hợp lệ (cần dạng yyyy-mm-dd, ở lại từ 1 đến 30 đêm, ngày trả sau ngày nhận)." };
   if (stay.checkIn < todayUTC()) return { ok: false, error: `Ngày nhận phòng ${input.checkIn} đã qua. Hãy hỏi lại khách ngày nhận phòng.` };
@@ -123,9 +125,10 @@ export async function searchRooms(input: SearchInput, db: Pick<Prisma.Transactio
   if (wantCity && inCity.length === 0) return { ok: false, error: `Hệ thống chưa có khách sạn ở "${input.city}". Các điểm đến hiện có: ${cities.join(", ")}.` };
 
   const roomIds = inCity.flatMap((h) => h.rooms.map((r) => r.id));
-  const [used, ratings] = await Promise.all([
+  const [used, ratings, pricing] = await Promise.all([
     unavailableByRoom(db, roomIds, stay.checkIn, stay.checkOut),
     db.review.groupBy({ by: ["hotelId"], where: { hotelId: { in: inCity.map((h) => h.id) }, isHidden: false }, _avg: { rating: true }, _count: true }),
+    loadPricing(db, inCity.flatMap((h) => h.rooms), stay.checkIn, stay.checkOut),
   ]);
   const rate = new Map(ratings.map((r) => [r.hotelId, { avg: r._avg.rating, count: r._count }]));
 
@@ -141,8 +144,11 @@ export async function searchRooms(input: SearchInput, db: Pick<Prisma.Transactio
       const viewHay = fold([r.name, r.description, r.bedType, ...r.highlights, ...r.amenities, ...h.highlights.filter((x) => fold(x).startsWith("view"))].join(" "));
       const matched = keywords.filter((k) => keywordHit(isViewKeyword(k) ? viewHay : hay, k));
       const missing = keywords.filter((k) => !matched.includes(k));
-      const priceOk = (max === undefined || r.pricePerNight <= max) && (min === undefined || r.pricePerNight >= min);
-      const overBy = max !== undefined && r.pricePerNight > max ? r.pricePerNight - max : 0;
+      // Giá thực tế của kỳ lưu trú (có thể có phụ thu cuối tuần/mùa cao điểm); so ngân sách theo giá trung bình mỗi đêm.
+      const stayTotal = stayPrice(pricing.get(r.id)!, stay.checkIn, stay.checkOut);
+      const avgNight = Math.round(stayTotal / stay.nights);
+      const priceOk = (max === undefined || avgNight <= max) && (min === undefined || avgNight >= min);
+      const overBy = max !== undefined && avgNight > max ? avgNight - max : 0;
       const rt = rate.get(h.id);
       const token = signProposal({ roomId: r.id, checkIn: input.checkIn, checkOut: input.checkOut, guests, rooms });
       scored.push({
@@ -157,9 +163,9 @@ export async function searchRooms(input: SearchInput, db: Pick<Prisma.Transactio
         roomName: r.name,
         bedType: r.bedType,
         capacity: r.capacity,
-        pricePerNight: r.pricePerNight,
+        pricePerNight: avgNight,
         nights: stay.nights,
-        total: r.pricePerNight * stay.nights * rooms,
+        total: stayTotal * rooms,
         roomsLeft: left,
         highlights: [...new Set([...r.highlights, ...h.highlights])],
         matched,
@@ -171,7 +177,7 @@ export async function searchRooms(input: SearchInput, db: Pick<Prisma.Transactio
         fits: matched.length === keywords.length,
         priceOk,
         overBy,
-        score: matched.length * 10 + (rt?.avg ?? 0) - (max !== undefined ? Math.abs(max - r.pricePerNight) / 1_000_000 : 0),
+        score: matched.length * 10 + (rt?.avg ?? 0) - (max !== undefined ? Math.abs(max - avgNight) / 1_000_000 : 0),
       });
     }
   }

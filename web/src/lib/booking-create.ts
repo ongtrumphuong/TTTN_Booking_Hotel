@@ -2,6 +2,8 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { bookingCode, expireStaleBookings, parseStay, todayUTC, unavailableQuantity } from "@/lib/booking";
+import { stayPrice } from "@/lib/pricing";
+import { loadRoomPricing } from "@/lib/pricing-db";
 import { checkVoucher } from "@/lib/voucher";
 
 export type CreateBookingInput = {
@@ -47,7 +49,8 @@ export async function createPendingBooking(input: CreateBookingInput): Promise<C
         const left = room.quantity - (await unavailableQuantity(tx, room.id, stay.checkIn, stay.checkOut));
         if (left < rooms) throw new Error("SOLD_OUT");
 
-        const subtotal = room.pricePerNight * stay.nights * rooms; // giá luôn tính ở server
+        // Giá luôn tính ở server: từng đêm có thể khác nhau (cuối tuần, mùa cao điểm, ngày lễ).
+        const subtotal = stayPrice(await loadRoomPricing(tx, room, stay.checkIn, stay.checkOut), stay.checkIn, stay.checkOut) * rooms;
         let discount = 0;
         let voucherCode: string | null = null;
         if (voucher) {

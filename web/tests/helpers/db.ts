@@ -17,7 +17,7 @@ export async function resetDb() {
   const [{ current_database: name }] = await prisma.$queryRaw<{ current_database: string }[]>`SELECT current_database()`;
   if (!name.endsWith("_test")) throw new Error(`Từ chối xóa dữ liệu: đang kết nối "${name}", không phải cơ sở dữ liệu kiểm thử.`);
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Payment","Booking","Review","Favorite","Room","Hotel","RateLimit","Payout","Voucher","PasswordResetToken","RoomBlock","User" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "Payment","Booking","Review","Favorite","Room","Hotel","RateLimit","Payout","Voucher","PasswordResetToken","RoomBlock","PriceRule","Notification","User" RESTART IDENTITY CASCADE',
   );
 }
 

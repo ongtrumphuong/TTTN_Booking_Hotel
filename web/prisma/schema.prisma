@@ -45,19 +45,20 @@ enum PaymentTxnStatus {
 }
 
 model User {
-  id           String               @id @default(cuid())
-  email        String               @unique
-  name         String
-  phone        String?
-  passwordHash String
-  role         Role                 @default(USER)
-  createdAt    DateTime             @default(now())
-  bookings     Booking[]
-  reviews      Review[]
-  favorites    Favorite[]
-  resetTokens  PasswordResetToken[]
-  hotels       Hotel[]              @relation("HotelOwner")
-  payouts      Payout[]             @relation("PayoutOwner")
+  id            String               @id @default(cuid())
+  email         String               @unique
+  name          String
+  phone         String?
+  passwordHash  String
+  role          Role                 @default(USER)
+  createdAt     DateTime             @default(now())
+  bookings      Booking[]
+  reviews       Review[]
+  favorites     Favorite[]
+  resetTokens   PasswordResetToken[]
+  hotels        Hotel[]              @relation("HotelOwner")
+  payouts       Payout[]             @relation("PayoutOwner")
+  notifications Notification[]
 }
 
 model Hotel {
@@ -94,23 +95,26 @@ model Hotel {
 }
 
 model Room {
-  id            String      @id @default(cuid())
-  hotelId       String
-  hotel         Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
-  name          String
-  description   String
-  pricePerNight Int
-  capacity      Int         @default(2)
-  bedType       String
-  sizeM2        Int?
-  images        String[]
-  amenities     String[]
+  id             String      @id @default(cuid())
+  hotelId        String
+  hotel          Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  name           String
+  description    String
+  pricePerNight  Int
+  // Phụ thu (+) hoặc giảm (-) theo phần trăm cho đêm thứ Sáu và thứ Bảy.
+  weekendPercent Int         @default(0)
+  capacity       Int         @default(2)
+  bedType        String
+  sizeM2         Int?
+  images         String[]
+  amenities      String[]
   // Điểm nổi bật của phòng, ví dụ "View hồ Xuân Hương", "Ban công".
-  highlights    String[]    @default([])
-  quantity      Int         @default(1)
-  isActive      Boolean     @default(true)
-  bookings      Booking[]
-  blocks        RoomBlock[]
+  highlights     String[]    @default([])
+  quantity       Int         @default(1)
+  isActive       Boolean     @default(true)
+  bookings       Booking[]
+  blocks         RoomBlock[]
+  priceRules     PriceRule[]
 
   @@index([hotelId])
 }
@@ -259,4 +263,33 @@ model Payout {
   bookings     Booking[]
 
   @@index([ownerId, createdAt])
+}
+
+/// Giá theo mùa/ngày lễ: cộng thêm (+) hoặc giảm (-) phần trăm so với giá gốc cho các đêm trong [startDate, endDate).
+model PriceRule {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  percent   Int
+  createdAt DateTime @default(now())
+
+  @@index([roomId, startDate, endDate])
+}
+
+/// Thông báo trong ứng dụng cho đối tác và quản trị viên (đơn mới, đơn bị hủy, khách sạn chờ duyệt...).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
 }

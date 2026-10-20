@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HotelForm } from "@/components/admin/hotel-form";
+import { PriceRules } from "@/components/admin/price-rules";
 import { RoomBlocks } from "@/components/admin/room-blocks";
 import { RoomForm } from "@/components/admin/room-form";
 import { ToggleButton } from "@/components/admin/toggle-button";
@@ -28,7 +29,10 @@ export async function HotelEditor({ id, user }: { id: string; user: Pick<Session
     include: {
       rooms: {
         orderBy: { pricePerNight: "asc" },
-        include: { blocks: { where: { endDate: { gt: new Date() } }, orderBy: { startDate: "asc" } } },
+        include: {
+          blocks: { where: { endDate: { gt: new Date() } }, orderBy: { startDate: "asc" } },
+          priceRules: { where: { endDate: { gt: new Date() } }, orderBy: { startDate: "asc" } },
+        },
       },
     },
   });
@@ -66,6 +70,7 @@ export async function HotelEditor({ id, user }: { id: string; user: Pick<Session
             </summary>
             <div className="border-t border-border p-4">
               <RoomForm hotelId={hotel.id} room={r} />
+              <PriceRules roomId={r.id} basePrice={r.pricePerNight} rules={r.priceRules.map((x) => ({ id: x.id, name: x.name, start: x.startDate.toISOString().slice(0, 10), end: new Date(x.endDate.getTime() - 86_400_000).toISOString().slice(0, 10), percent: x.percent }))} />
               <RoomBlocks roomId={r.id} quantity={r.quantity} blocks={r.blocks.map((b) => ({ id: b.id, start: b.startDate.toISOString().slice(0, 10), end: new Date(b.endDate.getTime() - 86_400_000).toISOString().slice(0, 10), rooms: b.rooms, reason: b.reason }))} />
             </div>
           </details>

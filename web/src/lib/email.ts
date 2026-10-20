@@ -262,3 +262,8 @@ export async function sendRefundCompleted(bookingId: string) {
     return { sent: false, reason: "Gửi thất bại" };
   }
 }
+
+/** Gửi email thông báo cho đối tác/quản trị viên (đơn mới, đơn hủy). Không bao giờ ném lỗi. */
+export async function sendStaffNotice(to: string, d: NoticeData) {
+  return deliver(to, buildNoticeEmail({ ...d, link: d.link }), "thông báo đối tác");
+}

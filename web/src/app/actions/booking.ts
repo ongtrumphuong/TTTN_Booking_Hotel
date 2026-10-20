@@ -6,11 +6,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendBookingCancelled, sendBookingConfirmation } from "@/lib/email";
+import { notifyBookingEvent } from "@/lib/notify";
 import { isVnpayConfigured } from "@/lib/payments/vnpay";
 import { requireUser } from "@/lib/session";
 import { PENDING_HOLD_MINUTES, parseStay, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
 import { cancelQuote } from "@/lib/cancellation";
 import { createPendingBooking } from "@/lib/booking-create";
+import { stayPrice } from "@/lib/pricing";
+import { loadRoomPricing } from "@/lib/pricing-db";
 import { checkVoucher } from "@/lib/voucher";
 
 export type BookingState = { error?: string };
@@ -47,13 +50,14 @@ export async function createBookingAction(_: BookingState, formData: FormData): 
 export type VoucherPreview = { error?: string; discount?: number; code?: string };
 
 /** Xem trước mức giảm của mã trên form đặt phòng. Giá và mã đều được tính lại ở server khi tạo đơn. */
-export async function previewVoucherAction(roomId: string, nights: number, rooms: number, code: string): Promise<VoucherPreview> {
+export async function previewVoucherAction(roomId: string, checkIn: string, checkOut: string, rooms: number, code: string): Promise<VoucherPreview> {
   const user = await requireUser("/");
-  const room = await prisma.room.findFirst({ where: { id: roomId, isActive: true, hotel: { isActive: true } }, select: { pricePerNight: true } });
-  if (!room || !Number.isInteger(nights) || nights < 1 || nights > 30 || !Number.isInteger(rooms) || rooms < 1 || rooms > 10) {
+  const room = await prisma.room.findFirst({ where: { id: roomId, isActive: true, hotel: { isActive: true } }, select: { id: true, pricePerNight: true, weekendPercent: true } });
+  const stay = parseStay(checkIn, checkOut);
+  if (!room || !stay || !Number.isInteger(rooms) || rooms < 1 || rooms > 10) {
     return { error: "Thông tin đặt phòng không hợp lệ." };
   }
-  const check = await checkVoucher(prisma, String(code ?? ""), user.id, room.pricePerNight * nights * rooms);
+  const check = await checkVoucher(prisma, String(code ?? ""), user.id, stayPrice(await loadRoomPricing(prisma, room, stay.checkIn, stay.checkOut), stay.checkIn, stay.checkOut) * rooms);
   return check.ok ? { discount: check.discount, code: check.voucher.code } : { error: check.error };
 }
 
@@ -96,7 +100,10 @@ export async function payBookingAction(bookingId: string, _: BookingState, formD
     });
     return true;
   });
-  if (confirmed) after(() => sendBookingConfirmation(booking.id));
+  if (confirmed) {
+    after(() => sendBookingConfirmation(booking.id));
+    after(() => notifyBookingEvent(booking.id, "PAID"));
+  }
   revalidatePath("/bookings");
   redirect(`/bookings/${bookingId}?paid=1`);
 }
@@ -130,7 +137,10 @@ export async function cancelBookingAction(bookingId: string): Promise<CancelStat
         paymentStatus: await paymentStatusAfterCancel(prisma, booking.id, booking.paymentStatus, paid > 0 ? quote.refund : null),
       },
     });
-    if (res.count > 0 && booking.paymentStatus === "PAID") after(() => sendBookingCancelled(booking.id));
+    if (res.count > 0 && booking.paymentStatus === "PAID") {
+      after(() => sendBookingCancelled(booking.id));
+      after(() => notifyBookingEvent(booking.id, "CANCELLED"));
+    }
   }
   revalidatePath("/bookings");
   revalidatePath(`/bookings/${bookingId}`);

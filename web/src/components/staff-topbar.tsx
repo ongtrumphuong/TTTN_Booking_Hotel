@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { UserRound } from "lucide-react";
+import { Bell, UserRound } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { Logo } from "@/components/logo";
+import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 
 const ROLE_LABEL = { ADMIN: "Quản trị sàn", HOST: "Đối tác khách sạn", USER: "" } as const;
@@ -9,6 +10,7 @@ const ROLE_LABEL = { ADMIN: "Quản trị sàn", HOST: "Đối tác khách sạn
 /** Thanh trên cùng riêng cho quản trị viên và đối tác: không có liên kết sang giao diện khách. */
 export async function StaffTopBar({ base }: { base: "/admin" | "/host" }) {
   const user = await getCurrentUser();
+  const unread = user ? await prisma.notification.count({ where: { userId: user.id, readAt: null } }) : 0;
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-ink text-white">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-3 sm:px-4">
@@ -20,6 +22,10 @@ export async function StaffTopBar({ base }: { base: "/admin" | "/host" }) {
         </div>
         {user && (
           <div className="flex items-center gap-1 whitespace-nowrap text-sm font-semibold">
+            <Link href={`${base}/notifications`} className="relative rounded-lg p-2 text-white/85 hover:bg-white/10" aria-label={unread > 0 ? `Thông báo, ${unread} chưa đọc` : "Thông báo"}>
+              <Bell size={18} aria-hidden />
+              {unread > 0 && <span className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-sun px-1 text-[10px] font-bold leading-4">{unread > 9 ? "9+" : unread}</span>}
+            </Link>
             <Link href={`${base}/account`} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-white/85 hover:bg-white/10">
               <UserRound size={16} aria-hidden />
               <span className="hidden max-w-36 truncate sm:inline">{user.name}</span>

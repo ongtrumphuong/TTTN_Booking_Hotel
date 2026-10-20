@@ -318,6 +318,8 @@ erDiagram
   HOTEL ||--o{ REVIEW : "nhận"
   HOTEL ||--o{ FAVORITE : "được thích"
   ROOM ||--o{ BOOKING : "được đặt"
+  ROOM ||--o{ PRICERULE : "có quy tắc giá"
+  USER ||--o{ NOTIFICATION : "nhận"
   ROOM ||--o{ ROOM_BLOCK : "bị chặn"
   BOOKING ||--o{ PAYMENT : "có giao dịch"
   VOUCHER ||..o{ BOOKING : "áp dụng qua mã"
@@ -351,6 +353,7 @@ erDiagram
     string hotelId FK
     string name
     int pricePerNight
+    int weekendPercent "phụ thu cuối tuần (%)"
     int capacity
     int quantity
     string_array highlights
@@ -436,6 +439,23 @@ erDiagram
     string tokenHash UK
     datetime expiresAt
     datetime usedAt
+  }
+  PRICERULE {
+      string id PK
+      string roomId FK
+      string name "mùa/ngày lễ"
+      date startDate
+      date endDate "nửa mở"
+      int percent "+/- % giá gốc"
+  }
+  NOTIFICATION {
+      string id PK
+      string userId FK
+      string kind
+      string title
+      string body
+      string href
+      datetime readAt
   }
 ```
 

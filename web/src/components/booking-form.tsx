@@ -10,17 +10,18 @@ type Props = {
   checkOut: string;
   guests: number;
   nights: number;
-  pricePerNight: number;
+  /** Tiền một phòng cho cả kỳ lưu trú (đã gồm phụ thu cuối tuần/mùa cao điểm); máy chủ tính lại khi tạo đơn. */
+  pricePerRoom: number;
   maxRooms: number;
 };
 
-export function BookingForm({ roomId, checkIn, checkOut, guests, nights, pricePerNight, maxRooms }: Props) {
+export function BookingForm({ roomId, checkIn, checkOut, guests, nights, pricePerRoom, maxRooms }: Props) {
   const [state, action, pending] = useActionState<BookingState, FormData>(createBookingAction, {});
   const [rooms, setRooms] = useState(1);
   const [code, setCode] = useState("");
   const [preview, setPreview] = useState<VoucherPreview | null>(null);
   const [checking, startCheck] = useTransition();
-  const subtotal = pricePerNight * nights * rooms;
+  const subtotal = pricePerRoom * rooms;
   const discount = preview?.discount ?? 0;
 
   return (
@@ -84,7 +85,7 @@ export function BookingForm({ roomId, checkIn, checkOut, guests, nights, pricePe
           <button
             type="button"
             disabled={checking || !code.trim()}
-            onClick={() => startCheck(async () => setPreview(await previewVoucherAction(roomId, nights, rooms, code)))}
+            onClick={() => startCheck(async () => setPreview(await previewVoucherAction(roomId, checkIn, checkOut, rooms, code)))}
             className="shrink-0 rounded-xl border border-brand px-4 text-sm font-bold text-brand hover:bg-brand/5 disabled:opacity-60"
           >
             {checking ? "Đang kiểm tra..." : "Áp dụng"}

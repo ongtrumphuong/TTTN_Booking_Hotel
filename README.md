@@ -36,12 +36,18 @@
 - **Trợ lý ảo đặt phòng** (khung chat góc phải): khách nói yêu cầu bằng tiếng Việt, ví dụ "Đà Lạt 20/10 - 22/10, dưới 1tr5/đêm, view Hồ Xuân Hương"; trợ lý (Google Gemini, gói miễn phí) tìm phòng còn trống trên hệ thống và đưa **thẻ phòng**. Khách bấm "Xem và giữ phòng" → trang xác nhận → giữ phòng → **tự thanh toán**. Trợ lý chỉ tìm và tư vấn, **không thể tự đặt phòng hay thanh toán**.
 - Yêu thích khách sạn (nút tim trên thẻ và trang chi tiết, trang `/favorites`).
 - Viết hoặc sửa đánh giá sau khi đã hoàn tất kỳ lưu trú.
+- **Vé điện tử có mã QR** ở chi tiết đơn đã xác nhận: đưa cho lễ tân khi nhận phòng.
+- **Giá theo mùa**: giá từng đêm có thể khác nhau (cuối tuần, mùa cao điểm, ngày lễ); trang đặt phòng hiện bảng giá từng đêm.
 
 **Đối tác khách sạn** (`/host`) – dự án là **sàn đặt phòng trung gian**: nhiều khách sạn của các đối tác cùng bán trên một nền tảng
 - Trang giới thiệu `/partner` và đăng ký đối tác `/partner/register` (tài khoản vai trò `HOST`).
 - Đối tác tự đăng khách sạn, loại phòng, ảnh, giá, chính sách hủy và lịch chặn phòng; **chỉ thấy và sửa khách sạn, đơn của mình**.
 - Khách sạn mới ở trạng thái **chờ duyệt** và ẩn cho đến khi quản trị viên sàn duyệt.
 - Xem đơn của khách sạn mình, ghi nhận **nhận phòng / trả phòng**, hủy đơn (luôn hoàn đủ tiền cho khách).
+- **Giá theo mùa**: phụ thu cuối tuần (đêm thứ Sáu, thứ Bảy) và các quy tắc giá theo khoảng ngày (+/- %) cho từng loại phòng, ở trang sửa khách sạn.
+- **Lịch phòng** `/host/calendar`: lưới 3 tuần cho thấy mỗi loại phòng còn bao nhiêu phòng trống mỗi đêm, phòng bị chặn và giá từng đêm.
+- **Nhận phòng (quét vé)** `/host/checkin`: quét mã QR trên vé của khách bằng camera (hoặc nhập mã đặt phòng) → xem thông tin đơn → xác nhận nhận phòng.
+- **Thông báo**: chuông ở thanh trên và trang `/host/notifications` báo đơn mới đã thanh toán, đơn bị hủy, kết quả duyệt khách sạn; đơn mới và đơn hủy còn gửi email cho đối tác (khi đã cấu hình SMTP).
 - **Đối soát & chi trả**: sàn thu tiền của khách qua VNPay; đối tác xem doanh thu, **hoa hồng của sàn** và số tiền sẽ nhận, kèm lịch sử các đợt chi trả.
 
 **Quản trị viên** (`/admin`) – vai trò của sàn
@@ -53,6 +59,7 @@
 - **Nhận phòng / trả phòng thực tế**: nút **Nhận phòng** (chỉ từ ngày nhận phòng, đơn đã xác nhận) ghi `checkedInAt`; **Hoàn tất** ghi `checkedOutAt`. Đơn đã nhận phòng thì không hủy được nữa.
 - **Đối tác**: duyệt hoặc từ chối khách sạn của đối tác (từ chối phải nêu lý do), đặt **hoa hồng (0–50%) cho từng khách sạn**, gán khách sạn cho đối tác.
 - **Đối soát**: mỗi đối tác có tổng thu, hoa hồng sàn và tiền chi trả chưa đối soát; nút **Tạo đợt chi trả** gộp các đơn lại, kèm lịch sử.
+- Quản trị viên cũng có **Lịch phòng** (`/admin/calendar`), **Nhận phòng (quét vé)** (`/admin/checkin`) và **Thông báo** (khách sạn của đối tác chờ duyệt, đơn của khách sạn do sàn tự vận hành).
 - Mã giảm giá: tạo, bật/tắt, xem số lượt đã dùng. Lịch chặn phòng theo từng loại phòng. Chính sách hủy theo từng khách sạn.
 
 ## 3. Cài đặt và chạy
@@ -169,6 +176,8 @@ erDiagram
     HOTEL ||--o{ REVIEW : "nhận"
     HOTEL ||--o{ FAVORITE : "được lưu"
     ROOM ||--o{ BOOKING : "được đặt"
+    ROOM ||--o{ PRICERULE : "có quy tắc giá"
+    USER ||--o{ NOTIFICATION : "nhận"
     BOOKING ||--o{ PAYMENT : "có"
 
     USER {
@@ -202,6 +211,7 @@ erDiagram
         string name
         string description
         int pricePerNight
+        int weekendPercent "phụ thu cuối tuần (%)"
         int capacity
         string bedType
         int sizeM2
@@ -259,6 +269,23 @@ erDiagram
         string userId PK, FK
         string hotelId PK, FK
     }
+    PRICERULE {
+        string id PK
+        string roomId FK
+        string name "mùa/ngày lễ"
+        date startDate
+        date endDate "nửa mở"
+        int percent "+/- % giá gốc"
+    }
+    NOTIFICATION {
+        string id PK
+        string userId FK
+        string kind
+        string title
+        string body
+        string href
+        datetime readAt
+    }
 ```
 
 Ghi chú:
@@ -302,7 +329,7 @@ VNPay chỉ gọi IPN vào địa chỉ công khai HTTPS nên **IPN không vào 
 ## 7. Quy tắc nghiệp vụ chính
 
 **Đặt phòng**
-- Giá luôn được tính lại ở máy chủ (`đơn giá × số đêm × số phòng`), không tin giá từ trình duyệt.
+- Giá luôn được tính lại ở máy chủ, không tin giá từ trình duyệt: **tổng = Σ giá từng đêm × số phòng**. Giá mỗi đêm = giá gốc × (100% + phụ thu cuối tuần nếu là đêm thứ Sáu/Bảy + tổng các quy tắc theo mùa trùng đêm đó), làm tròn đồng, tối thiểu 10.000 ₫ (`src/lib/pricing.ts`). Giá được chốt vào `totalPrice` lúc đặt nên đổi giá sau đó không ảnh hưởng đơn cũ.
 - Thời gian ở từ 1 đến 30 đêm; ngày nhận phòng không được ở quá khứ; số khách không vượt `sức chứa × số phòng`.
 - Kiểm tra phòng trống và tạo đơn trong **một giao dịch mức Serializable** để hai người đặt cùng lúc không vượt quá số phòng hiện có.
 - Đơn mới ở trạng thái **Chờ thanh toán** và **giữ phòng 30 phút**; quá hạn mà chưa thanh toán thì không còn giữ phòng và không thanh toán được nữa.
@@ -345,6 +372,10 @@ Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống ki�
 - An toàn: giới hạn 30 tin/giờ/IP và 200 tin/giờ toàn hệ thống (bảo vệ hạn mức miễn phí); lịch sử gửi lên được làm sạch (chỉ user/assistant, tối đa 12 tin, 800 ký tự/tin); nội dung do đối tác nhập (tên, mô tả, điểm nổi bật) được coi là dữ liệu, không phải chỉ dẫn; lỗi quá tải/hết lượt báo thân thiện.
 
 **Đánh giá**: chỉ khách có đơn **Hoàn tất** tại khách sạn đó mới được viết; gửi lại sẽ cập nhật đánh giá cũ. Điểm trung bình tính từ các đánh giá **đang hiển thị** (đánh giá bị quản trị viên ẩn không được tính; tác giả vẫn thấy thông báo đánh giá của mình đang bị ẩn).
+
+**Vé điện tử và nhận phòng**: mã QR chứa `mã đặt phòng.chữ ký` (HMAC từ `AUTH_SECRET`, `src/lib/ticket.ts`) nên không làm giả được vé từ mã đoán. Quét chỉ để **tìm đơn**; quyền xử lý vẫn do `canManageHotel` quyết định ở máy chủ, vé của khách sạn khác báo như không tồn tại. Lễ tân cũng gõ tay được mã đặt phòng khi khách quên vé.
+
+**Thông báo cho đối tác/quản trị viên** (`src/lib/notify.ts`): đơn thanh toán thành công hoặc đơn đã thanh toán bị hủy báo cho chủ khách sạn (khách sạn của sàn thì báo mọi quản trị viên); khách sạn chờ duyệt báo quản trị viên; kết quả duyệt báo đối tác. Lỗi gửi thông báo không bao giờ làm hỏng thanh toán hay hủy đơn.
 
 **Số liệu báo cáo**: doanh thu = tổng tiền các đơn đã thanh toán và chưa hủy, tính theo ngày đặt (giờ Việt Nam); tỷ lệ lấp đầy = số phòng đã xác nhận hoặc đang giữ chỗ trên tổng số phòng đang bán, cho các ngày tới.
 

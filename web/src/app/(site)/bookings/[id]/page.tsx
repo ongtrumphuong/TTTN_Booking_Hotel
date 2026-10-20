@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CheckCircle2 } from "lucide-react";
 import { BookingSteps } from "@/components/booking-steps";
+import { TicketQr } from "@/components/ticket-qr";
 import { CancelButton } from "@/components/cancel-button";
 import { STATUS_LABEL, needsRefund, paymentLabel, todayUTC } from "@/lib/booking";
 import { cancelQuote, policyText } from "@/lib/cancellation";
@@ -56,6 +57,7 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           <p>Bộ phận hỗ trợ sẽ hoàn lại {formatVND(b.refundAmount ?? b.totalPrice)} về phương thức bạn đã dùng và cập nhật trạng thái tại đây.</p>
         </div>
       )}
+      {b.status === "CONFIRMED" && !b.checkedInAt && <div className="mb-6"><TicketQr code={b.code} /></div>}
       <div className="rounded-3xl border border-border bg-white p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

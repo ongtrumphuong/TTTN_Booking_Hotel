@@ -8,6 +8,8 @@ import { verifyProposal } from "@/lib/assistant/proposal";
 import { parseStay, todayUTC, unavailableQuantity } from "@/lib/booking";
 import { policyText } from "@/lib/cancellation";
 import { formatDate, formatVND } from "@/lib/format";
+import { stayPrice } from "@/lib/pricing";
+import { loadRoomPricing } from "@/lib/pricing-db";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { NOINDEX } from "@/lib/site";
@@ -36,7 +38,7 @@ async function Confirm({ searchParams }: Pick<PageProps<"/assistant/confirm">, "
 
   const left = room.quantity - (await unavailableQuantity(prisma, room.id, stay.checkIn, stay.checkOut));
   const fits = left >= proposal.rooms && proposal.guests <= room.capacity * proposal.rooms;
-  const total = room.pricePerNight * stay.nights * proposal.rooms; // luôn tính lại ở máy chủ
+  const total = stayPrice(await loadRoomPricing(prisma, room, stay.checkIn, stay.checkOut), stay.checkIn, stay.checkOut) * proposal.rooms; // luôn tính lại ở máy chủ
 
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_360px]">

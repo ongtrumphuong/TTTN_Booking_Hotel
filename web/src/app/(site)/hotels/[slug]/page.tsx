@@ -15,6 +15,8 @@ import { getCurrentUser } from "@/lib/session";
 import { NOINDEX, absoluteUrl, jsonLd } from "@/lib/site";
 import { unavailableQuantity, parseStay, isoDate } from "@/lib/booking";
 import { policyText } from "@/lib/cancellation";
+import { stayPrice } from "@/lib/pricing";
+import { loadRoomPricing } from "@/lib/pricing-db";
 import { formatVND } from "@/lib/format";
 import { getHotelDetail } from "@/lib/hotels";
 import { prisma } from "@/lib/prisma";
@@ -84,7 +86,9 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
   const rooms = await Promise.all(
     hotel.rooms.map(async (r) => {
       const left = stay ? r.quantity - (await unavailableQuantity(prisma, r.id, stay.checkIn, stay.checkOut)) : null;
-      return { ...r, left };
+      const pricing = stay ? await loadRoomPricing(prisma, r, stay.checkIn, stay.checkOut) : null;
+      const total = stay && pricing ? stayPrice(pricing, stay.checkIn, stay.checkOut) : null;
+      return { ...r, left, total };
     }),
   );
 
@@ -179,7 +183,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
               {rooms.map((r) => {
                 const tooMany = guests > r.capacity;
                 const soldOut = r.left !== null && r.left <= 0;
-                const total = stay ? r.pricePerNight * stay.nights : null;
+                const total = r.total;
                 return (
                   <article key={r.id} className="grid overflow-hidden rounded-3xl border border-border bg-white sm:grid-cols-[220px_1fr]">
                     <div className="relative min-h-40 bg-border">
@@ -207,7 +211,10 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
                             {formatVND(r.pricePerNight)} <span className="text-xs font-medium text-muted">/đêm</span>
                           </p>
                           {total && stay && (
-                            <p className="text-xs text-muted">Tổng {stay.nights} đêm: {formatVND(total)}</p>
+                            <p className="text-xs text-muted">
+                              Tổng {stay.nights} đêm: {formatVND(total)}
+                              {total !== r.pricePerNight * stay.nights && <span className="text-sun"> (đã gồm phụ thu cuối tuần/mùa cao điểm)</span>}
+                            </p>
                           )}
                           {r.left !== null && !soldOut && r.left <= 3 && (
                             <p className="text-xs font-semibold text-red-600">Chỉ còn {r.left} phòng</p>

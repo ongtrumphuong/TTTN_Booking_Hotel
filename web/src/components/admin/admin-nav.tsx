@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarCheck, Handshake, LayoutDashboard, MessageSquareText, TicketPercent, UserRound, Users, Wallet } from "lucide-react";
+import { BedDouble, CalendarCheck, CalendarDays, Handshake, LayoutDashboard, MessageSquareText, ScanLine, TicketPercent, UserRound, Users, Wallet } from "lucide-react";
 
 const HOST_ITEMS = [
   { href: "/host", label: "Tổng quan", icon: LayoutDashboard, exact: true },
   { href: "/host/hotels", label: "Khách sạn của tôi", icon: BedDouble },
   { href: "/host/bookings", label: "Đơn đặt phòng", icon: CalendarCheck },
+  { href: "/host/calendar", label: "Lịch phòng", icon: CalendarDays },
+  { href: "/host/checkin", label: "Nhận phòng (quét vé)", icon: ScanLine },
   { href: "/host/payouts", label: "Đối soát & chi trả", icon: Wallet },
   { href: "/host/account", label: "Tài khoản", icon: UserRound },
 ];
@@ -16,6 +18,8 @@ const ITEMS = [
   { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, exact: true },
   { href: "/admin/hotels", label: "Khách sạn", icon: BedDouble },
   { href: "/admin/bookings", label: "Đơn đặt phòng", icon: CalendarCheck },
+  { href: "/admin/calendar", label: "Lịch phòng", icon: CalendarDays },
+  { href: "/admin/checkin", label: "Nhận phòng (quét vé)", icon: ScanLine },
   { href: "/admin/reviews", label: "Đánh giá", icon: MessageSquareText },
   { href: "/admin/vouchers", label: "Mã giảm giá", icon: TicketPercent },
   { href: "/admin/partners", label: "Đối tác", icon: Handshake },

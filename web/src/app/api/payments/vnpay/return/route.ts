@@ -1,5 +1,6 @@
 import { NextResponse, after, connection, type NextRequest } from "next/server";
 import { sendBookingConfirmation } from "@/lib/email";
+import { notifyBookingEvent } from "@/lib/notify";
 import { applyGatewayResult } from "@/lib/payments/apply";
 import { verifySignature, vnpayConfig } from "@/lib/payments/vnpay";
 
@@ -29,7 +30,10 @@ export async function GET(req: NextRequest) {
   });
 
   const bookingId = res.bookingId;
-  if (res.confirmedNow && bookingId) after(() => sendBookingConfirmation(bookingId));
+  if (res.confirmedNow && bookingId) {
+    after(() => sendBookingConfirmation(bookingId));
+    after(() => notifyBookingEvent(bookingId, "PAID"));
+  }
 
   if (!bookingId || res.rsp === "01" || res.rsp === "04") return to("/bookings?payment=invalid");
   switch (res.outcome) {

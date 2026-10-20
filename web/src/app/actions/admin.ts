@@ -3,12 +3,15 @@
 import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
-import { Prisma, type BookingStatus, type Role } from "@prisma/client";import { prisma } from "@/lib/prisma";
+import { Prisma, type BookingStatus, type Role } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { notifyBookingEvent, notifyHotelPending } from "@/lib/notify";
+import { readTicket } from "@/lib/ticket";
 import { after } from "next/server";
 import { sendBookingCancelled, sendRefundCompleted } from "@/lib/email";
 import { NO_ACCESS, baseFor, canManageBooking, canManageHotel, canManageRoom } from "@/lib/access";
 import { requireAdmin, requireStaff } from "@/lib/session";
-import { NEXT_STATUS, unavailableQuantity, needsRefund, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
+import { NEXT_STATUS, STATUS_LABEL, unavailableQuantity, needsRefund, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
 import { ALLOWED_IMAGE_HOSTS } from "@/lib/image-hosts";
 import { normalizeCode } from "@/lib/voucher";
 import { slugify } from "@/lib/slug";
@@ -60,6 +63,7 @@ const roomSchema = z.object({
   name: z.string().trim().min(2, "Vui lòng nhập tên phòng").max(80),
   description: z.string().trim().min(5, "Mô tả tối thiểu 5 ký tự").max(1000),
   pricePerNight: z.coerce.number().int().min(10_000, "Giá tối thiểu 10.000 ₫").max(100_000_000),
+  weekendPercent: z.coerce.number().int().min(-50, "Phụ thu cuối tuần từ -50% đến 200%").max(200, "Phụ thu cuối tuần từ -50% đến 200%"),
   capacity: z.coerce.number().int().min(1).max(10),
   bedType: z.string().trim().min(2, "Vui lòng nhập loại giường").max(60),
   sizeM2: optionalNumber(z.number().int().min(1).max(1000)),
@@ -95,6 +99,7 @@ function roomInput(fd: FormData) {
     name: fd.get("name"),
     description: fd.get("description"),
     pricePerNight: fd.get("pricePerNight"),
+    weekendPercent: fd.get("weekendPercent") || 0,
     capacity: fd.get("capacity"),
     bedType: fd.get("bedType"),
     sizeM2: fd.get("sizeM2"),
@@ -131,6 +136,7 @@ export async function createHotelAction(_: AdminState, fd: FormData): Promise<Ad
   // Khách sạn của đối tác bị ẩn và chờ quản trị viên duyệt; khách sạn do quản trị viên tạo là của sàn và hiển thị ngay.
   const ownership = user.role === "HOST" ? { ownerId: user.id, isActive: false, approval: "PENDING" as const } : {};
   const hotel = await prisma.hotel.create({ data: { ...parsed.data, slug, ...ownership } });
+  if (user.role === "HOST") after(() => notifyHotelPending(hotel.id));
   refreshCatalog();
   redirect(`${baseFor(user)}/hotels/${hotel.id}`);
 }
@@ -146,6 +152,7 @@ export async function updateHotelAction(id: string, _: AdminState, fd: FormData)
     const resubmit = user.role === "HOST" ? { approval: "PENDING" as const, approvalNote: null } : {};
     const current = await prisma.hotel.findUnique({ where: { id }, select: { approval: true } });
     await prisma.hotel.update({ where: { id }, data: { ...parsed.data, ...(current?.approval === "REJECTED" ? resubmit : {}) } });
+    if (user.role === "HOST" && current?.approval === "REJECTED") after(() => notifyHotelPending(id));
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") return { error: "Không tìm thấy khách sạn." };
     throw e;
@@ -272,7 +279,11 @@ export async function updateBookingStatusAction(bookingId: string, next: Booking
     throw e;
   }
 
-  if (next === "CANCELLED") after(() => sendBookingCancelled(bookingId));
+  if (next === "CANCELLED") {
+    after(() => sendBookingCancelled(bookingId));
+    after(() => notifyBookingEvent(bookingId, "CANCELLED"));
+  }
+  if (next === "CONFIRMED") after(() => notifyBookingEvent(bookingId, "PAID"));
   revalidatePath("/admin/bookings");
   revalidatePath("/host/bookings");
   revalidatePath("/admin");
@@ -434,4 +445,118 @@ export async function deleteRoomBlockAction(blockId: string) {
   await prisma.roomBlock.delete({ where: { id: blockId } });
   refreshCatalog();
   refreshHotelPage(b.room.hotelId);
+}
+
+/* ---------- Giá theo mùa / ngày lễ ---------- */
+
+const ruleSchema = z.object({
+  name: z.string().trim().min(2, "Vui lòng nhập tên (ví dụ Tết Dương lịch)").max(60),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày bắt đầu không hợp lệ"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày kết thúc không hợp lệ"),
+  percent: z.coerce.number().int().min(-50, "Điều chỉnh giá từ -50% đến 200%").max(200, "Điều chỉnh giá từ -50% đến 200%"),
+});
+
+/** Thêm quy tắc giá: các đêm từ ngày bắt đầu đến hết ngày kết thúc được cộng (+) hoặc giảm (-) theo phần trăm giá gốc. */
+export async function createPriceRuleAction(roomId: string, _: AdminState, fd: FormData): Promise<AdminState> {
+  const user = await requireStaff("/admin/hotels");
+  if (!(await canManageRoom(user, roomId))) return { error: NO_ACCESS };
+  const parsed = ruleSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  if (parsed.data.percent === 0) return { error: "Mức điều chỉnh phải khác 0%." };
+
+  const start = new Date(`${parsed.data.startDate}T00:00:00.000Z`);
+  const lastNight = new Date(`${parsed.data.endDate}T00:00:00.000Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(lastNight.getTime())) return { error: "Ngày không hợp lệ." };
+  if (lastNight < start) return { error: "Ngày kết thúc phải từ ngày bắt đầu trở đi." };
+  if (lastNight < todayUTC()) return { error: "Không thể đặt giá cho khoảng thời gian đã qua." };
+  if ((lastNight.getTime() - start.getTime()) / 86_400_000 > 365) return { error: "Mỗi quy tắc tối đa 1 năm." };
+
+  const room = await prisma.room.findUnique({ where: { id: roomId }, select: { hotelId: true } });
+  if (!room) return { error: "Không tìm thấy phòng." };
+  if ((await prisma.priceRule.count({ where: { roomId } })) >= 30) return { error: "Mỗi loại phòng tối đa 30 quy tắc giá." };
+
+  await prisma.priceRule.create({
+    data: { roomId, name: parsed.data.name, startDate: start, endDate: new Date(lastNight.getTime() + 86_400_000), percent: parsed.data.percent },
+  });
+  refreshCatalog();
+  refreshHotelPage(room.hotelId);
+  return { ok: true };
+}
+
+export async function deletePriceRuleAction(ruleId: string) {
+  const user = await requireStaff("/admin/hotels");
+  const r = await prisma.priceRule.findUnique({ where: { id: ruleId }, select: { room: { select: { hotelId: true } } } });
+  if (!r || !(await canManageHotel(user, r.room.hotelId))) return;
+  await prisma.priceRule.delete({ where: { id: ruleId } });
+  refreshCatalog();
+  refreshHotelPage(r.room.hotelId);
+}
+
+/* ---------- Quầy lễ tân: quét vé, nhận phòng ---------- */
+
+export type TicketLookup =
+  | { error: string }
+  | {
+      booking: {
+        id: string;
+        code: string;
+        guestName: string;
+        guestPhone: string | null;
+        hotelName: string;
+        roomName: string;
+        rooms: number;
+        guests: number;
+        checkIn: string;
+        checkOut: string;
+        status: BookingStatus;
+        statusLabel: { text: string; cls: string };
+        paymentStatus: string;
+        checkedInAt: string | null;
+        checkedOutAt: string | null;
+        note: string | null;
+        canCheckIn: boolean;
+        reason: string | null;
+      };
+    };
+
+/** Tìm đơn từ nội dung quét được hoặc mã gõ tay; chỉ trả về đơn thuộc khách sạn mà người dùng được quản lý. */
+export async function lookupTicketAction(raw: string): Promise<TicketLookup> {
+  const user = await requireStaff("/admin/checkin");
+  const code = readTicket(raw);
+  if (!code) return { error: "Mã vé không hợp lệ. Hãy quét lại hoặc nhập đúng mã đặt phòng (dạng KGS-XXXXXXXX)." };
+  const b = await prisma.booking.findUnique({
+    where: { code },
+    include: { user: { select: { name: true, phone: true } }, room: { select: { name: true, hotelId: true, hotel: { select: { name: true } } } } },
+  });
+  // Không phân biệt "không tồn tại" với "của khách sạn khác" để không lộ đơn của người khác.
+  if (!b || !(await canManageHotel(user, b.room.hotelId))) return { error: "Không tìm thấy đơn này trong khách sạn bạn quản lý." };
+
+  let reason: string | null = null;
+  if (b.status !== "CONFIRMED") reason = b.status === "PENDING" ? "Đơn chưa thanh toán." : b.status === "CANCELLED" ? "Đơn đã hủy." : "Đơn đã hoàn tất.";
+  else if (b.checkedInAt) reason = "Khách đã nhận phòng rồi.";
+  else if (b.checkIn > todayUTC()) reason = "Chưa đến ngày nhận phòng.";
+  else if (b.checkOut <= todayUTC()) reason = "Đã quá ngày trả phòng của đơn này.";
+
+  return {
+    booking: {
+      id: b.id,
+      code: b.code,
+      guestName: b.user.name,
+      guestPhone: b.user.phone,
+      hotelName: b.room.hotel.name,
+      roomName: b.room.name,
+      rooms: b.rooms,
+      guests: b.guests,
+      checkIn: b.checkIn.toISOString(),
+      checkOut: b.checkOut.toISOString(),
+      status: b.status,
+      statusLabel: STATUS_LABEL[b.status],
+      paymentStatus: b.paymentStatus,
+      checkedInAt: b.checkedInAt?.toISOString() ?? null,
+      checkedOutAt: b.checkedOutAt?.toISOString() ?? null,
+      note: b.note,
+      canCheckIn: reason === null,
+      reason,
+    },
+  };
 }

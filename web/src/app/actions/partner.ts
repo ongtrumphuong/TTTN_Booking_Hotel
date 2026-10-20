@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
+import { notifyHotelDecision } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { listUnsettled, sumRows } from "@/lib/settlement";
@@ -22,6 +24,7 @@ export async function approveHotelAction(hotelId: string): Promise<PartnerState>
   await requireAdmin("/admin/partners");
   const res = await prisma.hotel.updateMany({ where: { id: hotelId, ownerId: { not: null } }, data: { approval: "APPROVED", approvalNote: null, isActive: true } });
   if (res.count === 0) return { error: "Không tìm thấy khách sạn của đối tác." };
+  after(() => notifyHotelDecision(hotelId, true));
   refresh();
   return { ok: true };
 }
@@ -32,6 +35,7 @@ export async function rejectHotelAction(hotelId: string, note: string): Promise<
   if (reason.length < 3) return { error: "Vui lòng nhập lý do từ chối (ít nhất 3 ký tự) để đối tác chỉnh sửa." };
   const res = await prisma.hotel.updateMany({ where: { id: hotelId, ownerId: { not: null } }, data: { approval: "REJECTED", approvalNote: reason, isActive: false } });
   if (res.count === 0) return { error: "Không tìm thấy khách sạn của đối tác." };
+  after(() => notifyHotelDecision(hotelId, false, reason));
   refresh();
   return { ok: true };
 }

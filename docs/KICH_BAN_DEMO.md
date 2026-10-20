@@ -86,6 +86,15 @@ Chuẩn bị: admin tạo trước mã giảm giá (xem bước 7) hoặc làm b
 5. Đối tác mở **Đối soát & chi trả**: thấy tổng thu, hoa hồng sàn, số tiền sẽ nhận. Admin mở **Đối soát** → **Tạo đợt chi trả** → đối tác thấy khoản đã nhận trong lịch sử.
 **Nói gì:** sàn thu tiền của khách; đối tác nhận doanh thu trừ hoa hồng. Hoa hồng được **chốt vào đơn lúc đặt**, nên đổi hoa hồng chỉ áp dụng cho đơn sau. Đối tác không tự xác nhận thanh toán hay hoàn tiền vì tiền do sàn giữ.
 
+### Bước 7b2 – Giá theo mùa, vé QR, lịch phòng và thông báo (5 phút)
+**Làm gì:**
+1. Đăng nhập đối tác → **Khách sạn của tôi** → mở một khách sạn → mở một loại phòng: đặt **Phụ thu cuối tuần 20%** rồi **Lưu phòng**; kéo xuống **Giá theo mùa / ngày lễ**, thêm quy tắc "Lễ thử nghiệm" +50% cho một ngày sắp tới.
+2. Mở **Lịch phòng**: ô các ngày đó hiện giá đã đổi (chữ đậm); di chuột để xem chi tiết.
+3. Đăng xuất, đăng nhập khách → đặt đúng loại phòng đó qua khoảng ngày có cuối tuần và ngày lễ: trang đặt phòng hiện **giá từng đêm** và tổng khớp.
+4. Sau khi thanh toán xong, mở chi tiết đơn: có **vé điện tử mã QR**.
+5. Đăng nhập lại đối tác: chuông **Thông báo** có số đơn mới; mở **Nhận phòng (quét vé)**, quét mã QR (hoặc nhập mã đặt phòng) vào đúng ngày nhận phòng → thông tin đơn hiện ra → **Xác nhận nhận phòng**.
+**Nói gì:** giá do máy chủ tính từng đêm nên khách không sửa được; giá chốt vào đơn lúc đặt. Mã QR có chữ ký nên không làm giả được, và đối tác chỉ quét được vé của khách sạn mình.
+
 ### Bước 7c – Trợ lý ảo đặt phòng (3 phút, cần khóa Gemini và Internet)
 **Chuẩn bị:** điền `GEMINI_API_KEY` trong `web/.env`, khởi động lại server, chạy `npx tsx --env-file=.env scripts/assistant-check.ts` để chắc khóa dùng được; DB đã seed từ trước thì chạy thêm `npx tsx prisma/update-highlights.ts --apply`. Đăng nhập tài khoản khách.
 **Làm gì:**
@@ -130,6 +139,11 @@ Kiểm tra phòng trống và tạo đơn nằm trong **một giao dịch mức 
 - Ba vai trò (khách, đối tác, sàn); **quyền kiểm tra theo từng khách sạn ở máy chủ**, không chỉ ẩn nút: đối tác không sửa được khách sạn, phòng, lịch chặn hay đơn của người khác.
 - Duyệt khách sạn trước khi hiển thị; hoa hồng theo khách sạn và **chốt vào đơn lúc đặt** để đối soát không bị đổi ngầm.
 - Đối soát tính đúng cả phí hủy muộn; tạo đợt chi trả bằng giao dịch Serializable và điều kiện `payoutId = null` nên không chi trả trùng đơn (đã có test cho cả trường hợp hai yêu cầu đồng thời).
+
+### 2.4b2. Giá động, vé QR, thông báo
+- Giá mỗi đêm = giá gốc + phụ thu cuối tuần + quy tắc theo mùa, tính bằng hàm thuần (`pricing.ts`) có test; dùng chung cho đặt phòng, trợ lý ảo, trang khách sạn và lịch phòng nên mọi nơi cho cùng một con số.
+- Vé QR ký HMAC; tra cứu vé vẫn qua kiểm tra quyền theo khách sạn.
+- Thông báo trong ứng dụng + email cho đối tác; gửi thất bại không ảnh hưởng luồng chính.
 
 ### 2.4c. Trợ lý ảo an toàn theo thiết kế
 - **Mô hình chỉ có công cụ tìm kiếm**: không có công cụ đặt phòng hay thanh toán, nên dù bị "dụ" cũng không thể tạo đơn hay chạm vào tiền.

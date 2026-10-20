@@ -8,6 +8,8 @@ import { BookingSteps } from "@/components/booking-steps";
 import { unavailableQuantity, parseStay, todayUTC } from "@/lib/booking";
 import { policyText } from "@/lib/cancellation";
 import { formatDate, formatVND } from "@/lib/format";
+import { nightlyPrices } from "@/lib/pricing";
+import { loadRoomPricing } from "@/lib/pricing-db";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { NOINDEX } from "@/lib/site";
@@ -36,6 +38,9 @@ async function BookContent({ params, searchParams }: { params: Promise<{ roomId:
 
   const left = room.quantity - (await unavailableQuantity(prisma, room.id, stay.checkIn, stay.checkOut));
   const maxRooms = Math.min(left, 5);
+  const nightly = nightlyPrices(await loadRoomPricing(prisma, room, stay.checkIn, stay.checkOut), stay.checkIn, stay.checkOut);
+  const perRoom = nightly.reduce((sum, n) => sum + n.price, 0);
+  const varies = nightly.some((n) => n.price !== room.pricePerNight);
   const fits = left > 0 && guests <= room.capacity;
 
   return (
@@ -52,7 +57,7 @@ async function BookContent({ params, searchParams }: { params: Promise<{ roomId:
             checkOut={checkOutStr}
             guests={guests}
             nights={stay.nights}
-            pricePerNight={room.pricePerNight}
+            pricePerRoom={perRoom}
             maxRooms={maxRooms}
           />
         ) : (
@@ -76,8 +81,21 @@ async function BookContent({ params, searchParams }: { params: Promise<{ roomId:
             <div className="flex justify-between"><dt className="text-muted">Nhận phòng</dt><dd className="font-semibold">{formatDate(stay.checkIn)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Trả phòng</dt><dd className="font-semibold">{formatDate(stay.checkOut)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Số khách</dt><dd className="font-semibold">{guests}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">Đơn giá</dt><dd className="font-semibold">{formatVND(room.pricePerNight)}/đêm</dd></div>
+            {!varies && <div className="flex justify-between"><dt className="text-muted">Đơn giá</dt><dd className="font-semibold">{formatVND(room.pricePerNight)}/đêm</dd></div>}
           </dl>
+          {varies && (
+            <div className="border-t border-border pt-3">
+              <p className="mb-1.5 font-semibold">Giá từng đêm (cho 1 phòng)</p>
+              <ul className="space-y-1">
+                {nightly.map((n) => (
+                  <li key={n.date.toISOString()} className="flex justify-between gap-3">
+                    <span className="text-muted">{formatDate(n.date)}{n.reasons.length > 0 && <span className="ml-1 text-xs text-sun">({n.reasons.join(", ")})</span>}</span>
+                    <span className="font-semibold">{formatVND(n.price)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className="border-t border-border pt-3 text-xs text-muted">
             <b className="text-foreground">Chính sách hủy:</b> {policyText(room.hotel.freeCancelDays, room.hotel.lateCancelFeePercent)}
           </p>
