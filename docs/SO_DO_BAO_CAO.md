@@ -11,6 +11,7 @@ Danh sách:
 5. Sơ đồ trạng thái của đơn đặt phòng
 6. Sơ đồ thực thể quan hệ (ER)
 6b. Đối tác, duyệt khách sạn và chi trả
+6c. Trợ lý ảo tìm phòng và khách xác nhận
 7. Kiến trúc tổng quan
 
 ---
@@ -57,13 +58,17 @@ flowchart LR
     UC11(["Yêu thích khách sạn"])
     UC12(["Viết đánh giá"])
     UC13(["Sửa hồ sơ, đổi mật khẩu"])
+    UC27(["Hỏi trợ lý ảo để tìm phòng"])
+    UC28(["Xác nhận giữ phòng do trợ lý đề xuất"])
   end
 
-  KV --- UC1 & UC2 & UC3 & UC4 & UC5
-  KH --- UC1 & UC2 & UC6 & UC9 & UC10 & UC11 & UC12 & UC13
+  KV --- UC1 & UC2 & UC3 & UC4 & UC5 & UC27
+  KH --- UC1 & UC2 & UC6 & UC9 & UC10 & UC11 & UC12 & UC13 & UC27
   UC6 -. "include" .-> UC4
   UC6 -. "extend" .-> UC7
   UC6 -. "include" .-> UC8
+  UC27 -. "extend" .-> UC28
+  UC28 -. "include" .-> UC6
   UC8 --- VN
 ```
 
@@ -322,6 +327,7 @@ erDiagram
     int starRating
     string_array images
     string_array amenities
+    string_array highlights
     string ownerId FK "đối tác, rỗng = sàn tự vận hành"
     enum approval "PENDING, APPROVED, REJECTED"
     int commissionPercent
@@ -336,6 +342,7 @@ erDiagram
     int pricePerNight
     int capacity
     int quantity
+    string_array highlights
     bool isActive
   }
   BOOKING {
@@ -464,6 +471,44 @@ sequenceDiagram
 
 ---
 
+## 6c. Sơ đồ tuần tự: trợ lý ảo tìm phòng và khách xác nhận
+
+Trợ lý chỉ có công cụ **tìm phòng**. Việc tạo đơn thuộc về khách: khách tự xác nhận trên trang xác nhận rồi tự thanh toán.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor K as Khách
+  participant UI as Khung chat
+  participant API as /api/assistant
+  participant AI as Mô hình Gemini
+  participant S as Công cụ search_rooms
+  participant DB as PostgreSQL
+  participant C as Trang /assistant/confirm
+
+  K->>UI: "Đà Lạt 20-22/10, dưới 1tr5, view Hồ Xuân Hương"
+  UI->>API: Lịch sử hội thoại
+  API->>API: Giới hạn tốc độ, làm sạch lịch sử
+  API->>AI: Lời nhắc hệ thống + công cụ + lịch sử
+  AI-->>API: Gọi search_rooms(Đà Lạt, ngày, 1500000, [hồ Xuân Hương])
+  API->>S: Thực thi (kiểm tra lại tham số)
+  S->>DB: Phòng còn trống, trừ đơn đang giữ và phòng bị chặn
+  S-->>API: Phòng khớp, phòng gần đúng, token đề xuất ký số
+  API->>AI: Kết quả công cụ (không có token)
+  AI-->>API: Câu trả lời tư vấn
+  API-->>UI: Câu trả lời và thẻ phòng kèm token
+  K->>UI: Bấm "Xem và giữ phòng"
+  UI->>C: Mở trang xác nhận (kèm token)
+  C->>C: Kiểm tra chữ ký, hạn dùng
+  C->>DB: Đọc phòng, tính lại giá và số phòng còn
+  C-->>K: Tóm tắt, giá, chính sách hủy
+  K->>C: Bấm "Giữ phòng và sang bước thanh toán"
+  C->>DB: Tạo đơn Chờ thanh toán (Serializable, giữ 30 phút)
+  C-->>K: Chuyển sang trang thanh toán, khách tự thanh toán
+```
+
+---
+
 ## 7. Kiến trúc tổng quan
 
 ```mermaid
@@ -476,13 +521,14 @@ flowchart TB
     P["Trang (Server Components)<br/>lưu đệm theo thẻ cho dữ liệu công khai"]
     SA["Server Actions<br/>đặt phòng, hủy, quản trị, tài khoản"]
     API["Route Handlers<br/>VNPay return, IPN, tải ảnh, cron, health"]
-    L["Lõi nghiệp vụ (src/lib)<br/>booking, cancellation, voucher,<br/>payments, rate-limit, email"]
+    L["Lõi nghiệp vụ (src/lib)<br/>booking, cancellation, voucher,<br/>payments, rate-limit, email,<br/>assistant (công cụ tìm phòng)"]
     AU["Auth.js (JWT)<br/>phân quyền USER / HOST / ADMIN<br/>quyền theo từng khách sạn"]
   end
 
   DB[("PostgreSQL<br/>Prisma ORM")]
   VN["Cổng VNPay sandbox"]
   SM["Máy chủ SMTP"]
+  GM["Google Gemini API"]
   FS[("Thư mục ảnh tải lên")]
 
   UI --> P
@@ -494,6 +540,7 @@ flowchart TB
   L --> DB
   API --> VN
   VN --> API
+  API --> GM
   L --> SM
   API --> FS
 ```

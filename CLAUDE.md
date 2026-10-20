@@ -25,6 +25,9 @@ Next.js 16 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 ## Định hướng sản phẩm (đã chốt với chủ dự án, 2026-10-20)
 **Sàn đặt phòng trung gian (OTA nhỏ)**, không phải một khách sạn riêng. Ba bên: khách (`USER`), đối tác khách sạn (`HOST`), sàn (`ADMIN`). Khu vực đối tác ở `/host/*`, đăng ký ở `/partner/register`, giới thiệu ở `/partner`. Chi tiết ở README mục 7 ("Sàn trung gian, đối tác và đối soát"). Quyền theo khách sạn: luôn dùng `canManageHotel/Room/Booking` (`src/lib/access.ts`) và `requireStaff/requireHost/requireAdmin` (`src/lib/session.ts`) trong server action; **không chỉ ẩn nút**. Phần trang dùng chung giữa admin và đối tác: `components/admin/{hotel-editor,hotels-view,bookings-view}.tsx`. Đối soát: `lib/settlement.ts` + `actions/partner.ts`. Tài khoản mẫu đối tác: `doitac@khongiansos.vn` / `Doitac@123456` (`prisma/seed-partner.ts` cho DB có sẵn).
 
+## Trợ lý ảo (Gemini miễn phí)
+Mã ở `web/src/lib/assistant/` (`search.ts` công cụ tìm phòng, `agent.ts` vòng lặp + lời nhắc, `gemini.ts` bộ nối, `provider.ts` giao diện nhà cung cấp, `proposal.ts` token ký số), `app/api/assistant/route.ts`, trang `/assistant/confirm`, khung chat `components/assistant/chat-widget.tsx` (gắn trong `layout.tsx`). **Nguyên tắc bất di bất dịch:** mô hình chỉ có công cụ `search_rooms`; **không** thêm công cụ tạo đơn/thanh toán. Đơn chỉ được tạo bởi hành động của khách ở trang xác nhận qua `createPendingBooking` (`lib/booking-create.ts`, dùng chung với form đặt phòng). Cần `GEMINI_API_KEY` trong `web/.env` (người dùng tự tạo, chưa có khi code xong; kiểm tra bằng `scripts/assistant-check.ts`). Test dùng nhà cung cấp giả và `fetch` giả, **chưa từng gọi Gemini thật**. Dữ liệu "điểm nổi bật" (`Hotel.highlights`, `Room.highlights`) phục vụ lọc "view/gần ...": `prisma/highlights.ts`, `prisma/update-highlights.ts`.
+
 ## Quy tắc nghiệp vụ cần nhớ (chi tiết ở README mục 7)
 - Giá luôn tính ở server. `Booking.totalPrice` = số tiền khách phải trả **sau giảm giá**; `discount` + `voucherCode` lưu phần giảm.
 - Đơn mới `PENDING`, giữ phòng 30 phút (`PENDING_HOLD_MINUTES`); quá hạn thì nhả phòng ngay (qua `holdingWhere`) và được chuyển `CANCELLED` bởi `expireStaleBookings`.
@@ -61,7 +64,7 @@ Chưa làm/chưa kiểm:
 - Trong công cụ trình duyệt, nút submit đôi khi cần bấm bằng `ref` thay vì tọa độ; ô nhập React nên gõ bằng thao tác `type` để state cập nhật.
 
 ## Việc tiếp theo (backlog theo thứ tự đề xuất)
-1. **Ảnh chụp màn hình** các màn hình chính (khách, đối tác, admin) cho báo cáo. Tài liệu `docs/` đã cập nhật theo mô hình sàn trung gian (có sơ đồ đối tác/đối soát đã kiểm cú pháp Mermaid).
-2. Chạy thử trọn kịch bản demo (`docs/KICH_BAN_DEMO.md`, bước 7b mới) trên bản `npm run build && npm run start`.
-3. Tùy chọn: email cho đối tác khi có đơn mới / khi được chi trả; đối tác tự gửi yêu cầu chi trả; hoa hồng mặc định cấu hình ở một chỗ; thống kê doanh thu theo kỳ cho đối tác.
-4. Tùy chọn, chỉ khi chủ dự án muốn: giá động, IPN VNPay qua tunnel, email nhắc nhận phòng.
+1. **Điền `GEMINI_API_KEY` và thử trợ lý với Gemini thật** (chạy `scripts/assistant-check.ts`; chỉnh `GEMINI_MODEL` nếu tên model khác; xem trợ lý có gọi công cụ đúng với câu tiếng Việt thật như "1tr5", "20/10 - 22/10" không, chỉnh lời nhắc ở `agent.ts` nếu cần).
+2. **Ảnh chụp màn hình** các màn hình chính (khách, đối tác, admin, khung chat) cho báo cáo.
+3. Chạy thử trọn kịch bản demo (`docs/KICH_BAN_DEMO.md`, các bước 7b, 7c) trên bản `npm run build && npm run start`.
+4. Tùy chọn: trợ lý hỏi tiếp để điều chỉnh (đổi ngân sách/ngày) đã hoạt động qua hội thoại; có thể thêm công cụ chỉ-đọc `get_hotel_info`. Email cho đối tác khi có đơn mới. IPN VNPay qua tunnel.

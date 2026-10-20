@@ -15,6 +15,7 @@ type Room = {
   quantity: number;
   images: string[];
   amenities: string[];
+  highlights: string[];
 };
 
 const input = "w-full rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20";
@@ -60,6 +61,10 @@ export function RoomForm({ hotelId, room }: { hotelId: string; room?: Room }) {
       <div>
         <label className={label}>Tiện nghi (cách nhau bằng dấu phẩy)</label>
         <input name="amenities" defaultValue={room?.amenities.join(", ")} className={input} />
+      </div>
+      <div className="sm:col-span-2">
+        <label className={label}>Điểm nổi bật của phòng (cách nhau bằng dấu phẩy)</label>
+        <input name="highlights" defaultValue={room?.highlights.join(", ")} placeholder="View hồ Xuân Hương, Ban công" className={input} />
       </div>
       <div className="sm:col-span-2">
         <label className={label}>Mô tả</label>

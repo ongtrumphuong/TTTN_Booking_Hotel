@@ -145,6 +145,15 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
           <section>
             <h2 className="mb-2 font-display text-2xl font-semibold">Giới thiệu</h2>
             <p className="leading-relaxed text-muted">{hotel.description}</p>
+            {hotel.highlights.length > 0 && (
+              <ul className="mt-4 flex flex-wrap gap-2" aria-label="Điểm nổi bật">
+                {hotel.highlights.map((h) => (
+                  <li key={h} className="flex items-center gap-1.5 rounded-full bg-sun/10 px-3 py-1.5 text-sm font-semibold text-sun">
+                    <MapPin size={14} aria-hidden /> {h}
+                  </li>
+                ))}
+              </ul>
+            )}
             <ul className="mt-4 flex flex-wrap gap-2">
               {hotel.amenities.map((a) => (
                 <li key={a} className="flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand">
@@ -184,6 +193,13 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
                           <span className="flex items-center gap-1"><Users size={14} aria-hidden /> Tối đa {r.capacity} khách</span>
                           {r.sizeM2 && <span className="flex items-center gap-1"><Maximize2 size={14} aria-hidden /> {r.sizeM2} m²</span>}
                         </p>
+                        {r.highlights.length > 0 && (
+                          <p className="mt-2 flex flex-wrap gap-1.5">
+                            {r.highlights.map((h) => (
+                              <span key={h} className="rounded-full bg-sun/10 px-2.5 py-0.5 text-xs font-semibold text-sun">{h}</span>
+                            ))}
+                          </p>
+                        )}
                       </div>
                       <div className="mt-auto flex flex-wrap items-end justify-between gap-3">
                         <div>

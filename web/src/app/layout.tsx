@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { SITE_NAME, siteUrl } from "@/lib/site";
 import { Header } from "@/components/header";
+import { ChatWidget } from "@/components/assistant/chat-widget";
 import { Footer } from "@/components/footer";
 
 const beVietnam = Be_Vietnam_Pro({
@@ -37,6 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        <Suspense fallback={null}>
+          <ChatWidget />
+        </Suspense>
       </body>
     </html>
   );

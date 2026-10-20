@@ -4,13 +4,13 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendBookingCancelled, sendBookingConfirmation } from "@/lib/email";
 import { isVnpayConfigured } from "@/lib/payments/vnpay";
 import { requireUser } from "@/lib/session";
-import { PENDING_HOLD_MINUTES, bookingCode, expireStaleBookings, parseStay, paymentStatusAfterCancel, todayUTC, unavailableQuantity } from "@/lib/booking";
+import { PENDING_HOLD_MINUTES, parseStay, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
 import { cancelQuote } from "@/lib/cancellation";
+import { createPendingBooking } from "@/lib/booking-create";
 import { checkVoucher } from "@/lib/voucher";
 
 export type BookingState = { error?: string };
@@ -37,66 +37,9 @@ export async function createBookingAction(_: BookingState, formData: FormData): 
   const returnTo = `/book/${roomId}?checkIn=${input.data.checkIn}&checkOut=${input.data.checkOut}&guests=${guests}`;
   const user = await requireUser(returnTo);
 
-  await expireStaleBookings(prisma); // trả lại phòng của các đơn đã quá hạn giữ chỗ
-
-  let bookingId: string;
-  try {
-    // Serializable để hai người đặt cùng lúc không vượt quá số phòng còn lại.
-    bookingId = await prisma.$transaction(
-      async (tx) => {
-        const room = await tx.room.findFirst({
-          where: { id: roomId, isActive: true, hotel: { isActive: true } },
-          include: { hotel: { select: { ownerId: true, commissionPercent: true } } },
-        });
-        if (!room) throw new Error("ROOM_NOT_FOUND");
-        if (guests > room.capacity * rooms) throw new Error("TOO_MANY_GUESTS");
-
-        const left = room.quantity - (await unavailableQuantity(tx, room.id, stay.checkIn, stay.checkOut));
-        if (left < rooms) throw new Error("SOLD_OUT");
-
-        const subtotal = room.pricePerNight * stay.nights * rooms; // giá luôn tính ở server
-        let discount = 0;
-        let voucherCode: string | null = null;
-        if (voucher) {
-          const check = await checkVoucher(tx, voucher, user.id, subtotal);
-          if (!check.ok) throw new Error(`VOUCHER:${check.error}`);
-          discount = check.discount;
-          voucherCode = check.voucher.code;
-        }
-
-        const booking = await tx.booking.create({
-          data: {
-            code: bookingCode(),
-            userId: user.id,
-            roomId: room.id,
-            checkIn: stay.checkIn,
-            checkOut: stay.checkOut,
-            guests,
-            rooms,
-            totalPrice: subtotal - discount,
-            discount,
-            voucherCode,
-            // Chốt tỷ lệ hoa hồng tại thời điểm đặt; khách sạn do sàn tự vận hành không có hoa hồng.
-            commissionPercent: room.hotel.ownerId ? room.hotel.commissionPercent : 0,
-            note: note || null,
-          },
-        });
-        return booking.id;
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
-  } catch (e) {
-    if (e instanceof Error) {
-      if (e.message === "ROOM_NOT_FOUND") return { error: "Loại phòng này không còn khả dụng." };
-      if (e.message === "TOO_MANY_GUESTS") return { error: "Số khách vượt quá sức chứa của phòng đã chọn." };
-      if (e.message.startsWith("VOUCHER:")) return { error: e.message.slice(8) };
-      if (e.message === "SOLD_OUT") return { error: "Rất tiếc, phòng vừa hết trong khoảng ngày bạn chọn." };
-    }
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") {
-      return { error: "Hệ thống đang bận, vui lòng thử lại." };
-    }
-    throw e;
-  }
+  const result = await createPendingBooking({ userId: user.id, roomId, checkIn: input.data.checkIn, checkOut: input.data.checkOut, guests, rooms, note, voucher });
+  if (!result.ok) return { error: result.error };
+  const bookingId = result.bookingId;
 
   redirect(`/bookings/${bookingId}/pay`);
 }

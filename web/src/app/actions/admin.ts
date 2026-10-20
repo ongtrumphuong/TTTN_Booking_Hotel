@@ -49,6 +49,7 @@ const hotelSchema = z.object({
   description: z.string().trim().min(10, "Mô tả tối thiểu 10 ký tự").max(3000),
   images: z.array(imageUrl).min(1, "Cần ít nhất 1 ảnh").max(10, "Tối đa 10 ảnh"),
   amenities: z.array(z.string().max(40)).max(30),
+  highlights: z.array(z.string().max(60)).max(10, "Tối đa 10 điểm nổi bật"),
   latitude: optionalNumber(z.number().min(-90).max(90)),
   longitude: optionalNumber(z.number().min(-180).max(180)),
   freeCancelDays: z.coerce.number().int().min(0, "Số ngày hủy miễn phí từ 0 đến 60").max(60, "Số ngày hủy miễn phí từ 0 đến 60"),
@@ -65,6 +66,7 @@ const roomSchema = z.object({
   quantity: z.coerce.number().int().min(1).max(200),
   images: z.array(imageUrl).min(1, "Cần ít nhất 1 ảnh").max(10),
   amenities: z.array(z.string().max(40)).max(30),
+  highlights: z.array(z.string().max(60)).max(10, "Tối đa 10 điểm nổi bật"),
 });
 
 function firstError(e: z.ZodError) {
@@ -80,6 +82,7 @@ function hotelInput(fd: FormData) {
     description: fd.get("description"),
     images: lines(fd.get("images"), /\r?\n/),
     amenities: lines(fd.get("amenities"), /[\r\n,]+/),
+    highlights: lines(fd.get("highlights"), /[\r\n,]+/),
     latitude: fd.get("latitude"),
     longitude: fd.get("longitude"),
     freeCancelDays: fd.get("freeCancelDays") ?? 1,
@@ -98,6 +101,7 @@ function roomInput(fd: FormData) {
     quantity: fd.get("quantity"),
     images: lines(fd.get("images"), /\r?\n/),
     amenities: lines(fd.get("amenities"), /[\r\n,]+/),
+    highlights: lines(fd.get("highlights"), /[\r\n,]+/),
   });
 }
 

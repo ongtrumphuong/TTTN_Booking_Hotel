@@ -33,6 +33,7 @@
 - **Quên mật khẩu**: gửi liên kết đặt lại qua email (hiệu lực 60 phút, dùng một lần, chỉ lưu bản băm, có giới hạn số lần yêu cầu). Chưa cấu hình SMTP thì ở môi trường phát triển liên kết được in ra console.
 - Nhập **mã giảm giá** khi đặt phòng, xem chính sách hủy và số tiền hoàn trước khi hủy.
 - Đặt phòng → thanh toán (VNPay sandbox, hoặc giả lập khi chưa có khóa) → email xác nhận; xem lịch sử, hủy đơn (trước ngày nhận phòng).
+- **Trợ lý ảo đặt phòng** (khung chat góc phải): khách nói yêu cầu bằng tiếng Việt, ví dụ "Đà Lạt 20/10 - 22/10, dưới 1tr5/đêm, view Hồ Xuân Hương"; trợ lý (Google Gemini, gói miễn phí) tìm phòng còn trống trên hệ thống và đưa **thẻ phòng**. Khách bấm "Xem và giữ phòng" → trang xác nhận → giữ phòng → **tự thanh toán**. Trợ lý chỉ tìm và tư vấn, **không thể tự đặt phòng hay thanh toán**.
 - Yêu thích khách sạn (nút tim trên thẻ và trang chi tiết, trang `/favorites`).
 - Viết hoặc sửa đánh giá sau khi đã hoàn tất kỳ lưu trú.
 
@@ -127,6 +128,13 @@ npm run lint          # ESLint
 - Đã thử "phá có chủ ý" (đổi hạn giữ phòng, nâng ngưỡng đăng nhập sai, bỏ kiểm tra số tiền): mỗi lần đều có kiểm thử báo đỏ, nên các kiểm thử thật sự bắt được lỗi.
 - Chưa có kiểm thử giao diện trên trình duyệt tự động (Playwright); các luồng giao diện được thử thủ công.
 - Workflow CI ở `.github/workflows/ci.yml` chạy kiểm tra kiểu, lint, kiểm thử và build mỗi lần push/PR (build chạy khi **không có** cơ sở dữ liệu để chứng minh build không phụ thuộc cơ sở dữ liệu).
+
+### Trợ lý ảo (Gemini)
+
+1. Tạo khóa miễn phí tại https://aistudio.google.com/apikey và điền vào `web/.env`: `GEMINI_API_KEY="..."` (tùy chọn `GEMINI_MODEL`, mặc định `gemini-2.5-flash`). Khởi động lại server.
+2. Kiểm tra khóa và model: `cd web` rồi `npx tsx --env-file=.env scripts/assistant-check.ts`.
+3. Nếu DB đã seed từ trước, chạy `npx tsx prisma/update-highlights.ts --apply` để có dữ liệu "điểm nổi bật" (ví dụ "View hồ Xuân Hương") cho các khách sạn/phòng mẫu.
+Chưa điền khóa thì nút trợ lý vẫn hiện nhưng báo chưa được bật; phần còn lại của hệ thống không bị ảnh hưởng.
 
 ### Ảnh mẫu
 
@@ -318,6 +326,12 @@ Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống ki�
 - **Doanh thu tính đối soát** của một đơn: đơn *Hoàn tất* tính đủ số tiền khách trả; đơn bị *hủy muộn* chỉ tính phần phí khách sạn giữ lại (tổng tiền trừ tiền hoàn); đơn chưa hoàn tất, hủy hoàn đủ hoặc chưa trả tiền thì không tính. Tiền chi cho đối tác = doanh thu trừ hoa hồng (làm tròn từng đơn).
 - **Đợt chi trả** gộp mọi đơn chưa đối soát của một đối tác trong một giao dịch Serializable và gắn đơn bằng điều kiện `payoutId = null`, nên hai lần bấm cùng lúc không chi trả trùng đơn.
 - Đối tác không xác nhận "đã nhận tiền" và không hoàn tiền cho khách (tiền do sàn thu và hoàn).
+
+**Trợ lý ảo**
+- Kiến trúc "gọi công cụ": mô hình ngôn ngữ chỉ được cấp **một công cụ** `search_rooms` (điểm đến, ngày, số khách, khoảng giá, từ khóa). Công cụ chạy trên chính dữ liệu của hệ thống: chỉ phòng đang bán, còn trống đúng ngày (trừ đơn đang giữ và phòng bị chặn), đủ sức chứa; giá luôn tính ở máy chủ. Mô hình không có công cụ đặt phòng hay thanh toán.
+- Mỗi thẻ phòng mang một **token đề xuất có chữ ký HMAC** (phòng, ngày, số khách, hạn 60 phút). Token chỉ là lời mời; đơn chỉ được tạo khi khách tự mở `/assistant/confirm`, xem lại thông tin (giá tính lại ở máy chủ) và bấm nút. Việc tạo đơn dùng chung hàm `createPendingBooking` với form đặt phòng thường nên có cùng mọi kiểm tra (Serializable, còn phòng, mã giảm giá, hoa hồng).
+- Từ khóa kiểu "view ..." chỉ khớp thông tin của chính phòng; "gần ..." khớp cả vị trí khách sạn. Khớp không phân biệt dấu. Không có phòng khớp hẳn thì gợi ý phòng gần đúng kèm lý do (ví dụ vượt ngân sách bao nhiêu).
+- An toàn: giới hạn 30 tin/giờ/IP và 200 tin/giờ toàn hệ thống (bảo vệ hạn mức miễn phí); lịch sử gửi lên được làm sạch (chỉ user/assistant, tối đa 12 tin, 800 ký tự/tin); nội dung do đối tác nhập (tên, mô tả, điểm nổi bật) được coi là dữ liệu, không phải chỉ dẫn; lỗi quá tải/hết lượt báo thân thiện.
 
 **Đánh giá**: chỉ khách có đơn **Hoàn tất** tại khách sạn đó mới được viết; gửi lại sẽ cập nhật đánh giá cũ. Điểm trung bình tính từ các đánh giá **đang hiển thị** (đánh giá bị quản trị viên ẩn không được tính; tác giả vẫn thấy thông báo đánh giá của mình đang bị ẩn).
 

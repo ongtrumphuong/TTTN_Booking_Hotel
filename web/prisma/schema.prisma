@@ -73,6 +73,8 @@ model Hotel {
   starRating           Int           @default(3)
   images               String[]
   amenities            String[]
+  // Điểm nổi bật về vị trí/cảnh quan, ví dụ "Gần Hồ Xuân Hương". Dùng để lọc và để trợ lý ảo hiểu yêu cầu của khách.
+  highlights           String[]      @default([])
   isActive             Boolean       @default(true)
   // Sàn trung gian: khách sạn của đối tác có chủ (ownerId) và được quản trị viên duyệt trước khi hiển thị; ownerId rỗng là khách sạn do sàn tự vận hành.
   ownerId              String?
@@ -103,6 +105,8 @@ model Room {
   sizeM2        Int?
   images        String[]
   amenities     String[]
+  // Điểm nổi bật của phòng, ví dụ "View hồ Xuân Hương", "Ban công".
+  highlights    String[]    @default([])
   quantity      Int         @default(1)
   isActive      Boolean     @default(true)
   bookings      Booking[]

@@ -80,6 +80,16 @@ Chuẩn bị: admin tạo trước mã giảm giá (xem bước 7) hoặc làm b
 5. Đối tác mở **Đối soát & chi trả**: thấy tổng thu, hoa hồng sàn, số tiền sẽ nhận. Admin mở **Đối soát** → **Tạo đợt chi trả** → đối tác thấy khoản đã nhận trong lịch sử.
 **Nói gì:** sàn thu tiền của khách; đối tác nhận doanh thu trừ hoa hồng. Hoa hồng được **chốt vào đơn lúc đặt**, nên đổi hoa hồng chỉ áp dụng cho đơn sau. Đối tác không tự xác nhận thanh toán hay hoàn tiền vì tiền do sàn giữ.
 
+### Bước 7c – Trợ lý ảo đặt phòng (3 phút, cần khóa Gemini và Internet)
+**Chuẩn bị:** điền `GEMINI_API_KEY` trong `web/.env`, khởi động lại server, chạy `npx tsx --env-file=.env scripts/assistant-check.ts` để chắc khóa dùng được; DB đã seed từ trước thì chạy thêm `npx tsx prisma/update-highlights.ts --apply`. Đăng nhập tài khoản khách.
+**Làm gì:**
+1. Bấm nút **Trợ lý đặt phòng** ở góc phải. Gõ: *"Mình muốn đi Đà Lạt từ <ngày> đến <ngày sau 2 đêm>, ngân sách 1tr5 một đêm, muốn phòng có view Hồ Xuân Hương"* (dùng ngày thật trong tương lai).
+2. Trợ lý trả lời và hiện **thẻ phòng**: *Phòng Tiêu chuẩn* (1.350.000 ₫, đúng yêu cầu) và gợi ý *Deluxe* (có view nhưng vượt ngân sách 320.000 ₫).
+3. Thử hỏi thiếu thông tin ("Mình muốn đi Đà Lạt") để thấy trợ lý hỏi lại ngày; thử câu ngoài phạm vi ("viết thơ giúp mình") để thấy trợ lý từ chối lịch sự.
+4. Bấm **Xem và giữ phòng** trên thẻ → trang **Xác nhận giữ phòng** (giá do máy chủ tính lại) → bấm xác nhận → sang trang thanh toán VNPay → **khách tự thanh toán**.
+**Nói gì:** mô hình chỉ có công cụ *tìm phòng*, không có công cụ đặt phòng hay thanh toán; mọi con số trong câu trả lời lấy từ dữ liệu thật của hệ thống. Phòng chỉ được giữ khi **khách tự bấm xác nhận**; token đề xuất có chữ ký nên không sửa giá/phòng được. Dùng gói Gemini **miễn phí**, có giới hạn tốc độ để không vượt hạn mức.
+**Dự phòng:** nếu Gemini quá tải/hết lượt, trợ lý báo "đang quá tải"; hệ thống tìm kiếm thường không bị ảnh hưởng, demo tiếp bằng ô tìm kiếm.
+
 ### Bước 8 – Quên mật khẩu (1 phút, nếu còn thời gian)
 **Làm gì:** trang đăng nhập → *Quên mật khẩu?* → nhập email → thông báo chung. Chưa cấu hình email thì liên kết đặt lại được in trong cửa sổ chạy server (chỉ ở chế độ phát triển).
 **Nói gì:** liên kết có hiệu lực 60 phút, dùng một lần, hệ thống chỉ lưu bản băm của token; thông báo luôn giống nhau dù email có tồn tại hay không để không lộ email nào đã đăng ký.
@@ -114,6 +124,12 @@ Kiểm tra phòng trống và tạo đơn nằm trong **một giao dịch mức 
 - Ba vai trò (khách, đối tác, sàn); **quyền kiểm tra theo từng khách sạn ở máy chủ**, không chỉ ẩn nút: đối tác không sửa được khách sạn, phòng, lịch chặn hay đơn của người khác.
 - Duyệt khách sạn trước khi hiển thị; hoa hồng theo khách sạn và **chốt vào đơn lúc đặt** để đối soát không bị đổi ngầm.
 - Đối soát tính đúng cả phí hủy muộn; tạo đợt chi trả bằng giao dịch Serializable và điều kiện `payoutId = null` nên không chi trả trùng đơn (đã có test cho cả trường hợp hai yêu cầu đồng thời).
+
+### 2.4c. Trợ lý ảo an toàn theo thiết kế
+- **Mô hình chỉ có công cụ tìm kiếm**: không có công cụ đặt phòng hay thanh toán, nên dù bị "dụ" cũng không thể tạo đơn hay chạm vào tiền.
+- Câu trả lời dựa trên **dữ liệu thật** (phòng còn trống, giá) do công cụ truy vấn; tham số mô hình sinh ra được kiểm tra lại ở máy chủ.
+- **Con người xác nhận**: đơn chỉ được tạo khi khách bấm nút ở trang xác nhận; token đề xuất có chữ ký HMAC và hạn dùng; giá tính lại ở máy chủ; dùng chung hàm tạo đơn với form thường.
+- Chống lạm dụng: giới hạn 30 tin/giờ/IP và 200 tin/giờ toàn hệ thống, làm sạch lịch sử, nội dung do bên thứ ba nhập được coi là dữ liệu chứ không phải chỉ dẫn.
 
 ### 2.5. Bảo mật
 - Mật khẩu băm **bcrypt**; chính sách mật khẩu (≥ 8 ký tự, có chữ và số).
@@ -152,4 +168,7 @@ Next.js 16 (App Router, Server Actions) · React 19 · TypeScript · Prisma 6 ·
 | Hoa hồng tính thế nào, đổi giữa chừng thì sao? | Theo từng khách sạn (mặc định 10%), chốt vào đơn lúc khách đặt; đổi sau chỉ áp dụng cho đơn mới. |
 | Hệ thống đã kiểm thử thế nào? | 285 bài tự động + thử thủ công các luồng chính trên giao diện (README mục 3.7). |
 | Cổng thanh toán là thật hay giả? | VNPay **sandbox** (môi trường thử nghiệm, không trừ tiền thật); khi chưa có khóa thì dùng cổng giả lập. Chạy thật cần hợp đồng merchant với VNPay. |
+| Trợ lý ảo có tự đặt phòng hay thanh toán được không? | Không. Mô hình chỉ có công cụ tìm phòng; khách tự xác nhận trên trang xác nhận rồi tự thanh toán (mục 2.4c). |
+| Trợ lý có bịa phòng, giá không? | Lời nhắc buộc chỉ nói dữ liệu từ công cụ; thẻ phòng và giá hiển thị lấy trực tiếp từ hệ thống, không phải từ chữ mô hình viết. |
+| Chi phí AI? | Dùng gói miễn phí của Google Gemini, có giới hạn tốc độ; chạy thật ở quy mô lớn mới phải trả phí. |
 | Hạn chế còn lại? | Tìm kiếm đọc toàn bộ khách sạn khớp bộ lọc vào bộ nhớ (ổn tới vài trăm khách sạn); chưa có giá động theo mùa, đa ngôn ngữ, vai trò chủ khách sạn, IPN VNPay chưa thử trên địa chỉ công khai. |

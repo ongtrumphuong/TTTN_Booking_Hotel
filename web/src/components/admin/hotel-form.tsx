@@ -13,6 +13,7 @@ type Hotel = {
   description: string;
   images: string[];
   amenities: string[];
+  highlights: string[];
   latitude: number | null;
   longitude: number | null;
   freeCancelDays: number;
@@ -75,6 +76,11 @@ export function HotelForm({ hotel }: { hotel?: Hotel }) {
         <div className="md:col-span-2">
           <span className={label}>Ảnh khách sạn</span>
           <ImageUploader initial={hotel?.images ?? []} />
+        </div>
+        <div className="md:col-span-2">
+          <label htmlFor="highlights" className={label}>Điểm nổi bật về vị trí/cảnh quan (cách nhau bằng dấu phẩy)</label>
+          <input id="highlights" name="highlights" defaultValue={hotel?.highlights.join(", ")} placeholder="Gần Hồ Xuân Hương, Trung tâm Đà Lạt" className={input} />
+          <p className="mt-1 text-xs text-muted">Giúp khách và trợ lý ảo tìm đúng khách sạn khi nhắc tới địa danh, cảnh quan.</p>
         </div>
         <div>
           <label htmlFor="amenities" className={label}>Tiện nghi (cách nhau bằng dấu phẩy hoặc xuống dòng)</label>

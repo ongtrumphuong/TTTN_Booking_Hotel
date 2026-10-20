@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
+import { HOTEL_HIGHLIGHTS, ROOM_HIGHLIGHTS } from "./highlights";
 import { hotelImages, roomImages } from "./photos";
 import { REVIEWERS, reviewsForHotel } from "./sample-reviews";
 
@@ -77,6 +78,7 @@ async function main() {
         latitude: h.lat,
         longitude: h.lng,
         images: hotelImages(h.slug),
+        highlights: HOTEL_HIGHLIGHTS[h.slug] ?? [],
         ownerId: PARTNER_HOTELS.has(h.slug) ? host.id : null,
         amenities: HOTEL_AMENITIES.slice(0, 4 + (h.star % 5)),
       },
@@ -98,6 +100,7 @@ async function main() {
           bedType: r.bed,
           sizeM2: r.size,
           images: roomImages(r.name, index),
+          highlights: ROOM_HIGHLIGHTS[h.slug]?.[r.name] ?? [],
           amenities: ROOM_AMENITIES,
           quantity: r.qty,
         },
