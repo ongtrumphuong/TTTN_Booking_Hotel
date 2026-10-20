@@ -55,6 +55,6 @@ Chưa làm/chưa kiểm:
 
 ## Việc tiếp theo (backlog theo thứ tự đề xuất)
 Đã có `docs/KICH_BAN_DEMO.md` (kịch bản demo, điểm nhấn kỹ thuật, Q&A hội đồng). Khi tính năng đổi, cập nhật file này cho khớp (nhất là số lượng test và các bước demo).
-1. **Tài liệu báo cáo**: use case, sơ đồ tuần tự đặt phòng + thanh toán (có thể dùng Mermaid), ảnh chụp màn hình các màn hình chính.
+1. **Ảnh chụp màn hình** các màn hình chính cho báo cáo. Sơ đồ đã có ở `docs/SO_DO_BAO_CAO.md` (Mermaid, đã kiểm cú pháp bằng `mermaid.parse`); khi đổi schema/luồng thì cập nhật ER, sơ đồ trạng thái và tuần tự cho khớp.
 2. Chạy thử trọn kịch bản demo một lần trên bản `npm run build && npm run start` và sửa chỗ vấp nếu có.
 3. Tùy chọn, chỉ khi chủ dự án muốn: giá động (cuối tuần, mùa cao điểm), email nhắc nhận phòng, thông tin người ở/hóa đơn, IPN VNPay qua tunnel.

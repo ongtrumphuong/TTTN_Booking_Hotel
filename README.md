@@ -2,6 +2,8 @@
 
 Đồ án thực tập tốt nghiệp tại **Công ty phần mềm Không Gian Số**. Ứng dụng web cho phép khách tìm kiếm khách sạn, đặt phòng, thanh toán (giả lập), đánh giá; quản trị viên quản lý khách sạn, phòng, đơn đặt phòng và người dùng.
 
+> Sơ đồ cho báo cáo (use case, tuần tự đặt phòng/thanh toán/hủy, trạng thái đơn, ER, kiến trúc; viết bằng Mermaid): [docs/SO_DO_BAO_CAO.md](docs/SO_DO_BAO_CAO.md).
+>
 > Kịch bản demo từng bước, điểm nhấn kỹ thuật và câu hỏi hội đồng thường hỏi: xem [docs/KICH_BAN_DEMO.md](docs/KICH_BAN_DEMO.md).
 
 ## 1. Công nghệ
