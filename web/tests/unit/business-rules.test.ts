@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { maxBlockedRooms, needsRefund, paymentLabel } from "@/lib/booking";
 import { cancelQuote, policyText } from "@/lib/cancellation";
 import { buildNoticeEmail } from "@/lib/email";
+import { boundsOf, compactPrice, mapboxToken } from "@/lib/map";
 import { settlementGross, splitGross } from "@/lib/settlement";
 import { computeDiscount, normalizeCode } from "@/lib/voucher";
 
@@ -113,5 +114,28 @@ describe("đối soát với đối tác", () => {
     expect(splitGross(333_333, 10)).toEqual({ commission: 33_333, payout: 300_000 });
     expect(splitGross(1_000, 150)).toEqual({ commission: 1_000, payout: 0 });
     expect(splitGross(1_000, -5)).toEqual({ commission: 0, payout: 1_000 });
+  });
+});
+
+describe("bản đồ: token, giá gọn, khung bao", () => {
+  it("chỉ nhận token công khai pk.…; khóa bí mật sk.… hoặc rỗng thì bỏ qua (không bao giờ đưa khóa bí mật ra trình duyệt)", () => {
+    expect(mapboxToken({ NEXT_PUBLIC_MAPBOX_TOKEN: " pk.abc.def " })).toBe("pk.abc.def");
+    expect(mapboxToken({ MAPBOX_TOKEN: "pk.xyz" })).toBe("pk.xyz");
+    expect(mapboxToken({ NEXT_PUBLIC_MAPBOX_TOKEN: "sk.secret" })).toBeNull();
+    expect(mapboxToken({ NEXT_PUBLIC_MAPBOX_TOKEN: "" })).toBeNull();
+    expect(mapboxToken({})).toBeNull();
+  });
+  it("compactPrice", () => {
+    expect(compactPrice(1_350_000)).toBe("1,35tr");
+    expect(compactPrice(2_000_000)).toBe("2tr");
+    expect(compactPrice(12_500_000)).toBe("12,5tr");
+    expect(compactPrice(950_000)).toBe("950k");
+    expect(compactPrice(780_000)).toBe("780k");
+  });
+  it("boundsOf: khung bao các điểm hợp lệ, bỏ điểm sai tọa độ, rỗng thì null", () => {
+    expect(boundsOf([{ lat: 10, lng: 100 }, { lat: 12, lng: 98 }, { lat: 11, lng: 105 }])).toEqual([[98, 10], [105, 12]]);
+    expect(boundsOf([{ lat: 999, lng: 0 }, { lat: Number.NaN, lng: 1 }])).toBeNull();
+    expect(boundsOf([])).toBeNull();
+    expect(boundsOf([{ lat: 10, lng: 106 }])).toEqual([[106, 10], [106, 10]]);
   });
 });

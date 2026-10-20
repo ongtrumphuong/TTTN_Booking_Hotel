@@ -5,6 +5,8 @@ import { SlidersHorizontal, X } from "lucide-react";
 import { FilterForm, activeFilterCount, type FilterState } from "@/components/filter-form";
 import { SearchForm } from "@/components/search-form";
 import { HotelCard } from "@/components/hotel-card";
+import { ResultsView } from "@/components/map/results-view";
+import { mapboxToken, type MapPoint } from "@/lib/map";
 import { formatVND } from "@/lib/format";
 import { getCities, getFilterOptions, searchHotels, type HotelSearch } from "@/lib/hotels";
 
@@ -145,15 +147,27 @@ async function Results({ searchParams }: { searchParams: Promise<SP> }) {
             )}
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {hotels.map((h) => (
-              <HotelCard key={h.id} hotel={h} />
-            ))}
-          </div>
+          <ResultsOrList hotels={hotels}>
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {hotels.map((h) => (
+                <HotelCard key={h.id} hotel={h} />
+              ))}
+            </div>
+          </ResultsOrList>
         )}
       </div>
     </div>
   );
+}
+
+/** Có token Mapbox và có khách sạn có tọa độ thì cho chuyển giữa danh sách và bản đồ có ghim giá; ngược lại chỉ hiện danh sách. */
+function ResultsOrList({ hotels, children }: { hotels: Awaited<ReturnType<typeof searchHotels>>; children: React.ReactNode }) {
+  const token = mapboxToken();
+  const points: MapPoint[] = hotels
+    .filter((h) => h.latitude !== null && h.longitude !== null)
+    .map((h) => ({ id: h.id, slug: h.slug, name: h.name, city: h.city, lat: h.latitude!, lng: h.longitude!, price: h.minPrice, image: h.image, rating: h.avgRating, stars: h.starRating }));
+  if (!token || points.length === 0) return <>{children}</>;
+  return <ResultsView token={token} points={points}>{children}</ResultsView>;
 }
 
 async function Form({ searchParams }: { searchParams: Promise<SP> }) {

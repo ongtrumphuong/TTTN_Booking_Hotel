@@ -14,6 +14,8 @@ export type HotelSummary = {
   minPrice: number;
   avgRating: number | null;
   reviewCount: number;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type HotelSearch = {
@@ -55,6 +57,8 @@ function toSummary(h: HotelRow, rooms = h.rooms): HotelSummary | null {
     minPrice: Math.min(...rooms.map((r) => r.pricePerNight)),
     avgRating: ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null,
     reviewCount: ratings.length,
+    latitude: h.latitude,
+    longitude: h.longitude,
   };
 }
 

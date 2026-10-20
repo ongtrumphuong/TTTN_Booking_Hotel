@@ -136,6 +136,12 @@ npm run lint          # ESLint
 3. Nếu DB đã seed từ trước, chạy `npx tsx prisma/update-highlights.ts --apply` để có dữ liệu "điểm nổi bật" (ví dụ "View hồ Xuân Hương") cho các khách sạn/phòng mẫu.
 Chưa điền khóa thì nút trợ lý vẫn hiện nhưng báo chưa được bật; phần còn lại của hệ thống không bị ảnh hưởng.
 
+### Bản đồ Mapbox
+
+Có token Mapbox thì trang chi tiết khách sạn dùng **bản đồ tương tác** (ghim, phóng to, chế độ vệ tinh, toàn màn hình) và trang kết quả tìm kiếm có nút **Danh sách / Bản đồ** với **ghim ghi giá** (bấm ghim xem thẻ khách sạn). Chưa có token thì tự dùng bản đồ OpenStreetMap nhúng như trước, không lỗi.
+1. Đăng ký tại https://account.mapbox.com, vào mục Tokens, tạo **token công khai** (bắt đầu bằng `pk.`), nên giới hạn theo địa chỉ web của bạn.
+2. Dán vào `web/.env`: `NEXT_PUBLIC_MAPBOX_TOKEN="pk...."` rồi khởi động lại server. Khóa bí mật `sk.…` bị bỏ qua vì không được phép đưa ra trình duyệt.
+
 ### Ảnh mẫu
 
 Dữ liệu mẫu dùng **ảnh thật từ Unsplash** (miễn phí theo giấy phép Unsplash) cho từng khách sạn và loại phòng, khai báo ở `web/prisma/photos.ts`. Nếu cơ sở dữ liệu đã seed từ trước bằng ảnh ngẫu nhiên, chạy `npx tsx prisma/update-images.ts` để xem và thêm `--apply` để thay (chỉ thay ảnh mẫu cũ, không đụng ảnh quản trị viên đã tải lên). Cần có Internet để hiển thị ảnh.

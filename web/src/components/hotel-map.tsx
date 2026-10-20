@@ -1,7 +1,10 @@
 import { MapPin } from "lucide-react";
+import { LazyMap } from "@/components/map/lazy-map";
+import { mapboxToken } from "@/lib/map";
 
-/** Bản đồ OpenStreetMap nhúng bằng iframe: không cần thư viện hay khóa API. */
+/** Có token Mapbox thì dùng bản đồ tương tác (ghim, vệ tinh, phóng to); chưa có thì dùng bản đồ OpenStreetMap nhúng bằng iframe (không cần khóa). */
 export function HotelMap({ lat, lng, name, address }: { lat: number; lng: number; name: string; address: string }) {
+  const token = mapboxToken();
   const dLat = 0.004;
   const dLng = 0.006;
   const bbox = [lng - dLng, lat - dLat, lng + dLng, lat + dLat].map((n) => n.toFixed(6)).join("%2C");
@@ -13,6 +16,9 @@ export function HotelMap({ lat, lng, name, address }: { lat: number; lng: number
       <p className="mb-3 flex items-start gap-2 text-sm text-muted">
         <MapPin size={16} className="mt-0.5 shrink-0 text-brand" aria-hidden /> {address}
       </p>
+      {token ? (
+        <LazyMap token={token} mode="single" points={[{ id: "hotel", slug: "", name, city: address, lat, lng }]} className="h-72 md:h-96" />
+      ) : (
       <div className="relative h-64 overflow-hidden rounded-2xl border border-border bg-background md:h-80">
         {/* Lớp dự phòng nằm dưới: chỉ lộ ra khi bản đồ chưa tải được (mất mạng, bị chặn tên miền...) */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center text-sm text-muted">
@@ -27,6 +33,7 @@ export function HotelMap({ lat, lng, name, address }: { lat: number; lng: number
           className="absolute inset-0 h-full w-full"
         />
       </div>
+      )}
       <a href={full} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-semibold text-brand hover:underline">
         Xem bản đồ lớn →
       </a>
