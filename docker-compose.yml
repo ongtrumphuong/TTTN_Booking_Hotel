@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kgs-booking-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kgs
+      POSTGRES_PASSWORD: kgs_dev_password
+      POSTGRES_DB: kgs_booking
+    ports:
+      - "5432:5432"
+    volumes:
+      - kgs_pgdata:/var/lib/postgresql/data
+
+volumes:
+  kgs_pgdata:
