@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { sendBookingConfirmation } from "@/lib/email";
 import { isVnpayConfigured } from "@/lib/payments/vnpay";
 import { requireUser } from "@/lib/session";
-import { PENDING_HOLD_MINUTES, bookedQuantity, bookingCode, parseStay, todayUTC } from "@/lib/booking";
+import { PENDING_HOLD_MINUTES, bookedQuantity, bookingCode, parseStay, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
 
 export type BookingState = { error?: string };
 
@@ -129,10 +129,7 @@ export async function cancelBookingAction(bookingId: string) {
   if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") && booking.checkIn > todayUTC()) {
     await prisma.booking.update({
       where: { id: booking.id },
-      data: {
-        status: "CANCELLED",
-        paymentStatus: booking.paymentStatus === "PAID" ? "REFUNDED" : booking.paymentStatus,
-      },
+      data: { status: "CANCELLED", paymentStatus: await paymentStatusAfterCancel(prisma, booking.id, booking.paymentStatus) },
     });
   }
   revalidatePath("/bookings");

@@ -5,9 +5,10 @@ import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { Prisma, type BookingStatus, type Role } from "@prisma/client";import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
-import { NEXT_STATUS, bookedQuantity, todayUTC } from "@/lib/booking";
+import { NEXT_STATUS, bookedQuantity, needsRefund, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
 import { ALLOWED_IMAGE_HOSTS } from "@/lib/image-hosts";
 import { slugify } from "@/lib/slug";
+import { UPLOAD_URL } from "@/lib/uploads";
 
 export type AdminState = { error?: string; ok?: boolean };
 
@@ -17,16 +18,21 @@ const lines = (v: FormDataEntryValue | null, sep: RegExp) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
+/** Ảnh hợp lệ: ảnh đã tải lên qua hệ thống, hoặc URL https từ các máy chủ ảnh được phép. */
+function isAllowedImage(u: string) {
+  if (UPLOAD_URL.test(u)) return true;
+  try {
+    const url = new URL(u);
+    return url.protocol === "https:" && (ALLOWED_IMAGE_HOSTS as readonly string[]).includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 const imageUrl = z
-  .url()
-  .refine((u) => {
-    try {
-      const url = new URL(u);
-      return url.protocol === "https:" && (ALLOWED_IMAGE_HOSTS as readonly string[]).includes(url.hostname);
-    } catch {
-      return false;
-    }
-  }, `Chỉ chấp nhận ảnh https từ: ${ALLOWED_IMAGE_HOSTS.join(", ")}`);
+  .string()
+  .max(500)
+  .refine(isAllowedImage, `Ảnh phải là ảnh tải lên hoặc URL https từ: ${ALLOWED_IMAGE_HOSTS.join(", ")}`);
 
 const optionalNumber = (schema: z.ZodNumber) =>
   z.preprocess((v) => (v === "" || v == null ? undefined : v), z.coerce.number().pipe(schema).optional());
@@ -194,7 +200,7 @@ export async function updateBookingStatusAction(bookingId: string, next: Booking
         } else {
           await tx.booking.update({
             where: { id: b.id },
-            data: { status: "CANCELLED", paymentStatus: b.paymentStatus === "PAID" ? "REFUNDED" : b.paymentStatus },
+            data: { status: "CANCELLED", paymentStatus: await paymentStatusAfterCancel(tx, b.id, b.paymentStatus) },
           });
         }
       },
@@ -208,6 +214,55 @@ export async function updateBookingStatusAction(bookingId: string, next: Booking
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** Quản trị viên xác nhận đã hoàn tiền (ngoài hệ thống, ví dụ qua cổng VNPay hoặc chuyển khoản) cho đơn đã hủy. */
+export async function markRefundedAction(bookingId: string, note: string): Promise<AdminState> {
+  const admin = await requireAdmin("/admin/bookings");
+  const cleanNote = String(note ?? "").trim().slice(0, 300);
+
+  const done = await prisma.$transaction(async (tx) => {
+    const b = await tx.booking.findUnique({ where: { id: bookingId }, select: { id: true, status: true, paymentStatus: true } });
+    if (!b || !needsRefund(b.status, b.paymentStatus)) return false;
+    await tx.booking.update({ where: { id: b.id }, data: { paymentStatus: "REFUNDED" } });
+    await tx.payment.updateMany({
+      where: { bookingId: b.id, status: "SUCCESS", refundedAt: null },
+      data: { refundedAt: new Date(), refundNote: `${admin.name}${cleanNote ? `: ${cleanNote}` : ""}` },
+    });
+    return true;
+  });
+  if (!done) return { error: "Đơn này không ở trạng thái chờ hoàn tiền." };
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/* ---------- Đánh giá ---------- */
+
+async function refreshReviews(hotelId: string) {
+  const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { slug: true } });
+  updateTag("hotels"); // điểm trung bình và danh sách đánh giá nằm trong dữ liệu được cache
+  revalidatePath("/admin/reviews");
+  if (hotel) revalidatePath(`/hotels/${hotel.slug}`);
+}
+
+export async function toggleReviewHiddenAction(reviewId: string): Promise<AdminState> {
+  await requireAdmin("/admin/reviews");
+  const r = await prisma.review.findUnique({ where: { id: reviewId }, select: { isHidden: true, hotelId: true } });
+  if (!r) return { error: "Không tìm thấy đánh giá." };
+  await prisma.review.update({ where: { id: reviewId }, data: { isHidden: !r.isHidden } });
+  await refreshReviews(r.hotelId);
+  return { ok: true };
+}
+
+export async function deleteReviewAction(reviewId: string): Promise<AdminState> {
+  await requireAdmin("/admin/reviews");
+  const r = await prisma.review.findUnique({ where: { id: reviewId }, select: { hotelId: true } });
+  if (!r) return { error: "Không tìm thấy đánh giá." };
+  await prisma.review.delete({ where: { id: reviewId } });
+  await refreshReviews(r.hotelId);
   return { ok: true };
 }
 

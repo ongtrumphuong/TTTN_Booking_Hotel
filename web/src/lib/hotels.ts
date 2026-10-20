@@ -35,7 +35,7 @@ function queryHotels(where: object) {
     where: { isActive: true, ...where },
     include: {
       rooms: { where: { isActive: true } },
-      reviews: { select: { rating: true } },
+      reviews: { where: { isHidden: false }, select: { rating: true } },
     },
   });
 }
@@ -143,7 +143,7 @@ export async function getHotelDetail(slug: string) {
     where: { slug, isActive: true },
     include: {
       rooms: { where: { isActive: true }, orderBy: { pricePerNight: "asc" } },
-      reviews: { orderBy: { createdAt: "desc" }, take: 20, include: { user: { select: { name: true } } } },
+      reviews: { where: { isHidden: false }, orderBy: { createdAt: "desc" }, take: 20, include: { user: { select: { name: true } } } },
     },
   });
   if (!hotel) return null;
@@ -197,7 +197,7 @@ export async function getFeaturedReviews(limit = 3) {
   cacheLife("minutes");
   cacheTag("hotels");
   const rows = await prisma.review.findMany({
-    where: { rating: { gte: 4 }, hotel: { isActive: true } },
+    where: { rating: { gte: 4 }, isHidden: false, hotel: { isActive: true } },
     orderBy: { createdAt: "desc" },
     take: limit * 3,
     include: { user: { select: { name: true } }, hotel: { select: { name: true, slug: true, city: true } } },

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createHotelAction, updateHotelAction, type AdminState } from "@/app/actions/admin";
+import { ImageUploader } from "./image-uploader";
 
 type Hotel = {
   id: string;
@@ -61,10 +62,9 @@ export function HotelForm({ hotel }: { hotel?: Hotel }) {
           <label htmlFor="description" className={label}>Mô tả</label>
           <textarea id="description" name="description" rows={4} required defaultValue={hotel?.description} className={input} />
         </div>
-        <div>
-          <label htmlFor="images" className={label}>Ảnh (mỗi dòng một URL https)</label>
-          <textarea id="images" name="images" rows={5} required defaultValue={hotel?.images.join("\n")} className={`${input} font-mono text-xs`} />
-          <p className="mt-1 text-xs text-muted">Chấp nhận: picsum.photos, images.unsplash.com</p>
+        <div className="md:col-span-2">
+          <span className={label}>Ảnh khách sạn</span>
+          <ImageUploader initial={hotel?.images ?? []} />
         </div>
         <div>
           <label htmlFor="amenities" className={label}>Tiện nghi (cách nhau bằng dấu phẩy hoặc xuống dòng)</label>

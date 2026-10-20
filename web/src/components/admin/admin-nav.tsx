@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarCheck, LayoutDashboard, Users } from "lucide-react";
+import { BedDouble, CalendarCheck, LayoutDashboard, MessageSquareText, Users } from "lucide-react";
 
 const ITEMS = [
   { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, exact: true },
   { href: "/admin/hotels", label: "Khách sạn", icon: BedDouble },
   { href: "/admin/bookings", label: "Đơn đặt phòng", icon: CalendarCheck },
+  { href: "/admin/reviews", label: "Đánh giá", icon: MessageSquareText },
   { href: "/admin/users", label: "Người dùng", icon: Users },
 ];
 

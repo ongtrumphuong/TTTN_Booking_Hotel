@@ -29,9 +29,10 @@
 - Viết hoặc sửa đánh giá sau khi đã hoàn tất kỳ lưu trú.
 
 **Quản trị viên** (`/admin`)
-- Tổng quan: số liệu, doanh thu đã thu, đơn gần đây.
-- Khách sạn: thêm, sửa, ẩn/hiện; loại phòng: thêm, sửa, ẩn/hiện.
-- Đơn đặt phòng: lọc theo trạng thái, đổi trạng thái theo quy tắc.
+- Tổng quan: bộ chỉ số theo kỳ 7/30/90 ngày (doanh thu, đơn mới, giá trị trung bình, tỷ lệ hủy, đơn chờ hoàn tiền), **biểu đồ doanh thu theo ngày**, **biểu đồ tỷ lệ lấp đầy các ngày tới**, khách sạn doanh thu cao nhất, đơn gần đây.
+- Khách sạn: thêm, sửa, ẩn/hiện; loại phòng: thêm, sửa, ẩn/hiện; **tải ảnh lên** (JPEG/PNG/WebP), đặt ảnh bìa, xóa ảnh, hoặc thêm bằng URL.
+- Đơn đặt phòng: lọc theo trạng thái, đổi trạng thái theo quy tắc, bộ lọc **Cần hoàn tiền** và nút **Đã hoàn tiền** kèm ghi chú.
+- Đánh giá: **ẩn/hiện hoặc xóa** đánh giá không phù hợp; đánh giá bị ẩn không hiện công khai và không tính vào điểm trung bình.
 - Người dùng: xem danh sách, cấp/thu hồi quyền quản trị.
 
 ## 3. Cài đặt và chạy
@@ -64,6 +65,9 @@ Sao chép `web/.env.example` thành `web/.env` rồi sửa:
 | `DATABASE_URL` | Chuỗi kết nối PostgreSQL. Mật khẩu có ký tự đặc biệt phải mã hóa URL (ví dụ `@` thành `%40`). |
 | `AUTH_SECRET` | Khóa ký phiên đăng nhập. Tạo khóa mạnh bằng `npx auth secret` hoặc `openssl rand -base64 32`. |
 | `AUTH_TRUST_HOST` | Đặt `true` khi chạy trên máy cục bộ ở chế độ production. |
+| `UPLOAD_DIR` | (Không bắt buộc) Thư mục lưu ảnh quản trị viên tải lên. Mặc định `web/uploads`. |
+
+Các biến cho VNPay và email nằm ở mục 6.
 
 File `.env` không được đưa lên git.
 
@@ -178,6 +182,8 @@ erDiagram
         string note
         datetime createdAt
         datetime paidAt
+        datetime refundedAt
+        string refundNote
     }
     REVIEW {
         string id PK
@@ -185,6 +191,7 @@ erDiagram
         string userId FK
         int rating
         string comment
+        boolean isHidden
         datetime createdAt
     }
     FAVORITE {
@@ -224,7 +231,7 @@ VNPay chỉ gọi IPN vào địa chỉ công khai HTTPS nên **IPN không vào 
 ### 6.4. Email xác nhận
 Điền `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` trong `web/.env`. Ví dụ Gmail: `smtp.gmail.com`, cổng `587`, mật khẩu là **Mật khẩu ứng dụng** (bật xác minh 2 bước). Email gửi sau khi đơn chuyển sang **Đã xác nhận**; gửi lỗi chỉ ghi log, không làm hỏng đặt phòng. Mọi dữ liệu do khách nhập (tên, ghi chú) đều được thoát ký tự HTML.
 
-### 6.5. Đã kiểm tra những gì
+### 6.5. Đã kiểm tra những gì (thanh toán)
 - Chữ ký đối chiếu với thuật toán mẫu chính thức của VNPay (18 trường hợp: sai số tiền, sai khóa, thiếu chữ ký, tham số rỗng, ký tự đặc biệt…).
 - Logic xác nhận trên cơ sở dữ liệu thật (16 trường hợp: thất bại, hủy, gọi lặp, hai yêu cầu đồng thời, đơn đã hủy, quá hạn giữ phòng).
 - Các endpoint với dữ liệu đã ký, và email nhận được qua một máy chủ SMTP giả.
@@ -238,7 +245,7 @@ VNPay chỉ gọi IPN vào địa chỉ công khai HTTPS nên **IPN không vào 
 - Kiểm tra phòng trống và tạo đơn trong **một giao dịch mức Serializable** để hai người đặt cùng lúc không vượt quá số phòng hiện có.
 - Đơn mới ở trạng thái **Chờ thanh toán** và **giữ phòng 30 phút**; quá hạn mà chưa thanh toán thì không còn giữ phòng và không thanh toán được nữa.
 - Thanh toán: nếu chưa cấu hình VNPay thì là **giả lập** (không thu tiền thật, không nhận thông tin thẻ); nếu đã cấu hình VNPay thì chỉ xác nhận khi cổng báo thành công (xem mục 6).
-- Khách hủy đơn trước ngày nhận phòng; đơn đã thanh toán được đánh dấu **Đã hoàn tiền**.
+- Khách hủy đơn trước ngày nhận phòng. Đơn **chưa trả tiền thật** (giả lập) chuyển ngay sang Đã hoàn tiền; đơn **đã trả qua VNPay** giữ trạng thái **Chờ hoàn tiền** cho tới khi quản trị viên hoàn tiền (ngoài hệ thống) rồi bấm **Đã hoàn tiền** để ghi nhận kèm ghi chú.
 
 **Quản trị đơn đặt phòng** – chuyển trạng thái một chiều:
 
@@ -250,7 +257,9 @@ VNPay chỉ gọi IPN vào địa chỉ công khai HTTPS nên **IPN không vào 
 
 Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống kiểm tra lại còn phòng hay không.
 
-**Đánh giá**: chỉ khách có đơn **Hoàn tất** tại khách sạn đó mới được viết; gửi lại sẽ cập nhật đánh giá cũ. Điểm trung bình tính từ các đánh giá.
+**Đánh giá**: chỉ khách có đơn **Hoàn tất** tại khách sạn đó mới được viết; gửi lại sẽ cập nhật đánh giá cũ. Điểm trung bình tính từ các đánh giá **đang hiển thị** (đánh giá bị quản trị viên ẩn không được tính; tác giả vẫn thấy thông báo đánh giá của mình đang bị ẩn).
+
+**Số liệu báo cáo**: doanh thu = tổng tiền các đơn đã thanh toán và chưa hủy, tính theo ngày đặt (giờ Việt Nam); tỷ lệ lấp đầy = số phòng đã xác nhận hoặc đang giữ chỗ trên tổng số phòng đang bán, cho các ngày tới.
 
 ## 8. Bảo mật
 
@@ -260,6 +269,7 @@ Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống ki�
 - Ảnh do quản trị nhập chỉ chấp nhận `https` từ `picsum.photos` và `images.unsplash.com` (khai báo ở `src/lib/image-hosts.ts`).
 - Quản trị viên không đổi được vai trò của chính mình, tránh tự khóa quyền.
 - Mọi dữ liệu nhập đều kiểm tra bằng Zod ở máy chủ.
+- **Tải ảnh lên**: chỉ quản trị viên; kiểm tra nguồn yêu cầu (chống gửi chéo trang); giới hạn 5 MB/ảnh, 10 ảnh/lần, 30 MB/yêu cầu; **giải mã thật bằng `sharp`** để xác minh là JPEG/PNG/WebP (không tin tên tệp hay Content-Type), chặn ảnh "bom điểm ảnh" (trên 50 triệu điểm), thu nhỏ tối đa 2000px, **bỏ toàn bộ siêu dữ liệu (EXIF, vị trí)** và lưu lại dạng WebP nên mã nối đuôi hay tệp SVG/GIF/PHP đều bị loại. Tên tệp là mã ngẫu nhiên 32 ký tự; ảnh nằm **ngoài thư mục `public`** và được phục vụ qua một route chỉ nhận đúng dạng tên đó (không đọc được tệp ngoài thư mục ảnh).
 
 ## 9. Cấu trúc thư mục
 
@@ -267,6 +277,7 @@ Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống ki�
 Booking_Hotel/
 ├─ docker-compose.yml        PostgreSQL cho môi trường phát triển
 └─ web/
+   ├─ uploads/                ảnh quản trị viên tải lên (không đưa lên git)
    ├─ prisma/
    │  ├─ schema.prisma       mô hình dữ liệu
    │  ├─ migrations/         lịch sử migrate
@@ -282,17 +293,24 @@ Booking_Hotel/
       │  ├─ favorites/       khách sạn yêu thích
       │  ├─ login/, register/, account/
       │  ├─ admin/           khu vực quản trị
-      │  ├─ api/             next-auth, danh sách yêu thích, VNPay (return, ipn)
+      │  ├─ api/             next-auth, yêu thích, VNPay (return, ipn), tải ảnh lên và phục vụ ảnh
       │  └─ actions/         Server Actions (auth, booking, payment, engage, admin)
       ├─ components/         thành phần giao diện (admin/ cho quản trị)
       └─ lib/                truy vấn, quy tắc đặt phòng, phiên, định dạng, email
          └─ payments/        VNPay (ký, kiểm tra chữ ký) và xử lý kết quả thanh toán
 ```
 
-## 10. Hạn chế và hướng phát triển
+## 10. Đã kiểm thử quản trị nâng cao
+
+- **Tải ảnh lên (30 trường hợp)**: quyền (ẩn danh 401, khách thường 403, Origin lạ 403), ảnh hợp lệ JPEG/PNG/WebP, bỏ EXIF, thu nhỏ 4000×3000 về 2000×1500, từ chối PHP/SVG/GIF/HTML đội lốt ảnh, tệp rỗng/cắt cụt/"bom điểm ảnh"/quá 5 MB/11 tệp/quá 30 MB (413), mã nối đuôi ảnh bị loại, và các đường dẫn đọc tệp trái phép (`..%2f`, `..%5c`, tên sai dạng) đều 404.
+- **Biểu đồ và chỉ số (40 trường hợp)**: dữ liệu thử có đáp án tính độc lập; từng cột doanh thu, tổng doanh thu, giá trị trung bình, tỷ lệ hủy, số đơn chờ hoàn tiền và tỷ lệ lấp đầy từng ngày đều khớp, ở cả kỳ 7 và 30 ngày; đơn đã hủy hoặc chưa thanh toán không vào doanh thu; khách thường và ẩn danh không thấy số liệu.
+- **Hoàn tiền**: đơn đã hủy trả qua VNPay hiện "Chờ hoàn tiền"; bấm "Đã hoàn tiền" ghi `refundedAt` và ghi chú kèm tên quản trị viên.
+- **Duyệt đánh giá**: ẩn làm đánh giá biến mất khỏi trang công khai và điểm trung bình tính lại ngay; hiện lại và xóa cũng cập nhật đúng.
+
+## 11. Hạn chế và hướng phát triển
 
 - VNPay mới ở chế độ sandbox, chưa kiểm tra với khóa thật; chưa có hoàn tiền tự động qua cổng (hoàn tiền là thao tác thủ công); chưa tích hợp MoMo.
-- Ảnh khách sạn mẫu là ảnh ngẫu nhiên từ picsum.photos, chưa phải ảnh thật; chưa có chức năng tải ảnh lên.
+- Ảnh khách sạn mẫu là ảnh ngẫu nhiên từ picsum.photos; quản trị viên có thể tải ảnh thật lên. Ảnh tải lên lưu **trên ổ đĩa của máy chủ** nên khi triển khai lên nền tảng không có ổ đĩa bền vững (ví dụ Vercel) cần chuyển sang kho lưu trữ đối tượng (S3, Cloudinary...); ảnh đã bị gỡ khỏi khách sạn vẫn còn tệp trên đĩa (chưa dọn tự động).
 - Email mới có thư xác nhận đặt phòng (chưa có thư hủy phòng, nhắc lịch); chưa giới hạn số lần đăng nhập sai. Bản đồ cần truy cập được `openstreetmap.org` (nếu bị chặn sẽ hiện thông báo kèm liên kết).
 - Chưa có ứng dụng di động (dự kiến React Native/Expo dùng chung API).
 - Chưa có kiểm thử tự động; các luồng chính đã được kiểm tra thủ công.

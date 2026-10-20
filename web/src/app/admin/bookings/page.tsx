@@ -3,20 +3,22 @@ import { AdminFallback } from "@/components/admin/fallback";
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { BookingStatus } from "@prisma/client";
+import { RefundButton } from "@/components/admin/refund-button";
 import { SelectAction } from "@/components/admin/select-action";
-import { NEXT_STATUS, PAYMENT_LABEL, STATUS_LABEL } from "@/lib/booking";
+import { NEXT_STATUS, STATUS_LABEL, needsRefund, paymentLabel } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Quản lý đơn đặt phòng" };
 
-const FILTERS: { value: BookingStatus | "ALL"; label: string }[] = [
+const FILTERS: { value: BookingStatus | "ALL" | "REFUND"; label: string }[] = [
   { value: "ALL", label: "Tất cả" },
   { value: "PENDING", label: "Chờ thanh toán" },
   { value: "CONFIRMED", label: "Đã xác nhận" },
   { value: "COMPLETED", label: "Hoàn tất" },
   { value: "CANCELLED", label: "Đã hủy" },
+  { value: "REFUND", label: "Cần hoàn tiền" },
 ];
 
 const ACTION_LABEL: Record<BookingStatus, string> = {
@@ -30,10 +32,12 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
   await requireAdmin("/admin/bookings");
   const sp = await searchParams;
   const raw = Array.isArray(sp.status) ? sp.status[0] : sp.status;
-  const status = FILTERS.find((f) => f.value === raw && f.value !== "ALL")?.value as BookingStatus | undefined;
+  const picked = FILTERS.find((f) => f.value === raw && f.value !== "ALL")?.value;
+  const status = picked && picked !== "REFUND" ? (picked as BookingStatus) : undefined;
+  const refundOnly = picked === "REFUND";
 
   const bookings = await prisma.booking.findMany({
-    where: status ? { status } : {},
+    where: refundOnly ? { status: "CANCELLED", paymentStatus: "PAID" } : status ? { status } : {},
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { user: { select: { name: true, email: true } }, room: { include: { hotel: { select: { name: true } } } } },
@@ -44,7 +48,7 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
       <h1 className="mb-4 text-2xl font-extrabold">Đơn đặt phòng</h1>
       <div className="mb-5 flex flex-wrap gap-2 text-sm">
         {FILTERS.map((f) => {
-          const active = (status ?? "ALL") === f.value;
+          const active = (refundOnly ? "REFUND" : (status ?? "ALL")) === f.value;
           return (
             <Link
               key={f.value}
@@ -80,16 +84,20 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
                 <td className="px-4 py-3"><p className="font-semibold">{b.user.name}</p><p className="text-xs text-muted">{b.user.email}</p></td>
                 <td className="px-4 py-3"><p className="font-semibold">{b.room.hotel.name}</p><p className="text-xs text-muted">{b.room.name} × {b.rooms}</p></td>
                 <td className="px-4 py-3 text-xs">{formatDate(b.checkIn)}<br />→ {formatDate(b.checkOut)}</td>
-                <td className="px-4 py-3"><p className="font-bold">{formatVND(b.totalPrice)}</p><p className="text-xs text-muted">{PAYMENT_LABEL[b.paymentStatus]}</p></td>
+                <td className="px-4 py-3"><p className="font-bold">{formatVND(b.totalPrice)}</p><p className={`text-xs ${needsRefund(b.status, b.paymentStatus) ? "font-bold text-amber-700" : "text-muted"}`}>{paymentLabel(b.status, b.paymentStatus)}</p></td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_LABEL[b.status].cls}`}>{STATUS_LABEL[b.status].text}</span>
                 </td>
                 <td className="px-4 py-3">
+                  {needsRefund(b.status, b.paymentStatus) ? (
+                    <RefundButton bookingId={b.id} />
+                  ) : (
                   <SelectAction
                     target={{ kind: "booking-status", id: b.id }}
                     options={NEXT_STATUS[b.status].map((s) => ({ value: s, label: ACTION_LABEL[s] }))}
                     confirmMessages={{ CANCELLED: `Hủy đơn ${b.code}? Đơn đã thanh toán sẽ được đánh dấu hoàn tiền.` }}
                   />
+                  )}
                 </td>
               </tr>
             ))}

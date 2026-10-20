@@ -61,6 +61,27 @@ export const NEXT_STATUS: Record<BookingStatus, BookingStatus[]> = {
 
 export const PAYMENT_LABEL: Record<string, string> = { UNPAID: "Chưa thanh toán", PAID: "Đã thanh toán", REFUNDED: "Đã hoàn tiền" };
 
+/** Đơn đã hủy mà tiền vẫn ở trạng thái đã thanh toán nghĩa là đang chờ hoàn tiền. */
+export const needsRefund = (status: string, paymentStatus: string) => status === "CANCELLED" && paymentStatus === "PAID";
+
+export function paymentLabel(status: string, paymentStatus: string) {
+  return needsRefund(status, paymentStatus) ? "Chờ hoàn tiền" : PAYMENT_LABEL[paymentStatus];
+}
+
+/**
+ * Trạng thái thanh toán sau khi hủy đơn. Đơn trả tiền thật qua VNPay phải giữ "Đã thanh toán" cho tới khi quản trị viên
+ * hoàn tiền xong và xác nhận; đơn giả lập hoặc chưa trả tiền thì không có tiền thật để hoàn nên được chuyển ngay.
+ */
+export async function paymentStatusAfterCancel(
+  db: Pick<Prisma.TransactionClient, "payment">,
+  bookingId: string,
+  current: "UNPAID" | "PAID" | "REFUNDED",
+): Promise<"UNPAID" | "PAID" | "REFUNDED"> {
+  if (current !== "PAID") return current;
+  const real = await db.payment.count({ where: { bookingId, provider: "VNPAY", status: "SUCCESS" } });
+  return real > 0 ? "PAID" : "REFUNDED";
+}
+
 export const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   PENDING: { text: "Chờ thanh toán", cls: "bg-amber-100 text-amber-800" },
   CONFIRMED: { text: "Đã xác nhận", cls: "bg-emerald-100 text-emerald-800" },

@@ -120,6 +120,7 @@ model Review {
   user      User     @relation(fields: [userId], references: [id])
   rating    Int
   comment   String
+  isHidden  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@unique([hotelId, userId])
@@ -149,6 +150,8 @@ model Payment {
   note          String?
   createdAt     DateTime         @default(now())
   paidAt        DateTime?
+  refundedAt    DateTime?
+  refundNote    String?
 
   @@index([bookingId])
 }

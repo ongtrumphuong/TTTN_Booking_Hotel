@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createRoomAction, updateRoomAction, type AdminState } from "@/app/actions/admin";
+import { ImageUploader } from "./image-uploader";
 
 type Room = {
   id: string;
@@ -65,8 +66,8 @@ export function RoomForm({ hotelId, room }: { hotelId: string; room?: Room }) {
         <textarea name="description" rows={2} required defaultValue={room?.description} className={input} />
       </div>
       <div className="sm:col-span-2">
-        <label className={label}>Ảnh (mỗi dòng một URL https)</label>
-        <textarea name="images" rows={3} required defaultValue={room?.images.join("\n")} className={`${input} font-mono text-xs`} />
+        <span className={label}>Ảnh phòng</span>
+        <ImageUploader initial={room?.images ?? []} />
       </div>
       <div className="sm:col-span-2">
         <button type="submit" disabled={pending} className="rounded-xl bg-brand px-5 py-2 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-60">

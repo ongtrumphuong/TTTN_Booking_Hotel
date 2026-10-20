@@ -44,11 +44,16 @@ async function ReviewBox({ hotelId, hotelSlug }: { hotelId: string; hotelSlug: s
 
   const mine = await prisma.review.findUnique({
     where: { hotelId_userId: { hotelId, userId: user.id } },
-    select: { rating: true, comment: true },
+    select: { rating: true, comment: true, isHidden: true },
   });
   return (
-    <div className="mb-5">
-      <ReviewForm hotelId={hotelId} initial={mine ?? undefined} />
+    <div className="mb-5 space-y-3">
+      {mine?.isHidden && (
+        <p className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
+          Đánh giá của bạn đang được ẩn khỏi trang công khai do quản trị viên kiểm duyệt.
+        </p>
+      )}
+      <ReviewForm hotelId={hotelId} initial={mine ? { rating: mine.rating, comment: mine.comment } : undefined} />
     </div>
   );
 }

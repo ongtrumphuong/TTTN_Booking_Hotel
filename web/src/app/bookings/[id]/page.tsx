@@ -4,14 +4,12 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CheckCircle2 } from "lucide-react";
 import { CancelButton } from "@/components/cancel-button";
-import { STATUS_LABEL, todayUTC } from "@/lib/booking";
+import { STATUS_LABEL, needsRefund, paymentLabel, todayUTC } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Chi tiết đặt phòng" };
-
-const PAYMENT: Record<string, string> = { UNPAID: "Chưa thanh toán", PAID: "Đã thanh toán", REFUNDED: "Đã hoàn tiền" };
 
 async function Detail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ paid?: string; payment?: string }> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
@@ -39,6 +37,12 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           </div>
         </div>
       )}
+      {needsRefund(b.status, b.paymentStatus) && (
+        <div role="status" className="mb-6 rounded-2xl bg-amber-50 p-5 text-sm text-amber-900">
+          <p className="font-bold">Đơn đã hủy, đang chờ hoàn tiền.</p>
+          <p>Bộ phận hỗ trợ sẽ hoàn lại {formatVND(b.totalPrice)} về phương thức bạn đã dùng và cập nhật trạng thái tại đây.</p>
+        </div>
+      )}
       <div className="rounded-2xl border border-border bg-white p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -55,7 +59,7 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           <div><p className="text-muted">Số khách</p><p className="font-semibold">{b.guests}</p></div>
           <div><p className="text-muted">Nhận phòng</p><p className="font-semibold">{formatDate(b.checkIn)}</p></div>
           <div><p className="text-muted">Trả phòng</p><p className="font-semibold">{formatDate(b.checkOut)}</p></div>
-          <div><p className="text-muted">Thanh toán</p><p className="font-semibold">{PAYMENT[b.paymentStatus]}</p></div>
+          <div><p className="text-muted">Thanh toán</p><p className="font-semibold">{paymentLabel(b.status, b.paymentStatus)}</p></div>
           <div><p className="text-muted">Tổng tiền</p><p className="text-lg font-extrabold text-brand">{formatVND(b.totalPrice)}</p></div>
           {b.note && <div className="sm:col-span-2"><p className="text-muted">Yêu cầu</p><p className="font-semibold">{b.note}</p></div>}
         </div>
