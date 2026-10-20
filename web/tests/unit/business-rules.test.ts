@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { maxBlockedRooms, needsRefund, paymentLabel } from "@/lib/booking";
 import { cancelQuote, policyText } from "@/lib/cancellation";
 import { buildNoticeEmail } from "@/lib/email";
+import { settlementGross, splitGross } from "@/lib/settlement";
 import { computeDiscount, normalizeCode } from "@/lib/voucher";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
@@ -91,5 +92,26 @@ describe("buildNoticeEmail", () => {
     expect(m.html).toContain("Hoàn tiền");
     expect(m.text).toContain("Hoàn tiền: 1.000 ₫");
     expect(m.text).toContain("Chi tiết: http://x/y?a=1&b=2");
+  });
+});
+
+describe("đối soát với đối tác", () => {
+  const base = { status: "COMPLETED", paymentStatus: "PAID", totalPrice: 1_000_000, refundAmount: null as number | null };
+  it("đơn hoàn tất tính toàn bộ số tiền khách trả", () => expect(settlementGross(base)).toBe(1_000_000));
+  it("đơn hủy muộn: chỉ tính phần phí khách sạn giữ lại", () => {
+    expect(settlementGross({ ...base, status: "CANCELLED", refundAmount: 400_000 })).toBe(600_000);
+    expect(settlementGross({ ...base, status: "CANCELLED", paymentStatus: "REFUNDED", refundAmount: 0 })).toBe(1_000_000);
+  });
+  it("hủy hoàn đủ, chưa trả tiền, chưa hoàn tất thì không có doanh thu", () => {
+    expect(settlementGross({ ...base, status: "CANCELLED", refundAmount: 1_000_000 })).toBe(0);
+    expect(settlementGross({ ...base, status: "CANCELLED", paymentStatus: "UNPAID", refundAmount: null })).toBe(0);
+    expect(settlementGross({ ...base, status: "CONFIRMED" })).toBe(0);
+    expect(settlementGross({ ...base, status: "PENDING", paymentStatus: "UNPAID" })).toBe(0);
+  });
+  it("splitGross: hoa hồng làm tròn, tổng luôn bằng số gốc, tỷ lệ bị kẹp 0..100", () => {
+    expect(splitGross(1_000_000, 10)).toEqual({ commission: 100_000, payout: 900_000 });
+    expect(splitGross(333_333, 10)).toEqual({ commission: 33_333, payout: 300_000 });
+    expect(splitGross(1_000, 150)).toEqual({ commission: 1_000, payout: 0 });
+    expect(splitGross(1_000, -5)).toEqual({ commission: 0, payout: 1_000 });
   });
 });

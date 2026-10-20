@@ -55,7 +55,7 @@ function Field({
   );
 }
 
-export function AuthForm({ mode, callbackUrl }: { mode: Mode; callbackUrl: string }) {
+export function AuthForm({ mode, callbackUrl, partner = false }: { mode: Mode; callbackUrl: string; partner?: boolean }) {
   const [state, action, pending] = useActionState<FormState, FormData>(
     mode === "login" ? loginAction : registerAction,
     {},
@@ -67,6 +67,7 @@ export function AuthForm({ mode, callbackUrl }: { mode: Mode; callbackUrl: strin
   return (
     <form action={action} onSubmit={() => resetFavorites()} className="space-y-4">
       <input type="hidden" name="callbackUrl" value={callbackUrl} />
+      {partner && <input type="hidden" name="partner" value="1" />}
 
       {state.error && (
         <div role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
@@ -106,7 +107,7 @@ export function AuthForm({ mode, callbackUrl }: { mode: Mode; callbackUrl: strin
         disabled={pending}
         className="w-full rounded-2xl bg-sun px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-sun/25 transition hover:brightness-110 disabled:opacity-60"
       >
-        {pending ? "Đang xử lý..." : isLogin ? "Đăng nhập" : "Tạo tài khoản"}
+        {pending ? "Đang xử lý..." : isLogin ? "Đăng nhập" : partner ? "Tạo tài khoản đối tác" : "Tạo tài khoản"}
       </button>
 
       <p className="text-center text-sm text-muted">

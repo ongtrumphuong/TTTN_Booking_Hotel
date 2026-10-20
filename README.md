@@ -36,13 +36,22 @@
 - Yêu thích khách sạn (nút tim trên thẻ và trang chi tiết, trang `/favorites`).
 - Viết hoặc sửa đánh giá sau khi đã hoàn tất kỳ lưu trú.
 
-**Quản trị viên** (`/admin`)
+**Đối tác khách sạn** (`/host`) – dự án là **sàn đặt phòng trung gian**: nhiều khách sạn của các đối tác cùng bán trên một nền tảng
+- Trang giới thiệu `/partner` và đăng ký đối tác `/partner/register` (tài khoản vai trò `HOST`).
+- Đối tác tự đăng khách sạn, loại phòng, ảnh, giá, chính sách hủy và lịch chặn phòng; **chỉ thấy và sửa khách sạn, đơn của mình**.
+- Khách sạn mới ở trạng thái **chờ duyệt** và ẩn cho đến khi quản trị viên sàn duyệt.
+- Xem đơn của khách sạn mình, ghi nhận **nhận phòng / trả phòng**, hủy đơn (luôn hoàn đủ tiền cho khách).
+- **Đối soát & chi trả**: sàn thu tiền của khách qua VNPay; đối tác xem doanh thu, **hoa hồng của sàn** và số tiền sẽ nhận, kèm lịch sử các đợt chi trả.
+
+**Quản trị viên** (`/admin`) – vai trò của sàn
 - Tổng quan: bộ chỉ số theo kỳ 7/30/90 ngày (doanh thu, đơn mới, giá trị trung bình, tỷ lệ hủy, đơn chờ hoàn tiền), **biểu đồ doanh thu theo ngày**, **biểu đồ tỷ lệ lấp đầy các ngày tới**, khách sạn doanh thu cao nhất, đơn gần đây.
 - Khách sạn: thêm, sửa, ẩn/hiện; loại phòng: thêm, sửa, ẩn/hiện; **tải ảnh lên** (JPEG/PNG/WebP), đặt ảnh bìa, xóa ảnh, hoặc thêm bằng URL.
 - Đơn đặt phòng: lọc theo trạng thái, đổi trạng thái theo quy tắc, bộ lọc **Cần hoàn tiền** và nút **Đã hoàn tiền** kèm ghi chú.
 - Đánh giá: **ẩn/hiện hoặc xóa** đánh giá không phù hợp; đánh giá bị ẩn không hiện công khai và không tính vào điểm trung bình.
 - Người dùng: xem danh sách, cấp/thu hồi quyền quản trị.
 - **Nhận phòng / trả phòng thực tế**: nút **Nhận phòng** (chỉ từ ngày nhận phòng, đơn đã xác nhận) ghi `checkedInAt`; **Hoàn tất** ghi `checkedOutAt`. Đơn đã nhận phòng thì không hủy được nữa.
+- **Đối tác**: duyệt hoặc từ chối khách sạn của đối tác (từ chối phải nêu lý do), đặt **hoa hồng (0–50%) cho từng khách sạn**, gán khách sạn cho đối tác.
+- **Đối soát**: mỗi đối tác có tổng thu, hoa hồng sàn và tiền chi trả chưa đối soát; nút **Tạo đợt chi trả** gộp các đơn lại, kèm lịch sử.
 - Mã giảm giá: tạo, bật/tắt, xem số lượt đã dùng. Lịch chặn phòng theo từng loại phòng. Chính sách hủy theo từng khách sạn.
 
 ## 3. Cài đặt và chạy
@@ -129,6 +138,7 @@ Dữ liệu mẫu dùng **ảnh thật từ Unsplash** (miễn phí theo giấy 
 |---|---|---|
 | Quản trị viên | `admin@khongiansos.vn` | `Admin@123456` |
 | Khách hàng | `khach@khongiansos.vn` | `Khach@123456` |
+| Đối tác khách sạn | `doitac@khongiansos.vn` | `Doitac@123456` |
 
 Các tài khoản này được khai báo ở `web/prisma/seed.ts`. **Phải đổi hoặc xóa trước khi triển khai thật.**
 
@@ -300,6 +310,14 @@ VNPay chỉ gọi IPN vào địa chỉ công khai HTTPS nên **IPN không vào 
 | Đã hủy, Hoàn tất | không chuyển tiếp |
 
 Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống kiểm tra lại còn phòng hay không.
+
+**Sàn trung gian, đối tác và đối soát**
+- Ba vai trò: `USER` (khách), `HOST` (đối tác), `ADMIN` (sàn). Đối tác chỉ thao tác trên khách sạn có `ownerId` là mình; mọi hành động quản trị kiểm tra quyền **theo từng khách sạn ở máy chủ** (`src/lib/access.ts`), không chỉ ẩn nút trên giao diện. Khách sạn không có chủ là khách sạn do sàn tự vận hành (không có hoa hồng).
+- Khách sạn của đối tác tạo ra với `approval = PENDING` và `isActive = false`; quản trị viên duyệt thì mới hiển thị. Bị từ chối kèm lý do; đối tác sửa lại và lưu là gửi duyệt lại.
+- **Hoa hồng** đặt theo từng khách sạn (mặc định 10%) và được **chốt vào đơn lúc khách đặt** (`Booking.commissionPercent`); đổi hoa hồng sau đó không ảnh hưởng đơn cũ.
+- **Doanh thu tính đối soát** của một đơn: đơn *Hoàn tất* tính đủ số tiền khách trả; đơn bị *hủy muộn* chỉ tính phần phí khách sạn giữ lại (tổng tiền trừ tiền hoàn); đơn chưa hoàn tất, hủy hoàn đủ hoặc chưa trả tiền thì không tính. Tiền chi cho đối tác = doanh thu trừ hoa hồng (làm tròn từng đơn).
+- **Đợt chi trả** gộp mọi đơn chưa đối soát của một đối tác trong một giao dịch Serializable và gắn đơn bằng điều kiện `payoutId = null`, nên hai lần bấm cùng lúc không chi trả trùng đơn.
+- Đối tác không xác nhận "đã nhận tiền" và không hoàn tiền cho khách (tiền do sàn thu và hoàn).
 
 **Đánh giá**: chỉ khách có đơn **Hoàn tất** tại khách sạn đó mới được viết; gửi lại sẽ cập nhật đánh giá cũ. Điểm trung bình tính từ các đánh giá **đang hiển thị** (đánh giá bị quản trị viên ẩn không được tính; tác giả vẫn thấy thông báo đánh giá của mình đang bị ẩn).
 

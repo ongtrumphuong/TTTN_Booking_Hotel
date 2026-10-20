@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarCheck, LayoutDashboard, MessageSquareText, TicketPercent, Users } from "lucide-react";
+import { BedDouble, CalendarCheck, Handshake, LayoutDashboard, MessageSquareText, TicketPercent, Users, Wallet } from "lucide-react";
+
+const HOST_ITEMS = [
+  { href: "/host", label: "Tổng quan", icon: LayoutDashboard, exact: true },
+  { href: "/host/hotels", label: "Khách sạn của tôi", icon: BedDouble },
+  { href: "/host/bookings", label: "Đơn đặt phòng", icon: CalendarCheck },
+  { href: "/host/payouts", label: "Đối soát & chi trả", icon: Wallet },
+];
 
 const ITEMS = [
   { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, exact: true },
@@ -10,14 +17,17 @@ const ITEMS = [
   { href: "/admin/bookings", label: "Đơn đặt phòng", icon: CalendarCheck },
   { href: "/admin/reviews", label: "Đánh giá", icon: MessageSquareText },
   { href: "/admin/vouchers", label: "Mã giảm giá", icon: TicketPercent },
+  { href: "/admin/partners", label: "Đối tác", icon: Handshake },
+  { href: "/admin/payouts", label: "Đối soát", icon: Wallet },
   { href: "/admin/users", label: "Người dùng", icon: Users },
 ];
 
-export function AdminNav() {
+export function AdminNav({ variant = "admin" }: { variant?: "admin" | "host" }) {
   const pathname = usePathname();
+  const items = variant === "host" ? HOST_ITEMS : ITEMS;
   return (
-    <nav aria-label="Quản trị" className="flex gap-1 overflow-x-auto rounded-3xl bg-ink p-2 md:flex-col md:p-3">
-      {ITEMS.map(({ href, label, icon: Icon, exact }) => {
+    <nav aria-label={variant === "host" ? "Khu vực đối tác" : "Quản trị"} className="flex gap-1 overflow-x-auto rounded-3xl bg-ink p-2 md:flex-col md:p-3">
+      {items.map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         return (
           <Link

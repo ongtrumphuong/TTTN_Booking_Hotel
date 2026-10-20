@@ -22,6 +22,9 @@ Next.js 16 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 - `components/admin/` – form và nút của trang quản trị; `/admin/*` gồm hotels, bookings, reviews, users, vouchers.
 - `tests/` – `unit/`, `integration/` (dùng DB `*_test` riêng, tự migrate; `resetDb` trong `tests/helpers/db.ts` phải liệt kê mọi bảng mới), `perf/` (chỉ chạy với `npm run test:perf`).
 
+## Định hướng sản phẩm (đã chốt với chủ dự án, 2026-10-20)
+**Sàn đặt phòng trung gian (OTA nhỏ)**, không phải một khách sạn riêng. Ba bên: khách (`USER`), đối tác khách sạn (`HOST`), sàn (`ADMIN`). Khu vực đối tác ở `/host/*`, đăng ký ở `/partner/register`, giới thiệu ở `/partner`. Chi tiết ở README mục 7 ("Sàn trung gian, đối tác và đối soát"). Quyền theo khách sạn: luôn dùng `canManageHotel/Room/Booking` (`src/lib/access.ts`) và `requireStaff/requireHost/requireAdmin` (`src/lib/session.ts`) trong server action; **không chỉ ẩn nút**. Phần trang dùng chung giữa admin và đối tác: `components/admin/{hotel-editor,hotels-view,bookings-view}.tsx`. Đối soát: `lib/settlement.ts` + `actions/partner.ts`. Tài khoản mẫu đối tác: `doitac@khongiansos.vn` / `Doitac@123456` (`prisma/seed-partner.ts` cho DB có sẵn).
+
 ## Quy tắc nghiệp vụ cần nhớ (chi tiết ở README mục 7)
 - Giá luôn tính ở server. `Booking.totalPrice` = số tiền khách phải trả **sau giảm giá**; `discount` + `voucherCode` lưu phần giảm.
 - Đơn mới `PENDING`, giữ phòng 30 phút (`PENDING_HOLD_MINUTES`); quá hạn thì nhả phòng ngay (qua `holdingWhere`) và được chuyển `CANCELLED` bởi `expireStaleBookings`.
@@ -30,6 +33,8 @@ Next.js 16 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 - Lượt dùng voucher **không có bộ đếm**: đếm các đơn có `voucherCode` đang giữ chỗ hoặc `COMPLETED`.
 - Phòng bị chặn (`RoomBlock`) tính theo từng đêm (`maxBlockedRooms`), ngày kết thúc lưu dạng nửa mở (+1 ngày).
 - Đánh giá chỉ cho khách có đơn `COMPLETED` tại khách sạn đó.
+- Khách sạn đối tác: `ownerId` + `approval` (PENDING/APPROVED/REJECTED) + `commissionPercent`; chưa duyệt thì `isActive = false` (nên các truy vấn công khai không cần biết đến `approval`). `Booking.commissionPercent` được chốt lúc đặt (0 nếu khách sạn của sàn). Doanh thu đối soát = `settlementGross` (đơn hoàn tất: đủ tiền; hủy muộn: phần phí giữ lại). `Payout` gom đơn, đơn gắn bằng `payoutId = null`.
+- Đối tác không được: xác nhận đã nhận tiền (CONFIRMED), hoàn tiền, đặt hoa hồng, duyệt khách sạn.
 
 ## Trạng thái (cập nhật: 2026-10-20)
 Đã xong và đã push (commit `37d9f76`): tìm kiếm/lọc, đặt phòng, VNPay sandbox, email xác nhận, yêu thích, đánh giá + kiểm duyệt, admin có biểu đồ, tải ảnh, hoàn tiền, test tự động, throttle đăng nhập, SEO, Docker; và đợt nghiệp vụ mới: hết hạn đơn, chính sách hủy/hoàn tiền, quên mật khẩu, voucher, chặn phòng.
@@ -56,7 +61,7 @@ Chưa làm/chưa kiểm:
 - Trong công cụ trình duyệt, nút submit đôi khi cần bấm bằng `ref` thay vì tọa độ; ô nhập React nên gõ bằng thao tác `type` để state cập nhật.
 
 ## Việc tiếp theo (backlog theo thứ tự đề xuất)
-Đã có `docs/KICH_BAN_DEMO.md` (kịch bản demo, điểm nhấn kỹ thuật, Q&A hội đồng). Khi tính năng đổi, cập nhật file này cho khớp (nhất là số lượng test và các bước demo).
-1. **Ảnh chụp màn hình** các màn hình chính cho báo cáo. Sơ đồ đã có ở `docs/SO_DO_BAO_CAO.md` (Mermaid, đã kiểm cú pháp bằng `mermaid.parse`); khi đổi schema/luồng thì cập nhật ER, sơ đồ trạng thái và tuần tự cho khớp.
-2. Chạy thử trọn kịch bản demo một lần trên bản `npm run build && npm run start` và sửa chỗ vấp nếu có.
-3. Tùy chọn, chỉ khi chủ dự án muốn: giá động (cuối tuần, mùa cao điểm), email nhắc nhận phòng, thông tin người ở/hóa đơn, IPN VNPay qua tunnel.
+1. **Ảnh chụp màn hình** các màn hình chính (khách, đối tác, admin) cho báo cáo. Tài liệu `docs/` đã cập nhật theo mô hình sàn trung gian (có sơ đồ đối tác/đối soát đã kiểm cú pháp Mermaid).
+2. Chạy thử trọn kịch bản demo (`docs/KICH_BAN_DEMO.md`, bước 7b mới) trên bản `npm run build && npm run start`.
+3. Tùy chọn: email cho đối tác khi có đơn mới / khi được chi trả; đối tác tự gửi yêu cầu chi trả; hoa hồng mặc định cấu hình ở một chỗ; thống kê doanh thu theo kỳ cho đối tác.
+4. Tùy chọn, chỉ khi chủ dự án muốn: giá động, IPN VNPay qua tunnel, email nhắc nhận phòng.

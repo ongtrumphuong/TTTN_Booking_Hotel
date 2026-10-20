@@ -44,7 +44,10 @@ export async function createBookingAction(_: BookingState, formData: FormData): 
     // Serializable để hai người đặt cùng lúc không vượt quá số phòng còn lại.
     bookingId = await prisma.$transaction(
       async (tx) => {
-        const room = await tx.room.findFirst({ where: { id: roomId, isActive: true, hotel: { isActive: true } } });
+        const room = await tx.room.findFirst({
+          where: { id: roomId, isActive: true, hotel: { isActive: true } },
+          include: { hotel: { select: { ownerId: true, commissionPercent: true } } },
+        });
         if (!room) throw new Error("ROOM_NOT_FOUND");
         if (guests > room.capacity * rooms) throw new Error("TOO_MANY_GUESTS");
 
@@ -73,6 +76,8 @@ export async function createBookingAction(_: BookingState, formData: FormData): 
             totalPrice: subtotal - discount,
             discount,
             voucherCode,
+            // Chốt tỷ lệ hoa hồng tại thời điểm đặt; khách sạn do sàn tự vận hành không có hoa hồng.
+            commissionPercent: room.hotel.ownerId ? room.hotel.commissionPercent : 0,
             note: note || null,
           },
         });

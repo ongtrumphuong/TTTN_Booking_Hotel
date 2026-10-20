@@ -11,7 +11,7 @@ export function safeRedirect(path: string | null | undefined, fallback = "/") {
 
 const SESSION_COOKIES = ["__Secure-authjs.session-token", "authjs.session-token"];
 
-export type SessionUser = { id: string; role: "USER" | "ADMIN"; name: string; email: string };
+export type SessionUser = { id: string; role: "USER" | "ADMIN" | "HOST"; name: string; email: string };
 
 /**
  * Đọc người dùng từ cookie phiên bằng cách chỉ giải mã JWT (có kiểm tra chữ ký và hạn).
@@ -25,7 +25,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     if (!token) continue;
     try {
       const jwt = await decode({ token, secret: process.env.AUTH_SECRET!, salt: name });
-      if (jwt?.id && (jwt.role === "USER" || jwt.role === "ADMIN")) {
+      if (jwt?.id && (jwt.role === "USER" || jwt.role === "ADMIN" || jwt.role === "HOST")) {
         return { id: jwt.id, role: jwt.role, name: String(jwt.name ?? ""), email: String(jwt.email ?? "") };
       }
     } catch {
@@ -45,4 +45,19 @@ export async function requireAdmin(returnTo = "/admin") {
   const user = await requireUser(returnTo);
   if (user.role !== "ADMIN") redirect("/");
   return user;
+}
+
+/** Khu vực đối tác: chỉ vai trò HOST (quản trị viên có khu vực riêng ở /admin). */
+export async function requireHost(returnTo = "/host") {
+  const user = await requireUser(returnTo);
+  if (user.role === "ADMIN") redirect("/admin");
+  if (user.role !== "HOST") redirect("/partner");
+  return user;
+}
+
+/** Người được phép quản lý khách sạn/đơn: quản trị viên hoặc đối tác. Quyền theo từng khách sạn kiểm tra thêm bằng `canManageHotel`. */
+export async function requireStaff(returnTo = "/admin") {
+  const user = await requireUser(returnTo);
+  if (user.role !== "ADMIN" && user.role !== "HOST") redirect("/");
+  return user as SessionUser & { role: "ADMIN" | "HOST" };
 }

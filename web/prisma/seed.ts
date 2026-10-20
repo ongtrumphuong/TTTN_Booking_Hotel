@@ -9,6 +9,9 @@ const prisma = new PrismaClient();
 // Tài khoản mẫu cho môi trường phát triển (đổi trước khi triển khai thật).
 const ADMIN = { email: "admin@khongiansos.vn", name: "Quản trị viên", password: "Admin@123456" };
 const USER = { email: "khach@khongiansos.vn", name: "Nguyễn Văn Khách", password: "Khach@123456" };
+const HOST = { email: "doitac@khongiansos.vn", name: "Công ty Khách sạn Sông Hàn", password: "Doitac@123456" };
+// Các khách sạn mẫu thuộc về đối tác (còn lại do sàn tự vận hành).
+const PARTNER_HOTELS = new Set(["han-river-central", "dalat-pine-hill", "nha-trang-ocean-pearl"]);
 
 const HOTEL_AMENITIES = ["Wi-Fi miễn phí", "Hồ bơi", "Bữa sáng", "Đưa đón sân bay", "Spa", "Phòng gym", "Nhà hàng", "Bãi đỗ xe"];
 const ROOM_AMENITIES = ["Điều hòa", "TV màn hình phẳng", "Minibar", "Máy sấy tóc", "Két an toàn", "Ban công"];
@@ -40,6 +43,7 @@ const hotels: Seed[] = [
 async function main() {
   await prisma.favorite.deleteMany();
   await prisma.review.deleteMany();
+  await prisma.payout.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.room.deleteMany();
   await prisma.hotel.deleteMany();
@@ -50,6 +54,10 @@ async function main() {
   });
   const user = await prisma.user.create({
     data: { email: USER.email, name: USER.name, phone: "0900000000", passwordHash: await bcrypt.hash(USER.password, 10) },
+  });
+
+  const host = await prisma.user.create({
+    data: { email: HOST.email, name: HOST.name, role: "HOST", phone: "0911111111", passwordHash: await bcrypt.hash(HOST.password, 10) },
   });
 
   // Người đánh giá mẫu: mật khẩu ngẫu nhiên nên không đăng nhập được, chỉ để đánh giá hiển thị đa dạng.
@@ -69,6 +77,7 @@ async function main() {
         latitude: h.lat,
         longitude: h.lng,
         images: hotelImages(h.slug),
+        ownerId: PARTNER_HOTELS.has(h.slug) ? host.id : null,
         amenities: HOTEL_AMENITIES.slice(0, 4 + (h.star % 5)),
       },
     });

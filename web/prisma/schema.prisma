@@ -10,6 +10,14 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  // Đối tác: chủ khách sạn trên sàn, chỉ quản lý khách sạn và đơn của mình.
+  HOST
+}
+
+enum HotelApproval {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum BookingStatus {
@@ -48,26 +56,34 @@ model User {
   reviews      Review[]
   favorites    Favorite[]
   resetTokens  PasswordResetToken[]
+  hotels       Hotel[]              @relation("HotelOwner")
+  payouts      Payout[]             @relation("PayoutOwner")
 }
 
 model Hotel {
-  id                   String     @id @default(cuid())
-  slug                 String     @unique
+  id                   String        @id @default(cuid())
+  slug                 String        @unique
   name                 String
   description          String
   address              String
   city                 String
-  country              String     @default("Việt Nam")
+  country              String        @default("Việt Nam")
   latitude             Float?
   longitude            Float?
-  starRating           Int        @default(3)
+  starRating           Int           @default(3)
   images               String[]
   amenities            String[]
-  isActive             Boolean    @default(true)
+  isActive             Boolean       @default(true)
+  // Sàn trung gian: khách sạn của đối tác có chủ (ownerId) và được quản trị viên duyệt trước khi hiển thị; ownerId rỗng là khách sạn do sàn tự vận hành.
+  ownerId              String?
+  owner                User?         @relation("HotelOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  approval             HotelApproval @default(APPROVED)
+  approvalNote         String?
+  commissionPercent    Int           @default(10)
   // Chính sách hủy: hủy trước ngày nhận phòng ít nhất freeCancelDays ngày thì hoàn đủ, muộn hơn bị trừ lateCancelFeePercent% tiền đã trả.
-  freeCancelDays       Int        @default(1)
-  lateCancelFeePercent Int        @default(50)
-  createdAt            DateTime   @default(now())
+  freeCancelDays       Int           @default(1)
+  lateCancelFeePercent Int           @default(50)
+  createdAt            DateTime      @default(now())
   rooms                Room[]
   reviews              Review[]
   favorites            Favorite[]
@@ -96,28 +112,31 @@ model Room {
 }
 
 model Booking {
-  id            String        @id @default(cuid())
-  code          String        @unique
-  userId        String
-  user          User          @relation(fields: [userId], references: [id])
-  roomId        String
-  room          Room          @relation(fields: [roomId], references: [id])
-  checkIn       DateTime
-  checkOut      DateTime
-  guests        Int
-  rooms         Int           @default(1)
-  totalPrice    Int
-  status        BookingStatus @default(PENDING)
-  paymentStatus PaymentStatus @default(UNPAID)
-  note          String?
-  voucherCode   String?
-  discount      Int           @default(0)
-  refundAmount  Int?
-  cancelledAt   DateTime?
-  checkedInAt   DateTime?
-  checkedOutAt  DateTime?
-  createdAt     DateTime      @default(now())
-  payments      Payment[]
+  id                String        @id @default(cuid())
+  code              String        @unique
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  roomId            String
+  room              Room          @relation(fields: [roomId], references: [id])
+  checkIn           DateTime
+  checkOut          DateTime
+  guests            Int
+  rooms             Int           @default(1)
+  totalPrice        Int
+  status            BookingStatus @default(PENDING)
+  paymentStatus     PaymentStatus @default(UNPAID)
+  note              String?
+  voucherCode       String?
+  discount          Int           @default(0)
+  refundAmount      Int?
+  cancelledAt       DateTime?
+  commissionPercent Int           @default(0)
+  payoutId          String?
+  payout            Payout?       @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  checkedInAt       DateTime?
+  checkedOutAt      DateTime?
+  createdAt         DateTime      @default(now())
+  payments          Payment[]
 
   @@index([userId])
   @@index([roomId, checkIn, checkOut])
@@ -219,4 +238,21 @@ model RoomBlock {
   createdAt DateTime @default(now())
 
   @@index([roomId, startDate, endDate])
+}
+
+/// Đợt chi trả cho đối tác: gộp các đơn đã đối soát; tiền chi = tổng thu - hoa hồng của sàn.
+model Payout {
+  id           String    @id @default(cuid())
+  ownerId      String
+  owner        User      @relation("PayoutOwner", fields: [ownerId], references: [id])
+  gross        Int
+  commission   Int
+  amount       Int
+  bookingCount Int
+  note         String?
+  createdById  String
+  createdAt    DateTime  @default(now())
+  bookings     Booking[]
+
+  @@index([ownerId, createdAt])
 }

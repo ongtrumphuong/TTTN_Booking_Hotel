@@ -91,8 +91,10 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
   const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (exists) return { fieldErrors: { email: "Email này đã được đăng ký" }, email };
 
+  // Đăng ký ở trang đối tác tạo tài khoản HOST (chỉ quản lý khách sạn của mình, khách sạn phải được sàn duyệt mới hiển thị).
+  const role = formData.get("partner") === "1" ? "HOST" : "USER";
   await prisma.user.create({
-    data: { name, email, phone: phone || null, passwordHash: await bcrypt.hash(password, 10) },
+    data: { name, email, phone: phone || null, passwordHash: await bcrypt.hash(password, 10), role },
   });
 
   try {

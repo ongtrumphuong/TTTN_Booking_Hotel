@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/#diem-den", label: "Điểm đến phổ biến" },
   { href: "/favorites", label: "Khách sạn yêu thích" },
   { href: "/bookings", label: "Đặt phòng của tôi" },
+  { href: "/partner", label: "Dành cho đối tác" },
 ];
 
 /** Menu điều hướng cho màn hình nhỏ; tự đóng khi chuyển trang hoặc nhấn Esc. */

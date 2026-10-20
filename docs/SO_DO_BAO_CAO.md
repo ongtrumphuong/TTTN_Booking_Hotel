@@ -3,13 +3,30 @@
 Các sơ đồ dưới đây viết bằng **Mermaid**. GitHub và VS Code (có tiện ích xem Markdown Mermaid) hiển thị trực tiếp. Muốn chèn vào Word hoặc slide, dán mã vào https://mermaid.live rồi xuất ảnh PNG/SVG.
 
 Danh sách:
+0. Mô hình hoạt động: sàn trung gian
 1. Tác nhân và use case
 2. Đặc tả use case chính (đặt phòng, thanh toán)
 3. Sơ đồ tuần tự: đặt phòng và thanh toán VNPay
 4. Sơ đồ tuần tự: hủy đơn và hoàn tiền
 5. Sơ đồ trạng thái của đơn đặt phòng
 6. Sơ đồ thực thể quan hệ (ER)
+6b. Đối tác, duyệt khách sạn và chi trả
 7. Kiến trúc tổng quan
+
+---
+
+## 0. Mô hình hoạt động: sàn trung gian
+
+Không Gian Số Stay là **sàn đặt phòng trung gian** (giống Booking, Traveloka ở quy mô nhỏ): nhiều khách sạn của các đối tác cùng bán phòng trên một nền tảng.
+Có ba bên: **khách** tìm và đặt phòng; **đối tác** (chủ khách sạn) đăng khách sạn và vận hành; **sàn** (quản trị viên) duyệt đối tác, thu tiền của khách, thu hoa hồng và chi trả cho đối tác.
+
+```mermaid
+flowchart LR
+  K["Khách"] -- "1. đặt phòng, trả tiền" --> S["Sàn (quản trị viên)"]
+  S -- "2. chuyển đơn" --> D["Đối tác khách sạn"]
+  D -- "3. đón khách, nhận/trả phòng" --> K
+  S -- "4. chi trả = doanh thu - hoa hồng" --> D
+```
 
 ---
 
@@ -68,14 +85,37 @@ flowchart LR
     UC21(["Quản lý mã giảm giá"])
     UC22(["Kiểm duyệt đánh giá"])
     UC23(["Quản lý người dùng, phân quyền"])
+    UC24(["Duyệt khách sạn của đối tác"])
+    UC25(["Đặt hoa hồng cho từng khách sạn"])
+    UC26(["Đối soát và tạo đợt chi trả"])
   end
 
-  QT --- UC14 & UC15 & UC16 & UC17 & UC18 & UC21 & UC22 & UC23
+  QT --- UC14 & UC15 & UC16 & UC17 & UC18 & UC21 & UC22 & UC23 & UC24 & UC25 & UC26
   UC18 -. "include" .-> UC19
   UC18 -. "extend" .-> UC20
 ```
 
-Ghi chú: Quản trị viên kế thừa mọi quyền của Khách hàng (có thể tự đặt phòng); sơ đồ không vẽ để tránh rối. Use case "Hủy đặt phòng" của quản trị viên nằm trong "Quản lý đơn đặt phòng" (luôn hoàn đủ tiền).
+### 1.3. Đối tác khách sạn
+
+```mermaid
+flowchart LR
+  DT["Đối tác khách sạn"]
+
+  subgraph HT ["Khu vực đối tác"]
+    direction TB
+    UC30(["Đăng ký làm đối tác"])
+    UC31(["Đăng khách sạn, loại phòng, ảnh, giá"])
+    UC32(["Đặt chính sách hủy, chặn phòng"])
+    UC33(["Xem đơn của khách sạn mình"])
+    UC34(["Nhận phòng, trả phòng"])
+    UC35(["Xem đối soát và lịch sử chi trả"])
+  end
+
+  DT --- UC30 & UC31 & UC32 & UC33 & UC35
+  UC33 -. "include" .-> UC34
+```
+
+Ghi chú: Quản trị viên và Đối tác kế thừa quyền của Khách hàng (có thể tự đặt phòng); sơ đồ không vẽ để tránh rối. Đối tác chỉ thao tác trên khách sạn của mình; quản trị viên thao tác trên mọi khách sạn. Use case "Hủy đặt phòng" của quản trị viên nằm trong "Quản lý đơn đặt phòng" (luôn hoàn đủ tiền).
 
 ---
 
@@ -111,6 +151,28 @@ Ghi chú: Quản trị viên kế thừa mọi quyền của Khách hàng (có t
 | Hậu điều kiện | Đơn *Đã hủy*; nếu đã thanh toán, số tiền hoàn được tính và lưu vào đơn |
 | Luồng chính | 1. Khách mở chi tiết đơn, bấm *Hủy*.<br/>2. Hệ thống hiện số tiền hoàn hoặc phí giữ lại theo chính sách của khách sạn.<br/>3. Khách xác nhận.<br/>4. Hệ thống hủy đơn, ghi `refundAmount`, gửi email thông báo. |
 | Quy tắc | Hủy trước ngày nhận phòng ít nhất N ngày: hoàn đủ; muộn hơn: giữ X% số tiền đã trả; đơn chưa thanh toán hủy không mất phí; quản trị viên hủy thì luôn hoàn đủ |
+
+### UC-24 Đối tác đăng khách sạn và được duyệt
+
+| Mục | Nội dung |
+|---|---|
+| Tác nhân | Đối tác; quản trị viên |
+| Tiền điều kiện | Đối tác đã đăng ký tài khoản (vai trò HOST) và đăng nhập |
+| Hậu điều kiện | Khách sạn được duyệt thì hiển thị công khai; bị từ chối thì ẩn và có lý do |
+| Luồng chính | 1. Đối tác nhập thông tin khách sạn, thêm loại phòng, ảnh, giá, chính sách hủy.<br/>2. Hệ thống lưu khách sạn ở trạng thái *Chờ duyệt* và ẩn với khách.<br/>3. Quản trị viên xem danh sách chờ duyệt, bấm *Duyệt*.<br/>4. Khách sạn hiển thị; từ đây đối tác tự bật/tắt hiển thị. |
+| Luồng thay thế | 3a. Quản trị viên *Từ chối* kèm lý do; đối tác sửa lại và lưu thì khách sạn quay về *Chờ duyệt*. |
+| Quy tắc | Đối tác chỉ sửa được khách sạn của mình; hoa hồng do quản trị viên đặt, đối tác không sửa được |
+
+### UC-26 Đối soát và chi trả cho đối tác
+
+| Mục | Nội dung |
+|---|---|
+| Tác nhân | Quản trị viên; đối tác (xem) |
+| Tiền điều kiện | Có đơn của khách sạn đối tác đã hoàn tất, hoặc bị hủy muộn và khách sạn giữ lại phí |
+| Hậu điều kiện | Các đơn được gắn vào một đợt chi trả; đối tác thấy khoản đã nhận |
+| Luồng chính | 1. Hệ thống tính cho mỗi đơn: doanh thu, hoa hồng theo tỷ lệ đã chốt lúc đặt, tiền chi cho đối tác.<br/>2. Quản trị viên mở *Đối soát*, xem số tiền chưa chi trả của từng đối tác.<br/>3. Quản trị viên bấm *Tạo đợt chi trả* (ghi chú mã chuyển khoản).<br/>4. Hệ thống gộp các đơn thành một đợt và đánh dấu đã đối soát. |
+| Luồng thay thế | 3a. Không còn đơn nào cần đối soát: báo lỗi, không tạo đợt rỗng. |
+| Quy tắc | Mỗi đơn chỉ thuộc một đợt chi trả; hai lần bấm cùng lúc không chi trả trùng |
 
 ---
 
@@ -233,6 +295,9 @@ erDiagram
   USER ||--o{ REVIEW : "viết"
   USER ||--o{ FAVORITE : "thích"
   USER ||--o{ PASSWORD_RESET_TOKEN : "yêu cầu"
+  USER ||--o{ HOTEL : "sở hữu (đối tác)"
+  USER ||--o{ PAYOUT : "nhận chi trả"
+  PAYOUT ||--o{ BOOKING : "gộp đơn"
   HOTEL ||--o{ ROOM : "có"
   HOTEL ||--o{ REVIEW : "nhận"
   HOTEL ||--o{ FAVORITE : "được thích"
@@ -247,7 +312,7 @@ erDiagram
     string name
     string phone
     string passwordHash
-    enum role "USER, ADMIN"
+    enum role "USER, ADMIN, HOST"
   }
   HOTEL {
     string id PK
@@ -257,6 +322,9 @@ erDiagram
     int starRating
     string_array images
     string_array amenities
+    string ownerId FK "đối tác, rỗng = sàn tự vận hành"
+    enum approval "PENDING, APPROVED, REJECTED"
+    int commissionPercent
     int freeCancelDays
     int lateCancelFeePercent
     bool isActive
@@ -283,6 +351,8 @@ erDiagram
     int discount
     string voucherCode
     int refundAmount
+    int commissionPercent "chốt lúc đặt"
+    string payoutId FK
     enum status "PENDING, CONFIRMED, CANCELLED, COMPLETED"
     enum paymentStatus "UNPAID, PAID, REFUNDED"
     datetime checkedInAt
@@ -332,6 +402,16 @@ erDiagram
     string userId PK
     string hotelId PK
   }
+  PAYOUT {
+    string id PK
+    string ownerId FK
+    int gross
+    int commission
+    int amount
+    int bookingCount
+    string note
+    datetime createdAt
+  }
   PASSWORD_RESET_TOKEN {
     string id PK
     string userId FK
@@ -342,6 +422,45 @@ erDiagram
 ```
 
 Ghi chú: `Booking.voucherCode` lưu mã dạng chuỗi (không khóa ngoại) để đổi hoặc xóa voucher không làm hỏng đơn cũ; vì vậy quan hệ với `VOUCHER` vẽ nét đứt. Bảng `RateLimit` (bộ đếm giới hạn đăng nhập/đăng ký/đổi mật khẩu) là bảng kỹ thuật, không có quan hệ nên không vẽ.
+
+---
+
+## 6b. Sơ đồ tuần tự: đối tác, duyệt khách sạn và chi trả
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor D as Đối tác
+  actor A as Quản trị viên (sàn)
+  participant W as Website (Next.js)
+  participant DB as PostgreSQL
+
+  D->>W: Đăng ký đối tác (vai trò HOST)
+  D->>W: Tạo khách sạn, phòng, giá
+  W->>DB: Lưu khách sạn (ownerId = đối tác, PENDING, ẩn)
+  A->>W: Mở danh sách chờ duyệt
+  alt Duyệt
+    A->>W: Bấm "Duyệt"
+    W->>DB: approval = APPROVED, isActive = true
+    W-->>D: Khách sạn hiển thị cho khách
+  else Từ chối
+    A->>W: "Từ chối" kèm lý do
+    W->>DB: approval = REJECTED, ghi lý do
+    W-->>D: Thấy lý do, sửa lại để gửi duyệt lại
+  end
+
+  Note over W,DB: Khi khách đặt phòng: chốt hoa hồng của khách sạn vào đơn
+  D->>W: Khách trả phòng, đối tác bấm "Hoàn tất"
+  W->>DB: Đơn -> Hoàn tất, ghi giờ trả phòng
+
+  A->>W: Mở "Đối soát", bấm "Tạo đợt chi trả"
+  W->>DB: BEGIN (Serializable)
+  W->>DB: Lấy các đơn chưa đối soát có doanh thu
+  W->>DB: Tính tổng thu, hoa hồng, tiền chi và tạo Payout
+  W->>DB: Gắn đơn vào Payout (điều kiện payoutId rỗng)
+  W->>DB: COMMIT
+  W-->>D: Hiển thị đợt chi trả trong lịch sử
+```
 
 ---
 
@@ -358,7 +477,7 @@ flowchart TB
     SA["Server Actions<br/>đặt phòng, hủy, quản trị, tài khoản"]
     API["Route Handlers<br/>VNPay return, IPN, tải ảnh, cron, health"]
     L["Lõi nghiệp vụ (src/lib)<br/>booking, cancellation, voucher,<br/>payments, rate-limit, email"]
-    AU["Auth.js (JWT)<br/>phân quyền USER / ADMIN"]
+    AU["Auth.js (JWT)<br/>phân quyền USER / HOST / ADMIN<br/>quyền theo từng khách sạn"]
   end
 
   DB[("PostgreSQL<br/>Prisma ORM")]

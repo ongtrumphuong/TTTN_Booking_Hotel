@@ -6,7 +6,8 @@ import { z } from "zod";
 import { Prisma, type BookingStatus, type Role } from "@prisma/client";import { prisma } from "@/lib/prisma";
 import { after } from "next/server";
 import { sendBookingCancelled, sendRefundCompleted } from "@/lib/email";
-import { requireAdmin } from "@/lib/session";
+import { NO_ACCESS, baseFor, canManageBooking, canManageHotel, canManageRoom } from "@/lib/access";
+import { requireAdmin, requireStaff } from "@/lib/session";
 import { NEXT_STATUS, unavailableQuantity, needsRefund, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
 import { ALLOWED_IMAGE_HOSTS } from "@/lib/image-hosts";
 import { normalizeCode } from "@/lib/voucher";
@@ -103,12 +104,19 @@ function roomInput(fd: FormData) {
 function refreshCatalog() {
   updateTag("hotels");
   revalidatePath("/admin/hotels");
+  revalidatePath("/host/hotels");
+}
+
+/** Làm mới trang sửa khách sạn ở cả hai khu vực (quản trị và đối tác). */
+function refreshHotelPage(hotelId: string) {
+  revalidatePath(`/admin/hotels/${hotelId}`);
+  revalidatePath(`/host/hotels/${hotelId}`);
 }
 
 /* ---------- Khách sạn ---------- */
 
 export async function createHotelAction(_: AdminState, fd: FormData): Promise<AdminState> {
-  await requireAdmin("/admin/hotels");
+  const user = await requireStaff("/admin/hotels");
   const parsed = hotelInput(fd);
   if (!parsed.success) return { error: firstError(parsed.error) };
 
@@ -116,56 +124,66 @@ export async function createHotelAction(_: AdminState, fd: FormData): Promise<Ad
   let slug = base;
   for (let i = 2; await prisma.hotel.findUnique({ where: { slug }, select: { id: true } }); i++) slug = `${base}-${i}`;
 
-  const hotel = await prisma.hotel.create({ data: { ...parsed.data, slug } });
+  // Khách sạn của đối tác bị ẩn và chờ quản trị viên duyệt; khách sạn do quản trị viên tạo là của sàn và hiển thị ngay.
+  const ownership = user.role === "HOST" ? { ownerId: user.id, isActive: false, approval: "PENDING" as const } : {};
+  const hotel = await prisma.hotel.create({ data: { ...parsed.data, slug, ...ownership } });
   refreshCatalog();
-  redirect(`/admin/hotels/${hotel.id}`);
+  redirect(`${baseFor(user)}/hotels/${hotel.id}`);
 }
 
 export async function updateHotelAction(id: string, _: AdminState, fd: FormData): Promise<AdminState> {
-  await requireAdmin("/admin/hotels");
+  const user = await requireStaff("/admin/hotels");
+  if (!(await canManageHotel(user, id))) return { error: NO_ACCESS };
   const parsed = hotelInput(fd);
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   try {
-    await prisma.hotel.update({ where: { id }, data: parsed.data });
+    // Đối tác sửa lại khách sạn bị từ chối coi như gửi duyệt lại.
+    const resubmit = user.role === "HOST" ? { approval: "PENDING" as const, approvalNote: null } : {};
+    const current = await prisma.hotel.findUnique({ where: { id }, select: { approval: true } });
+    await prisma.hotel.update({ where: { id }, data: { ...parsed.data, ...(current?.approval === "REJECTED" ? resubmit : {}) } });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") return { error: "Không tìm thấy khách sạn." };
     throw e;
   }
   refreshCatalog();
-  revalidatePath(`/admin/hotels/${id}`);
+  refreshHotelPage(id);
   return { ok: true };
 }
 
 export async function toggleHotelAction(id: string) {
-  await requireAdmin("/admin/hotels");
-  const hotel = await prisma.hotel.findUnique({ where: { id }, select: { isActive: true } });
-  if (hotel) await prisma.hotel.update({ where: { id }, data: { isActive: !hotel.isActive } });
+  const user = await requireStaff("/admin/hotels");
+  if (!(await canManageHotel(user, id))) return;
+  const hotel = await prisma.hotel.findUnique({ where: { id }, select: { isActive: true, approval: true } });
+  // Khách sạn của đối tác chưa được duyệt thì chỉ quản trị viên mới bật hiển thị được.
+  if (hotel && (user.role === "ADMIN" || hotel.approval === "APPROVED")) await prisma.hotel.update({ where: { id }, data: { isActive: !hotel.isActive } });
   refreshCatalog();
 }
 
 /* ---------- Phòng ---------- */
 
 export async function createRoomAction(hotelId: string, _: AdminState, fd: FormData): Promise<AdminState> {
-  await requireAdmin("/admin/hotels");
+  const user = await requireStaff("/admin/hotels");
+  if (!(await canManageHotel(user, hotelId))) return { error: NO_ACCESS };
   const parsed = roomInput(fd);
   if (!parsed.success) return { error: firstError(parsed.error) };
   if (!(await prisma.hotel.findUnique({ where: { id: hotelId }, select: { id: true } }))) return { error: "Không tìm thấy khách sạn." };
 
   await prisma.room.create({ data: { ...parsed.data, hotelId } });
   refreshCatalog();
-  revalidatePath(`/admin/hotels/${hotelId}`);
+  refreshHotelPage(hotelId);
   return { ok: true };
 }
 
 export async function updateRoomAction(roomId: string, _: AdminState, fd: FormData): Promise<AdminState> {
-  await requireAdmin("/admin/hotels");
+  const user = await requireStaff("/admin/hotels");
+  if (!(await canManageRoom(user, roomId))) return { error: NO_ACCESS };
   const parsed = roomInput(fd);
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   try {
     const room = await prisma.room.update({ where: { id: roomId }, data: parsed.data });
-    revalidatePath(`/admin/hotels/${room.hotelId}`);
+    refreshHotelPage(room.hotelId);
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") return { error: "Không tìm thấy phòng." };
     throw e;
@@ -175,11 +193,12 @@ export async function updateRoomAction(roomId: string, _: AdminState, fd: FormDa
 }
 
 export async function toggleRoomAction(roomId: string) {
-  await requireAdmin("/admin/hotels");
+  const user = await requireStaff("/admin/hotels");
+  if (!(await canManageRoom(user, roomId))) return;
   const room = await prisma.room.findUnique({ where: { id: roomId }, select: { isActive: true, hotelId: true } });
   if (room) {
     await prisma.room.update({ where: { id: roomId }, data: { isActive: !room.isActive } });
-    revalidatePath(`/admin/hotels/${room.hotelId}`);
+    refreshHotelPage(room.hotelId);
   }
   refreshCatalog();
 }
@@ -188,7 +207,8 @@ export async function toggleRoomAction(roomId: string) {
 
 /** Lễ tân xác nhận khách đã nhận phòng. Chỉ đơn đã xác nhận, từ ngày nhận phòng trở đi và trước ngày trả phòng. */
 export async function checkInBookingAction(bookingId: string): Promise<AdminState> {
-  await requireAdmin("/admin/bookings");
+  const user = await requireStaff("/admin/bookings");
+  if (!(await canManageBooking(user, bookingId))) return { error: NO_ACCESS };
   const b = await prisma.booking.findUnique({ where: { id: bookingId }, select: { status: true, checkIn: true, checkOut: true, checkedInAt: true } });
   if (!b) return { error: "Không tìm thấy đơn đặt phòng." };
   if (b.status !== "CONFIRMED") return { error: "Chỉ đơn đã xác nhận mới nhận phòng được." };
@@ -200,11 +220,15 @@ export async function checkInBookingAction(bookingId: string): Promise<AdminStat
   const res = await prisma.booking.updateMany({ where: { id: bookingId, status: "CONFIRMED", checkedInAt: null }, data: { checkedInAt: new Date() } });
   if (res.count === 0) return { error: "Khách đã nhận phòng rồi." };
   revalidatePath("/admin/bookings");
+  revalidatePath("/host/bookings");
   return { ok: true };
 }
 
 export async function updateBookingStatusAction(bookingId: string, next: BookingStatus): Promise<AdminState> {
-  await requireAdmin("/admin/bookings");
+  const user = await requireStaff("/admin/bookings");
+  if (!(await canManageBooking(user, bookingId))) return { error: NO_ACCESS };
+  // Xác nhận "đã nhận tiền" là việc của sàn (sàn thu tiền của khách qua cổng thanh toán).
+  if (user.role === "HOST" && next === "CONFIRMED") return { error: "Chỉ quản trị viên sàn mới xác nhận thanh toán." };
 
   try {
     await prisma.$transaction(
@@ -246,6 +270,7 @@ export async function updateBookingStatusAction(bookingId: string, next: Booking
 
   if (next === "CANCELLED") after(() => sendBookingCancelled(bookingId));
   revalidatePath("/admin/bookings");
+  revalidatePath("/host/bookings");
   revalidatePath("/admin");
   return { ok: true };
 }
@@ -304,7 +329,7 @@ export async function deleteReviewAction(reviewId: string): Promise<AdminState> 
 
 export async function updateUserRoleAction(userId: string, role: Role): Promise<AdminState> {
   const admin = await requireAdmin("/admin/users");
-  if (role !== "USER" && role !== "ADMIN") return { error: "Vai trò không hợp lệ." };
+  if (role !== "USER" && role !== "ADMIN" && role !== "HOST") return { error: "Vai trò không hợp lệ." };
   if (userId === admin.id) return { error: "Bạn không thể đổi vai trò của chính mình." };
 
   await prisma.user.update({ where: { id: userId }, data: { role } });
@@ -374,7 +399,8 @@ const blockSchema = z.object({
 
 /** Chặn `rooms` phòng của một loại phòng từ ngày bắt đầu đến hết ngày kết thúc (đêm cuối là đêm của ngày kết thúc). */
 export async function createRoomBlockAction(roomId: string, _: AdminState, fd: FormData): Promise<AdminState> {
-  await requireAdmin("/admin/hotels");
+  const user = await requireStaff("/admin/hotels");
+  if (!(await canManageRoom(user, roomId))) return { error: NO_ACCESS };
   const parsed = blockSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: firstError(parsed.error) };
 
@@ -393,15 +419,15 @@ export async function createRoomBlockAction(roomId: string, _: AdminState, fd: F
     data: { roomId, startDate: start, endDate: new Date(lastNight.getTime() + 86_400_000), rooms: parsed.data.rooms, reason: parsed.data.reason || null },
   });
   refreshCatalog();
-  revalidatePath(`/admin/hotels/${room.hotelId}`);
+  refreshHotelPage(room.hotelId);
   return { ok: true };
 }
 
 export async function deleteRoomBlockAction(blockId: string) {
-  await requireAdmin("/admin/hotels");
+  const user = await requireStaff("/admin/hotels");
   const b = await prisma.roomBlock.findUnique({ where: { id: blockId }, select: { room: { select: { hotelId: true } } } });
-  if (!b) return;
+  if (!b || !(await canManageHotel(user, b.room.hotelId))) return;
   await prisma.roomBlock.delete({ where: { id: blockId } });
   refreshCatalog();
-  revalidatePath(`/admin/hotels/${b.room.hotelId}`);
+  refreshHotelPage(b.room.hotelId);
 }

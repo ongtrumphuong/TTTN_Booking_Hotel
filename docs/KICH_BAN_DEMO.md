@@ -9,7 +9,7 @@ Tài liệu dùng cho buổi báo cáo thực tập tốt nghiệp. Phần 1 là
 | Việc | Lệnh / cách làm |
 |---|---|
 | Bật PostgreSQL, kiểm tra `web/.env` có `DATABASE_URL`, `AUTH_SECRET` | xem README mục 3 |
-| Tạo bảng + dữ liệu mẫu (9 khách sạn, 27 loại phòng, tài khoản mẫu) | `cd web` rồi `npx prisma migrate deploy` và `npx prisma db seed` |
+| Tạo bảng + dữ liệu mẫu (9 khách sạn, 27 loại phòng, tài khoản mẫu gồm cả đối tác; nếu DB đã có sẵn từ trước thì chạy `npx tsx prisma/seed-partner.ts`) | `cd web` rồi `npx prisma migrate deploy` và `npx prisma db seed` |
 | (Tùy chọn) bật thanh toán VNPay sandbox | điền `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` trong `web/.env`; để trống thì dùng cổng giả lập |
 | Chạy bản production cho mượt | `npm run build` rồi `npm run start` (mặc định cổng 3000) |
 | Mở sẵn 2 cửa sổ trình duyệt: một thường (khách), một ẩn danh (admin) | tránh phải đăng nhập đi đăng nhập lại |
@@ -21,7 +21,8 @@ Tài liệu dùng cho buổi báo cáo thực tập tốt nghiệp. Phần 1 là
 | Vai trò | Email | Mật khẩu |
 |---|---|---|
 | Khách | `khach@khongiansos.vn` | `Khach@123456` |
-| Quản trị | `admin@khongiansos.vn` | `Admin@123456` |
+| Quản trị (sàn) | `admin@khongiansos.vn` | `Admin@123456` |
+| Đối tác khách sạn | `doitac@khongiansos.vn` | `Doitac@123456` (sở hữu 3 khách sạn: Hàn River, Đà Lạt Pine Hill, Nha Trang Ocean Pearl) |
 
 **Thẻ test VNPay sandbox** (theo tài liệu sandbox của VNPay; nếu trang VNPay hiển thị thông tin khác thì dùng theo trang đó):
 ngân hàng **NCB**, số thẻ `9704198526191432198`, tên `NGUYEN VAN A`, ngày phát hành `07/15`, OTP `123456`.
@@ -70,6 +71,15 @@ Chuẩn bị: admin tạo trước mã giảm giá (xem bước 7) hoặc làm b
 5. **Đánh giá:** ẩn/hiện hoặc xóa đánh giá không phù hợp. **Người dùng:** cấp/thu hồi quyền quản trị.
 **Nói gì:** đơn đã nhận phòng thì không hủy được nữa; chỉ khách có đơn *Hoàn tất* mới được viết đánh giá.
 
+### Bước 7b – Sàn trung gian: đối tác và đối soát (5 phút)
+**Làm gì:**
+1. Mở `/partner` (trang giới thiệu đối tác) rồi đăng nhập `doitac@khongiansos.vn` → vào **khu vực đối tác** `/host`: tổng quan, **Khách sạn của tôi** (chỉ 3 khách sạn của họ), thử mở trang sửa khách sạn của người khác để thấy bị từ chối.
+2. Bấm **Thêm khách sạn**, tạo một khách sạn thử → trạng thái **Chờ duyệt**, khách chưa thấy.
+3. Đăng nhập admin → **Đối tác**: thấy khách sạn chờ duyệt, bấm **Duyệt**; đổi **hoa hồng** của một khách sạn.
+4. Để có số liệu đối soát: dùng tài khoản khách đặt phòng ở một khách sạn của đối tác, thanh toán, rồi đối tác bấm **Nhận phòng** và **Hoàn tất** (cần đúng ngày nhận phòng là hôm nay; hoặc chuẩn bị sẵn vài đơn đã hoàn tất).
+5. Đối tác mở **Đối soát & chi trả**: thấy tổng thu, hoa hồng sàn, số tiền sẽ nhận. Admin mở **Đối soát** → **Tạo đợt chi trả** → đối tác thấy khoản đã nhận trong lịch sử.
+**Nói gì:** sàn thu tiền của khách; đối tác nhận doanh thu trừ hoa hồng. Hoa hồng được **chốt vào đơn lúc đặt**, nên đổi hoa hồng chỉ áp dụng cho đơn sau. Đối tác không tự xác nhận thanh toán hay hoàn tiền vì tiền do sàn giữ.
+
 ### Bước 8 – Quên mật khẩu (1 phút, nếu còn thời gian)
 **Làm gì:** trang đăng nhập → *Quên mật khẩu?* → nhập email → thông báo chung. Chưa cấu hình email thì liên kết đặt lại được in trong cửa sổ chạy server (chỉ ở chế độ phát triển).
 **Nói gì:** liên kết có hiệu lực 60 phút, dùng một lần, hệ thống chỉ lưu bản băm của token; thông báo luôn giống nhau dù email có tồn tại hay không để không lộ email nào đã đăng ký.
@@ -99,6 +109,11 @@ Kiểm tra phòng trống và tạo đơn nằm trong **một giao dịch mức 
 - Lượt dùng voucher **không dùng bộ đếm** (dễ sai lệch) mà đếm các đơn còn hiệu lực, nên đơn hủy/hết hạn tự trả lại lượt.
 - Chính sách hủy theo từng khách sạn, là **hàm thuần** `cancelQuote` nên kiểm thử dễ; số tiền hoàn được lưu cố định vào đơn tại thời điểm hủy.
 - Phòng chặn tính **theo từng đêm** (lấy đêm bị chặn nhiều nhất), không cộng dồn sai.
+
+### 2.4b. Mô hình sàn trung gian và đối soát
+- Ba vai trò (khách, đối tác, sàn); **quyền kiểm tra theo từng khách sạn ở máy chủ**, không chỉ ẩn nút: đối tác không sửa được khách sạn, phòng, lịch chặn hay đơn của người khác.
+- Duyệt khách sạn trước khi hiển thị; hoa hồng theo khách sạn và **chốt vào đơn lúc đặt** để đối soát không bị đổi ngầm.
+- Đối soát tính đúng cả phí hủy muộn; tạo đợt chi trả bằng giao dịch Serializable và điều kiện `payoutId = null` nên không chi trả trùng đơn (đã có test cho cả trường hợp hai yêu cầu đồng thời).
 
 ### 2.5. Bảo mật
 - Mật khẩu băm **bcrypt**; chính sách mật khẩu (≥ 8 ký tự, có chữ và số).
@@ -132,7 +147,9 @@ Next.js 16 (App Router, Server Actions) · React 19 · TypeScript · Prisma 6 ·
 | Thanh toán rồi nhưng phòng đã hết? | Đơn chuyển hủy và đánh dấu cần hoàn tiền, admin hoàn rồi ghi nhận (mục 2.3). |
 | Có lưu số thẻ không? | Không, khách nhập thẻ trực tiếp trên cổng VNPay. |
 | Quên mật khẩu có an toàn không? | Token băm, hết hạn, dùng một lần, thông báo không lộ email (mục 2.5). |
-| Ai thấy được trang quản trị? | Chỉ vai trò ADMIN, kiểm tra ở máy chủ cho từng trang và hành động. |
+| Ai thấy được trang quản trị? | Chỉ vai trò ADMIN, kiểm tra ở máy chủ cho từng trang và hành động. Đối tác (HOST) chỉ thấy khách sạn và đơn của mình. |
+| Dự án là sàn hay một khách sạn? | Sàn trung gian: nhiều khách sạn của các đối tác; sàn duyệt, thu tiền của khách, thu hoa hồng và chi trả cho đối tác sau đối soát. |
+| Hoa hồng tính thế nào, đổi giữa chừng thì sao? | Theo từng khách sạn (mặc định 10%), chốt vào đơn lúc khách đặt; đổi sau chỉ áp dụng cho đơn mới. |
 | Hệ thống đã kiểm thử thế nào? | 285 bài tự động + thử thủ công các luồng chính trên giao diện (README mục 3.7). |
 | Cổng thanh toán là thật hay giả? | VNPay **sandbox** (môi trường thử nghiệm, không trừ tiền thật); khi chưa có khóa thì dùng cổng giả lập. Chạy thật cần hợp đồng merchant với VNPay. |
 | Hạn chế còn lại? | Tìm kiếm đọc toàn bộ khách sạn khớp bộ lọc vào bộ nhớ (ổn tới vài trăm khách sạn); chưa có giá động theo mùa, đa ngôn ngữ, vai trò chủ khách sạn, IPN VNPay chưa thử trên địa chỉ công khai. |

@@ -38,8 +38,8 @@ async function UsersList() {
                 <td className="px-4 py-3">{u.phone ?? "—"}</td>
                 <td className="px-4 py-3">{u._count.bookings}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${u.role === "ADMIN" ? "bg-brand/10 text-brand" : "bg-slate-200 text-slate-700"}`}>
-                    {u.role === "ADMIN" ? "Quản trị viên" : "Khách hàng"}
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${u.role === "ADMIN" ? "bg-brand/10 text-brand" : u.role === "HOST" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"}`}>
+                    {u.role === "ADMIN" ? "Quản trị viên" : u.role === "HOST" ? "Đối tác" : "Khách hàng"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
@@ -48,10 +48,15 @@ async function UsersList() {
                   ) : (
                     <SelectAction
                       target={{ kind: "user-role", id: u.id }}
-                      options={[u.role === "ADMIN" ? { value: "USER", label: "Khách hàng" } : { value: "ADMIN", label: "Quản trị viên" }]}
+                      options={
+                        u.role === "USER"
+                          ? [{ value: "ADMIN", label: "Quản trị viên" }, { value: "HOST", label: "Đối tác" }]
+                          : [{ value: "USER", label: "Khách hàng" }]
+                      }
                       confirmMessages={{
                         ADMIN: `Cấp quyền quản trị cho ${u.name}?`,
-                        USER: `Thu hồi quyền quản trị của ${u.name}?`,
+                        HOST: `Chuyển ${u.name} thành đối tác khách sạn?`,
+                        USER: `Thu hồi vai trò hiện tại của ${u.name} (trở về khách hàng)?`,
                       }}
                     />
                   )}

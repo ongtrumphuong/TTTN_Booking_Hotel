@@ -7,6 +7,7 @@ const session = vi.hoisted(() => ({ user: { id: "", name: "Quản trị", role: 
 vi.mock("@/lib/session", () => ({
   requireUser: async () => session.user,
   requireAdmin: async () => session.user,
+  requireStaff: async () => session.user,
   safeRedirect: (p: string) => p,
   getCurrentUser: async () => session.user,
 }));
@@ -114,7 +115,7 @@ describe("check-in / check-out thực tế", () => {
     expect((await checkInBookingAction((await mk(stay(-5, -2))).id)).error).toMatch(/quá ngày trả/);
     expect((await checkInBookingAction((await mk({ status: "PENDING", paymentStatus: "UNPAID" })).id)).error).toMatch(/đã xác nhận/);
     expect((await checkInBookingAction((await mk({ status: "CANCELLED" })).id)).error).toMatch(/đã xác nhận/);
-    expect((await checkInBookingAction("khong-co")).error).toMatch(/Không tìm thấy/);
+    expect((await checkInBookingAction("khong-co")).error).toMatch(/không có quyền/); // không lộ việc đơn có tồn tại hay không
   });
 
   it("đã nhận phòng thì admin không hủy được đơn nữa, nhưng hoàn tất (trả phòng) được và ghi giờ trả", async () => {
