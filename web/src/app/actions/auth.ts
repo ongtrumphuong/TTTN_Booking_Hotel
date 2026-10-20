@@ -3,6 +3,7 @@
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { signIn, signOut } from "@/auth";
 import { clientIpFrom } from "@/lib/login-throttle";
@@ -10,9 +11,9 @@ import { sendPasswordResetEmail } from "@/lib/email";
 import { consumeResetToken, createResetToken } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
 import { hit } from "@/lib/rate-limit";
-import { safeRedirect } from "@/lib/session";
+import { requireUser, safeRedirect } from "@/lib/session";
 
-export type FormState = { error?: string; fieldErrors?: Record<string, string>; email?: string; done?: boolean };
+export type FormState = { error?: string; fieldErrors?: Record<string, string>; email?: string; done?: boolean; values?: Record<string, string> };
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email("Email không hợp lệ")),
@@ -138,5 +139,47 @@ export async function resetPasswordAction(_: FormState, formData: FormData): Pro
   if (!(await consumeResetToken(token, password.data))) {
     return { error: "Liên kết không hợp lệ hoặc đã hết hạn." };
   }
+  return { done: true };
+}
+
+const profileSchema = z.object({
+  name: z.string().trim().min(2, "Họ tên tối thiểu 2 ký tự").max(80, "Họ tên tối đa 80 ký tự"),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^(0|\+84)\d{9}$/, "Số điện thoại không hợp lệ")
+    .optional()
+    .or(z.literal("")),
+});
+
+/** Sửa họ tên và số điện thoại. Email không đổi được vì là tên đăng nhập. */
+export async function updateProfileAction(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser("/account");
+  const parsed = profileSchema.safeParse({ name: formData.get("name"), phone: formData.get("phone") ?? "" });
+  if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), values: { name: String(formData.get("name") ?? ""), phone: String(formData.get("phone") ?? "") } };
+
+  await prisma.user.update({ where: { id: user.id }, data: { name: parsed.data.name, phone: parsed.data.phone || null } });
+  revalidatePath("/account");
+  return { done: true };
+}
+
+/** Đổi mật khẩu khi đang đăng nhập: bắt buộc nhập đúng mật khẩu hiện tại, có giới hạn số lần thử. */
+export async function changePasswordAction(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser("/account");
+  const current = String(formData.get("current") ?? "");
+  const next = passwordRule.safeParse(formData.get("password"));
+  if (!next.success) return { fieldErrors: { password: next.error.issues[0].message } };
+  if (formData.get("confirm") !== next.data) return { fieldErrors: { confirm: "Mật khẩu nhập lại không khớp" } };
+
+  // Chống dò mật khẩu hiện tại bằng phiên đã đăng nhập: tối đa 10 lần mỗi 15 phút.
+  if ((await hit(`pwchange:${user.id}`, 15 * 60_000)) > 10) return { error: "Bạn đã thử quá nhiều lần. Vui lòng thử lại sau ít phút." };
+
+  const row = await prisma.user.findUnique({ where: { id: user.id }, select: { passwordHash: true } });
+  if (!row || !(await bcrypt.compare(current, row.passwordHash))) return { fieldErrors: { current: "Mật khẩu hiện tại không đúng" } };
+  if (current === next.data) return { fieldErrors: { password: "Mật khẩu mới phải khác mật khẩu hiện tại" } };
+
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(next.data, 10) } });
+  // Đổi mật khẩu cũng vô hiệu các liên kết đặt lại mật khẩu đang chờ.
+  await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
   return { done: true };
 }

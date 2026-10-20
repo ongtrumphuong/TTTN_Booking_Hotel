@@ -3,10 +3,11 @@ import { AdminFallback } from "@/components/admin/fallback";
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { BookingStatus } from "@prisma/client";
+import { CheckInButton } from "@/components/admin/check-in-button";
 import { RefundButton } from "@/components/admin/refund-button";
 import { SelectAction } from "@/components/admin/select-action";
-import { NEXT_STATUS, STATUS_LABEL, needsRefund, paymentLabel } from "@/lib/booking";
-import { formatDate, formatVND } from "@/lib/format";
+import { NEXT_STATUS, STATUS_LABEL, needsRefund, paymentLabel, todayUTC } from "@/lib/booking";
+import { formatDate, formatDateTime, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 
@@ -24,7 +25,7 @@ const FILTERS: { value: BookingStatus | "ALL" | "REFUND"; label: string }[] = [
 const ACTION_LABEL: Record<BookingStatus, string> = {
   PENDING: "Chờ thanh toán",
   CONFIRMED: "Xác nhận (đã nhận tiền)",
-  COMPLETED: "Hoàn tất",
+  COMPLETED: "Hoàn tất (khách trả phòng)",
   CANCELLED: "Hủy đơn",
 };
 
@@ -36,6 +37,7 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
   const status = picked && picked !== "REFUND" ? (picked as BookingStatus) : undefined;
   const refundOnly = picked === "REFUND";
 
+  const today = todayUTC();
   const bookings = await prisma.booking.findMany({
     where: refundOnly ? { status: "CANCELLED", paymentStatus: "PAID", OR: [{ refundAmount: null }, { refundAmount: { gt: 0 } }] } : status ? { status } : {},
     orderBy: { createdAt: "desc" },
@@ -95,16 +97,21 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
                 </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_LABEL[b.status].cls}`}>{STATUS_LABEL[b.status].text}</span>
+                  {b.checkedInAt && <p className="mt-1 text-xs text-muted">Nhận phòng: {formatDateTime(b.checkedInAt)}</p>}
+                  {b.checkedOutAt && <p className="text-xs text-muted">Trả phòng: {formatDateTime(b.checkedOutAt)}</p>}
                 </td>
                 <td className="px-4 py-3">
                   {needsRefund(b.status, b.paymentStatus, b.refundAmount) ? (
                     <RefundButton bookingId={b.id} />
                   ) : (
+                  <div className="space-y-2">
+                  {b.status === "CONFIRMED" && !b.checkedInAt && b.checkIn <= today && b.checkOut > today && <CheckInButton bookingId={b.id} />}
                   <SelectAction
                     target={{ kind: "booking-status", id: b.id }}
-                    options={NEXT_STATUS[b.status].map((s) => ({ value: s, label: ACTION_LABEL[s] }))}
+                    options={NEXT_STATUS[b.status].filter((s) => !(s === "CANCELLED" && b.checkedInAt)).map((s) => ({ value: s, label: ACTION_LABEL[s] }))}
                     confirmMessages={{ CANCELLED: `Hủy đơn ${b.code}? Đơn đã thanh toán sẽ được đánh dấu hoàn tiền.` }}
                   />
+                  </div>
                   )}
                 </td>
               </tr>

@@ -6,7 +6,7 @@ import { CheckCircle2 } from "lucide-react";
 import { CancelButton } from "@/components/cancel-button";
 import { STATUS_LABEL, needsRefund, paymentLabel, todayUTC } from "@/lib/booking";
 import { cancelQuote, policyText } from "@/lib/cancellation";
-import { formatDate, formatVND } from "@/lib/format";
+import { formatDate, formatDateTime, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { NOINDEX } from "@/lib/site";
@@ -20,7 +20,7 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
   if (!b) notFound();
 
   const status = STATUS_LABEL[b.status];
-  const canCancel = (b.status === "PENDING" || b.status === "CONFIRMED") && b.checkIn > todayUTC();
+  const canCancel = (b.status === "PENDING" || b.status === "CONFIRMED") && b.checkIn > todayUTC() && !b.checkedInAt;
   const { freeCancelDays, lateCancelFeePercent } = b.room.hotel;
   const quote = cancelQuote({ checkIn: b.checkIn, today: todayUTC(), paid: b.paymentStatus === "PAID" ? b.totalPrice : 0, freeCancelDays, lateFeePercent: lateCancelFeePercent });
   const confirmText =
@@ -70,6 +70,8 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           <div><p className="text-muted">Số khách</p><p className="font-semibold">{b.guests}</p></div>
           <div><p className="text-muted">Nhận phòng</p><p className="font-semibold">{formatDate(b.checkIn)}</p></div>
           <div><p className="text-muted">Trả phòng</p><p className="font-semibold">{formatDate(b.checkOut)}</p></div>
+          {b.checkedInAt && <div><p className="text-muted">Đã nhận phòng lúc</p><p className="font-semibold">{formatDateTime(b.checkedInAt)}</p></div>}
+          {b.checkedOutAt && <div><p className="text-muted">Đã trả phòng lúc</p><p className="font-semibold">{formatDateTime(b.checkedOutAt)}</p></div>}
           <div><p className="text-muted">Thanh toán</p><p className="font-semibold">{paymentLabel(b.status, b.paymentStatus, b.refundAmount)}</p></div>
           {b.discount > 0 && <div><p className="text-muted">Mã giảm giá {b.voucherCode}</p><p className="font-semibold text-emerald-700">-{formatVND(b.discount)}</p></div>}
           {b.status === "CANCELLED" && b.refundAmount !== null && b.refundAmount < b.totalPrice && (

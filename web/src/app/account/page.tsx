@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { PasswordForm, ProfileForm } from "@/components/account-forms";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { NOINDEX } from "@/lib/site";
@@ -15,14 +16,23 @@ async function Profile() {
   if (!user) await requireUser("/account");
 
   return (
-    <div className="rounded-2xl border border-border bg-white p-6">
-      <h1 className="text-2xl font-extrabold">Xin chào, {user!.name}</h1>
-      <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
-        <div><dt className="text-muted">Email</dt><dd className="font-semibold">{user!.email}</dd></div>
-        <div><dt className="text-muted">Số điện thoại</dt><dd className="font-semibold">{user!.phone ?? "Chưa cập nhật"}</dd></div>
-        <div><dt className="text-muted">Vai trò</dt><dd className="font-semibold">{user!.role === "ADMIN" ? "Quản trị viên" : "Khách hàng"}</dd></div>
-        <div><dt className="text-muted">Số lượt đặt phòng</dt><dd className="font-semibold">{user!._count.bookings}</dd></div>
-      </dl>
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-border bg-white p-6">
+        <h1 className="text-2xl font-extrabold">Xin chào, {user!.name}</h1>
+        <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-3">
+          <div><dt className="text-muted">Email đăng nhập</dt><dd className="font-semibold">{user!.email}</dd></div>
+          <div><dt className="text-muted">Vai trò</dt><dd className="font-semibold">{user!.role === "ADMIN" ? "Quản trị viên" : "Khách hàng"}</dd></div>
+          <div><dt className="text-muted">Số lượt đặt phòng</dt><dd className="font-semibold">{user!._count.bookings}</dd></div>
+        </dl>
+      </div>
+      <section className="rounded-2xl border border-border bg-white p-6">
+        <h2 className="mb-4 text-lg font-extrabold">Thông tin cá nhân</h2>
+        <ProfileForm name={user!.name} phone={user!.phone ?? ""} />
+      </section>
+      <section className="rounded-2xl border border-border bg-white p-6">
+        <h2 className="mb-4 text-lg font-extrabold">Đổi mật khẩu</h2>
+        <PasswordForm />
+      </section>
     </div>
   );
 }

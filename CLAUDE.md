@@ -38,6 +38,10 @@ Next.js 16 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 
 Đợt hoàn thiện sau đó (2026-10-20): VNPay sandbox đã thử thật thành công (khóa trong `web/.env`, thanh toán NCB, đơn xác nhận); dịch vụ `cron` trong `docker-compose.prod.yml` gọi `/api/cron/expire-bookings` mỗi 5 phút; chính sách hủy hiện ở trang khách sạn, trang đặt phòng và trang thanh toán; trang thanh toán tách dòng giảm giá; email hủy đơn (`sendBookingCancelled`) và email báo đã hoàn tiền (`sendRefundCompleted`).
 
+Đợt cuối (2026-10-20): trang `/account` sửa hồ sơ + đổi mật khẩu (`updateProfileAction`, `changePasswordAction`); check-in/check-out thực tế (`Booking.checkedInAt/checkedOutAt`, `checkInBookingAction`, nút "Nhận phòng" ở admin; đã nhận phòng thì không hủy được). Đã thử trên trình duyệt. Test mới: `tests/integration/account-and-checkin.test.ts` (mock `@/lib/session`, `@/auth`, `next-auth`, `next/server`).
+
+**Quyết định phạm vi:** dự án là đồ án thực tập tốt nghiệp (báo cáo, KHÔNG kinh doanh thật). Dừng thêm tính năng; ưu tiên kịch bản demo và tài liệu báo cáo. Đừng đề xuất thuê VPS/SMTP/hợp đồng VNPay thật trừ khi chủ dự án hỏi.
+
 Chưa làm/chưa kiểm:
 - **IPN VNPay chưa thử** (cần tunnel/địa chỉ công khai và đăng ký URL IPN với VNPay); mới thử luồng quay về trình duyệt.
 - Chưa thử VNPay với đơn có voucher và với trường hợp hủy giữa chừng trên trang VNPay.
@@ -50,9 +54,6 @@ Chưa làm/chưa kiểm:
 - Trong công cụ trình duyệt, nút submit đôi khi cần bấm bằng `ref` thay vì tọa độ; ô nhập React nên gõ bằng thao tác `type` để state cập nhật.
 
 ## Việc tiếp theo (backlog theo thứ tự đề xuất)
-1. Thử IPN qua tunnel (ngrok/cloudflared) và VNPay với voucher; cấu hình SMTP thử gửi email thật.
-2. Email nhắc trước ngày nhận phòng (cần một job định kỳ, có thể gắn vào cùng cron).
-3. Trạng thái nhận phòng/trả phòng thực tế (check-in/check-out) cho admin.
-4. Giá động (cuối tuần, mùa cao điểm, giảm theo số đêm) và thuế/phí dịch vụ.
-5. Thông tin người ở khác người đặt, yêu cầu hóa đơn VAT.
-6. Sửa đổi đơn (đổi ngày/phòng); vai trò chủ khách sạn (HOST); đa ngôn ngữ — để cuối, tốn nhiều công.
+1. **Kịch bản demo** từng bước kèm dữ liệu mẫu sạch (khách + admin), và tóm tắt điểm nhấn kỹ thuật để báo cáo (chống đặt trùng phòng bằng giao dịch Serializable, chữ ký VNPay, giới hạn tốc độ, phân quyền).
+2. **Tài liệu báo cáo**: use case, sơ đồ tuần tự đặt phòng + thanh toán, bảng kết quả kiểm thử (285 test), ảnh chụp màn hình.
+3. Tùy chọn, chỉ khi chủ dự án muốn: giá động (cuối tuần, mùa cao điểm), email nhắc nhận phòng, thông tin người ở/hóa đơn, IPN VNPay qua tunnel.

@@ -6,3 +6,8 @@ export function formatVND(amount: number) {
 export function formatDate(d: Date) {
   return new Intl.DateTimeFormat("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(d);
 }
+
+/** Thời điểm thực tế (nhận phòng, trả phòng) hiển thị theo giờ Việt Nam. */
+export function formatDateTime(d: Date) {
+  return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }).format(d);
+}

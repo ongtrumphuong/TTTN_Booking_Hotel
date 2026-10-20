@@ -25,7 +25,7 @@
 - Trang kết quả `/hotels`: lọc theo thành phố, số khách, ngày trống, **khoảng giá, hạng sao, tiện nghi**; sắp xếp theo đề xuất / giá / đánh giá; thẻ lọc đang bật bấm × để bỏ từng điều kiện; trên điện thoại bộ lọc thu gọn.
 - Trang chi tiết khách sạn: thư viện ảnh xem phóng to (phím mũi tên, thanh ảnh nhỏ), bản đồ vị trí (OpenStreetMap), tiện nghi, danh sách phòng kèm số phòng còn trống theo ngày chọn, đánh giá.
 - Trang chủ có phần "Khách hàng nói gì" lấy từ các đánh giá tốt gần đây.
-- Đăng ký, đăng nhập, đăng xuất; trang tài khoản.
+- Đăng ký, đăng nhập, đăng xuất; trang tài khoản có **sửa họ tên, số điện thoại và đổi mật khẩu** (bắt buộc nhập đúng mật khẩu hiện tại, giới hạn 10 lần thử/15 phút).
 - **Quên mật khẩu**: gửi liên kết đặt lại qua email (hiệu lực 60 phút, dùng một lần, chỉ lưu bản băm, có giới hạn số lần yêu cầu). Chưa cấu hình SMTP thì ở môi trường phát triển liên kết được in ra console.
 - Nhập **mã giảm giá** khi đặt phòng, xem chính sách hủy và số tiền hoàn trước khi hủy.
 - Đặt phòng → thanh toán (VNPay sandbox, hoặc giả lập khi chưa có khóa) → email xác nhận; xem lịch sử, hủy đơn (trước ngày nhận phòng).
@@ -38,6 +38,7 @@
 - Đơn đặt phòng: lọc theo trạng thái, đổi trạng thái theo quy tắc, bộ lọc **Cần hoàn tiền** và nút **Đã hoàn tiền** kèm ghi chú.
 - Đánh giá: **ẩn/hiện hoặc xóa** đánh giá không phù hợp; đánh giá bị ẩn không hiện công khai và không tính vào điểm trung bình.
 - Người dùng: xem danh sách, cấp/thu hồi quyền quản trị.
+- **Nhận phòng / trả phòng thực tế**: nút **Nhận phòng** (chỉ từ ngày nhận phòng, đơn đã xác nhận) ghi `checkedInAt`; **Hoàn tất** ghi `checkedOutAt`. Đơn đã nhận phòng thì không hủy được nữa.
 - Mã giảm giá: tạo, bật/tắt, xem số lượt đã dùng. Lịch chặn phòng theo từng loại phòng. Chính sách hủy theo từng khách sạn.
 
 ## 3. Cài đặt và chạy

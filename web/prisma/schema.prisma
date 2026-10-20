@@ -114,6 +114,8 @@ model Booking {
   discount      Int           @default(0)
   refundAmount  Int?
   cancelledAt   DateTime?
+  checkedInAt   DateTime?
+  checkedOutAt  DateTime?
   createdAt     DateTime      @default(now())
   payments      Payment[]
 

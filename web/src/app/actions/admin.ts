@@ -186,6 +186,23 @@ export async function toggleRoomAction(roomId: string) {
 
 /* ---------- Đơn đặt phòng ---------- */
 
+/** Lễ tân xác nhận khách đã nhận phòng. Chỉ đơn đã xác nhận, từ ngày nhận phòng trở đi và trước ngày trả phòng. */
+export async function checkInBookingAction(bookingId: string): Promise<AdminState> {
+  await requireAdmin("/admin/bookings");
+  const b = await prisma.booking.findUnique({ where: { id: bookingId }, select: { status: true, checkIn: true, checkOut: true, checkedInAt: true } });
+  if (!b) return { error: "Không tìm thấy đơn đặt phòng." };
+  if (b.status !== "CONFIRMED") return { error: "Chỉ đơn đã xác nhận mới nhận phòng được." };
+  if (b.checkedInAt) return { error: "Khách đã nhận phòng rồi." };
+  if (b.checkIn > todayUTC()) return { error: "Chưa đến ngày nhận phòng." };
+  if (b.checkOut <= todayUTC()) return { error: "Đã quá ngày trả phòng của đơn này." };
+
+  // Điều kiện trong where để hai lần bấm cùng lúc chỉ ghi một lần.
+  const res = await prisma.booking.updateMany({ where: { id: bookingId, status: "CONFIRMED", checkedInAt: null }, data: { checkedInAt: new Date() } });
+  if (res.count === 0) return { error: "Khách đã nhận phòng rồi." };
+  revalidatePath("/admin/bookings");
+  return { ok: true };
+}
+
 export async function updateBookingStatusAction(bookingId: string, next: BookingStatus): Promise<AdminState> {
   await requireAdmin("/admin/bookings");
 
@@ -203,8 +220,10 @@ export async function updateBookingStatusAction(bookingId: string, next: Booking
           await tx.booking.update({ where: { id: b.id }, data: { status: "CONFIRMED", paymentStatus: "PAID" } });
         } else if (next === "COMPLETED") {
           if (b.checkIn > todayUTC()) throw new Error("Chỉ hoàn tất đơn từ ngày nhận phòng trở đi.");
-          await tx.booking.update({ where: { id: b.id }, data: { status: "COMPLETED" } });
+          // Trả phòng: nếu chưa ghi nhận nhận phòng thì coi như nhận phòng đúng ngày đặt.
+          await tx.booking.update({ where: { id: b.id }, data: { status: "COMPLETED", checkedInAt: b.checkedInAt ?? b.checkIn, checkedOutAt: new Date() } });
         } else {
+          if (b.checkedInAt) throw new Error("Khách đã nhận phòng, không thể hủy đơn. Hãy hoàn tất khi khách trả phòng.");
           await tx.booking.update({
             where: { id: b.id },
             // Quản trị viên hủy đơn là quyết định của khách sạn nên hoàn đủ số tiền đã trả.
