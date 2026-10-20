@@ -36,11 +36,13 @@ Next.js 16 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 
 Đã kiểm tra bằng trình duyệt thật (2026-10-20): quên/đặt lại mật khẩu (token dùng lại bị từ chối), tạo voucher, mã sai/đúng và mức giảm trên form đặt phòng, đơn có voucher, trang thanh toán đúng số tiền sau giảm, hủy muộn tính phí và hoàn một phần, chặn phòng làm phòng "Hết phòng", cron hết hạn đơn (401 khi sai khóa). Đã sửa lỗi `new Date()` ở `/reset-password` (thêm `connection()`).
 
+Đợt hoàn thiện sau đó (2026-10-20): VNPay sandbox đã thử thật thành công (khóa trong `web/.env`, thanh toán NCB, đơn xác nhận); dịch vụ `cron` trong `docker-compose.prod.yml` gọi `/api/cron/expire-bookings` mỗi 5 phút; chính sách hủy hiện ở trang khách sạn, trang đặt phòng và trang thanh toán; trang thanh toán tách dòng giảm giá; email hủy đơn (`sendBookingCancelled`) và email báo đã hoàn tiền (`sendRefundCompleted`).
+
 Chưa làm/chưa kiểm:
-- `CRON_SECRET` đã có trong `web/.env` (máy dev) nhưng cron gọi `/api/cron/expire-bookings` chưa được lập lịch trong `deploy/`.
-- Trang thanh toán `/bookings/[id]/pay` chỉ hiện tổng sau giảm, chưa tách dòng giảm giá.
-- Hiển thị chính sách hủy trên trang chi tiết khách sạn và trang đặt phòng (mới hiện ở chi tiết đơn).
-- Chưa thử VNPay end-to-end với đơn có voucher (số tiền gửi sang VNPay là `totalPrice` sau giảm).
+- **IPN VNPay chưa thử** (cần tunnel/địa chỉ công khai và đăng ký URL IPN với VNPay); mới thử luồng quay về trình duyệt.
+- Chưa thử VNPay với đơn có voucher và với trường hợp hủy giữa chừng trên trang VNPay.
+- Dịch vụ `cron` trong compose mới kiểm cú pháp bằng `docker compose config`, chưa chạy thật trên VPS.
+- Chưa thử gửi email thật (chưa cấu hình SMTP); mới có test cho phần dựng nội dung.
 
 ## Mẹo chạy thử giao diện
 - `.claude/launch.json` có cấu hình `web`; nếu cổng 3000 bận (có thể có server khác) nó tự đổi sang 3001. `APP_URL` trong `.env` là 3000 nên liên kết đặt lại mật khẩu in ra console phải đổi cổng cho khớp.
@@ -48,10 +50,9 @@ Chưa làm/chưa kiểm:
 - Trong công cụ trình duyệt, nút submit đôi khi cần bấm bằng `ref` thay vì tọa độ; ô nhập React nên gõ bằng thao tác `type` để state cập nhật.
 
 ## Việc tiếp theo (backlog theo thứ tự đề xuất)
-1. Lập lịch cron cho `/api/cron/expire-bookings` trong `deploy/` (kèm `CRON_SECRET`) và ghi vào README mục 12.
-2. Hiện chính sách hủy ở trang khách sạn và trang đặt phòng; tách dòng giảm giá ở trang thanh toán.
-3. Email khi hủy đơn / hoàn tiền xong, và email nhắc trước ngày nhận phòng.
-4. Trạng thái nhận phòng/trả phòng thực tế (check-in/check-out) cho admin.
-5. Giá động (cuối tuần, mùa cao điểm, giảm theo số đêm) và thuế/phí dịch vụ.
-6. Thông tin người ở khác người đặt, yêu cầu hóa đơn VAT.
-7. Sửa đổi đơn (đổi ngày/phòng); vai trò chủ khách sạn (HOST); đa ngôn ngữ — để cuối, tốn nhiều công.
+1. Thử IPN qua tunnel (ngrok/cloudflared) và VNPay với voucher; cấu hình SMTP thử gửi email thật.
+2. Email nhắc trước ngày nhận phòng (cần một job định kỳ, có thể gắn vào cùng cron).
+3. Trạng thái nhận phòng/trả phòng thực tế (check-in/check-out) cho admin.
+4. Giá động (cuối tuần, mùa cao điểm, giảm theo số đêm) và thuế/phí dịch vụ.
+5. Thông tin người ở khác người đặt, yêu cầu hóa đơn VAT.
+6. Sửa đổi đơn (đổi ngày/phòng); vai trò chủ khách sạn (HOST); đa ngôn ngữ — để cuối, tốn nhiều công.

@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { BookingForm } from "@/components/booking-form";
 import { unavailableQuantity, parseStay, todayUTC } from "@/lib/booking";
+import { policyText } from "@/lib/cancellation";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
@@ -74,6 +75,9 @@ async function BookContent({ params, searchParams }: { params: Promise<{ roomId:
             <div className="flex justify-between"><dt className="text-muted">Số khách</dt><dd className="font-semibold">{guests}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Đơn giá</dt><dd className="font-semibold">{formatVND(room.pricePerNight)}/đêm</dd></div>
           </dl>
+          <p className="border-t border-border pt-3 text-xs text-muted">
+            <b className="text-foreground">Chính sách hủy:</b> {policyText(room.hotel.freeCancelDays, room.hotel.lateCancelFeePercent)}
+          </p>
         </div>
       </aside>
     </div>

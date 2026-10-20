@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { maxBlockedRooms, needsRefund, paymentLabel } from "@/lib/booking";
 import { cancelQuote, policyText } from "@/lib/cancellation";
+import { buildNoticeEmail } from "@/lib/email";
 import { computeDiscount, normalizeCode } from "@/lib/voucher";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
@@ -77,5 +78,18 @@ describe("maxBlockedRooms: phòng bị chặn theo từng đêm", () => {
   it("ngày trả phòng trùng ngày bắt đầu chặn thì không ảnh hưởng", () => {
     expect(maxBlockedRooms(blocks, d("2027-06-08"), d("2027-06-10"))).toBe(0);
     expect(maxBlockedRooms(blocks, d("2027-06-15"), d("2027-06-17"))).toBe(0);
+  });
+});
+
+describe("buildNoticeEmail", () => {
+  const base = { subject: "S", heading: "H", guestName: "An <b>", intro: "đã hủy.", rows: [["Mã", "KGS-1"], ["Hoàn tiền", "1.000 ₫"]] as [string, string][], link: "http://x/y?a=1&b=2" };
+  it("thoát ký tự HTML trong dữ liệu động và có đủ các dòng", () => {
+    const m = buildNoticeEmail(base);
+    expect(m.html).toContain("An &lt;b&gt;");
+    expect(m.html).not.toContain("An <b>");
+    expect(m.html).toContain("a=1&amp;b=2");
+    expect(m.html).toContain("Hoàn tiền");
+    expect(m.text).toContain("Hoàn tiền: 1.000 ₫");
+    expect(m.text).toContain("Chi tiết: http://x/y?a=1&b=2");
   });
 });

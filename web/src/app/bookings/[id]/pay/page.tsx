@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { PayForm } from "@/components/pay-form";
 import { holdExpired } from "@/lib/booking";
+import { policyText } from "@/lib/cancellation";
 import { formatDate, formatVND } from "@/lib/format";
 import { isVnpayConfigured } from "@/lib/payments/vnpay";
 import { prisma } from "@/lib/prisma";
@@ -48,8 +49,17 @@ async function PayContent({ params, searchParams }: { params: Promise<{ id: stri
         <p className="font-bold">{booking.room.hotel.name}</p>
         <p className="text-muted">{booking.room.name} × {booking.rooms}</p>
         <p className="border-t border-border pt-2">{formatDate(booking.checkIn)} → {formatDate(booking.checkOut)}</p>
+        {booking.discount > 0 && (
+          <div className="space-y-1 border-t border-border pt-2">
+            <p className="flex justify-between text-muted"><span>Tạm tính</span><span>{formatVND(booking.totalPrice + booking.discount)}</span></p>
+            <p className="flex justify-between text-emerald-700"><span>Mã {booking.voucherCode}</span><span>-{formatVND(booking.discount)}</span></p>
+          </div>
+        )}
         <p className="flex justify-between border-t border-border pt-2 text-base font-extrabold">
           <span>Tổng cộng</span><span className="text-brand">{formatVND(booking.totalPrice)}</span>
+        </p>
+        <p className="border-t border-border pt-2 text-xs text-muted">
+          <b className="text-foreground">Chính sách hủy:</b> {policyText(booking.room.hotel.freeCancelDays, booking.room.hotel.lateCancelFeePercent)}
         </p>
       </aside>
     </div>

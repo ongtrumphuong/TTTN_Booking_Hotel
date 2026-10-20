@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { Prisma, type BookingStatus, type Role } from "@prisma/client";import { prisma } from "@/lib/prisma";
+import { after } from "next/server";
+import { sendBookingCancelled, sendRefundCompleted } from "@/lib/email";
 import { requireAdmin } from "@/lib/session";
 import { NEXT_STATUS, unavailableQuantity, needsRefund, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
 import { ALLOWED_IMAGE_HOSTS } from "@/lib/image-hosts";
@@ -223,6 +225,7 @@ export async function updateBookingStatusAction(bookingId: string, next: Booking
     throw e;
   }
 
+  if (next === "CANCELLED") after(() => sendBookingCancelled(bookingId));
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");
   return { ok: true };
@@ -244,6 +247,7 @@ export async function markRefundedAction(bookingId: string, note: string): Promi
     return true;
   });
   if (!done) return { error: "Đơn này không ở trạng thái chờ hoàn tiền." };
+  after(() => sendRefundCompleted(bookingId));
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");

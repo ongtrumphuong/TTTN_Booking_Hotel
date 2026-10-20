@@ -280,6 +280,8 @@ VNPay chỉ gọi IPN vào địa chỉ công khai HTTPS nên **IPN không vào 
 - **Chính sách hủy** (cấu hình theo từng khách sạn: số ngày hủy miễn phí và % phí hủy muộn; mặc định 1 ngày và 50%): khách hủy sớm hơn hạn thì hoàn đủ, muộn hơn thì khách sạn giữ % tiền đã trả. Số tiền hoàn được tính và lưu vào `refundAmount` tại thời điểm hủy; hoàn 0 thì không còn khoản cần hoàn. Quản trị viên hủy đơn thì luôn hoàn đủ. Đơn chưa trả tiền hủy không mất phí.
 - Khách hủy đơn trước ngày nhận phòng. Đơn **chưa trả tiền thật** (giả lập) chuyển ngay sang Đã hoàn tiền; đơn **đã trả qua VNPay** giữ trạng thái **Chờ hoàn tiền** cho tới khi quản trị viên hoàn tiền (ngoài hệ thống) rồi bấm **Đã hoàn tiền** để ghi nhận kèm ghi chú.
 
+- **Email**: ngoài email xác nhận còn có email báo hủy đơn (kèm số tiền hoàn/phí giữ lại) và email báo đã hoàn tiền; tất cả bỏ qua khi chưa cấu hình SMTP và không bao giờ làm hỏng thao tác chính.
+
 **Quản trị đơn đặt phòng** – chuyển trạng thái một chiều:
 
 | Từ | Được chuyển sang |
@@ -418,6 +420,7 @@ Mật khẩu tối thiểu 10 ký tự, có chữ và số, không phải từ p
 
 - [ ] `AUTH_SECRET` là chuỗi ngẫu nhiên mới (`openssl rand -base64 32`), không dùng giá trị mẫu. Nếu để trống, đăng nhập sẽ không hoạt động (an toàn theo hướng đóng).
 - [ ] `POSTGRES_PASSWORD` mạnh; cổng 5432 không công bố ra ngoài.
+- [ ] `CRON_SECRET` đã đặt (dịch vụ `cron` trong compose gọi `/api/cron/expire-bookings` mỗi 5 phút; kiểm tra bằng `docker compose ... logs cron`).
 - [ ] `APP_URL` là địa chỉ HTTPS thật (dùng cho email, sitemap, địa chỉ VNPay gọi về).
 - [ ] Không chạy `db seed`. Nếu đã lỡ chạy, xóa tài khoản mẫu: `npx tsx prisma/remove-sample-accounts.ts` (chỉ liệt kê) rồi thêm `--confirm`.
 - [ ] Đã tạo quản trị viên bằng `create-admin.ts` và thử đăng nhập.

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { sendBookingConfirmation } from "@/lib/email";
+import { sendBookingCancelled, sendBookingConfirmation } from "@/lib/email";
 import { isVnpayConfigured } from "@/lib/payments/vnpay";
 import { requireUser } from "@/lib/session";
 import { PENDING_HOLD_MINUTES, bookingCode, expireStaleBookings, parseStay, paymentStatusAfterCancel, todayUTC, unavailableQuantity } from "@/lib/booking";
@@ -173,7 +173,7 @@ export async function cancelBookingAction(bookingId: string): Promise<CancelStat
       lateFeePercent: booking.room.hotel.lateCancelFeePercent,
     });
     // Điều kiện status trong where để hai lần bấm hủy cùng lúc không ghi đè lên nhau.
-    await prisma.booking.updateMany({
+    const res = await prisma.booking.updateMany({
       where: { id: booking.id, status: { in: ["PENDING", "CONFIRMED"] } },
       data: {
         status: "CANCELLED",
@@ -182,6 +182,7 @@ export async function cancelBookingAction(bookingId: string): Promise<CancelStat
         paymentStatus: await paymentStatusAfterCancel(prisma, booking.id, booking.paymentStatus, paid > 0 ? quote.refund : null),
       },
     });
+    if (res.count > 0 && booking.paymentStatus === "PAID") after(() => sendBookingCancelled(booking.id));
   }
   revalidatePath("/bookings");
   revalidatePath(`/bookings/${bookingId}`);

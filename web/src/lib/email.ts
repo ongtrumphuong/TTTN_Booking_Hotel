@@ -157,3 +157,108 @@ export async function sendPasswordResetEmail(to: string, name: string, link: str
     return { sent: false };
   }
 }
+
+export type NoticeData = {
+  subject: string;
+  heading: string;
+  guestName: string;
+  intro: string;
+  rows: [label: string, value: string][];
+  link: string;
+};
+
+/** Email thông báo ngắn (hủy đơn, hoàn tiền). Mọi dữ liệu động đều được thoát ký tự HTML. */
+export function buildNoticeEmail(d: NoticeData) {
+  const row = ([label, value]: [string, string]) =>
+    `<tr><td style="padding:6px 0;color:#5b6b86;width:140px">${esc(label)}</td><td style="padding:6px 0;font-weight:600">${esc(value)}</td></tr>`;
+  const html = `<!doctype html><html lang="vi"><body style="margin:0;background:#f7f9fc;font-family:Arial,Helvetica,sans-serif;color:#0f1b33">
+<div style="max-width:560px;margin:0 auto;padding:24px 16px">
+  <div style="background:#0b5fff;color:#fff;border-radius:16px 16px 0 0;padding:20px 24px">
+    <div style="font-size:18px;font-weight:700">Không Gian Số Stay</div>
+    <div style="opacity:.85;font-size:13px">${esc(d.heading)}</div>
+  </div>
+  <div style="background:#fff;border:1px solid #e2e8f3;border-top:0;border-radius:0 0 16px 16px;padding:24px">
+    <p style="margin:0 0 16px">Xin chào <b>${esc(d.guestName)}</b>, ${esc(d.intro)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px">${d.rows.map(row).join("")}</table>
+    <p style="margin:24px 0 0"><a href="${esc(d.link)}" style="display:inline-block;background:#0b5fff;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:700">Xem chi tiết đặt phòng</a></p>
+  </div>
+</div></body></html>`;
+  const text = [`Xin chào ${d.guestName}, ${d.intro}`, ...d.rows.map(([l, v]) => `${l}: ${v}`), `Chi tiết: ${d.link}`].join("\n");
+  return { subject: d.subject, html, text };
+}
+
+async function loadBooking(bookingId: string) {
+  return prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { user: { select: { name: true, email: true } }, room: { include: { hotel: { select: { name: true } } } } },
+  });
+}
+
+async function deliver(to: string, mail: { subject: string; html: string; text: string }, what: string): Promise<{ sent: boolean; reason?: string }> {
+  try {
+    const transport = createTransport();
+    if (!transport) return { sent: false, reason: "SMTP chưa được cấu hình" };
+    await transport.sendMail({ from: process.env.EMAIL_FROM?.trim() || "Không Gian Số Stay <no-reply@localhost>", to, ...mail });
+    return { sent: true };
+  } catch (e) {
+    console.error(`[email] Gửi email ${what} thất bại:`, e instanceof Error ? e.message : e);
+    return { sent: false, reason: "Gửi thất bại" };
+  }
+}
+
+const appBase = () => (process.env.APP_URL?.trim() || "http://localhost:3000").replace(/\/+$/, "");
+
+/** Báo hủy đơn, kèm số tiền hoàn nếu đơn đã thanh toán. Không bao giờ ném lỗi. */
+export async function sendBookingCancelled(bookingId: string) {
+  try {
+    const b = await loadBooking(bookingId);
+    if (!b || b.status !== "CANCELLED") return { sent: false, reason: "Đơn không ở trạng thái đã hủy" };
+    const paid = b.paymentStatus !== "UNPAID";
+    const rows: [string, string][] = [
+      ["Mã đặt phòng", b.code],
+      ["Khách sạn", b.room.hotel.name],
+      ["Nhận phòng", formatDate(b.checkIn)],
+      ["Trả phòng", formatDate(b.checkOut)],
+    ];
+    if (paid && b.refundAmount !== null) {
+      rows.push(["Hoàn tiền", formatVND(b.refundAmount)]);
+      if (b.refundAmount < b.totalPrice) rows.push(["Phí hủy giữ lại", formatVND(b.totalPrice - b.refundAmount)]);
+    }
+    const mail = buildNoticeEmail({
+      subject: `Đã hủy đặt phòng ${b.code} - ${b.room.hotel.name}`,
+      heading: "Đơn đặt phòng đã được hủy",
+      guestName: b.user.name,
+      intro: paid && (b.refundAmount ?? b.totalPrice) > 0 ? "đơn đặt phòng của bạn đã được hủy. Chúng tôi sẽ hoàn tiền và báo lại khi hoàn tất." : "đơn đặt phòng của bạn đã được hủy.",
+      rows,
+      link: `${appBase()}/bookings/${b.id}`,
+    });
+    return await deliver(b.user.email, mail, "hủy đơn");
+  } catch (e) {
+    console.error("[email] Gửi email hủy đơn thất bại:", e instanceof Error ? e.message : e);
+    return { sent: false, reason: "Gửi thất bại" };
+  }
+}
+
+/** Báo đã hoàn tiền xong (admin xác nhận). Không bao giờ ném lỗi. */
+export async function sendRefundCompleted(bookingId: string) {
+  try {
+    const b = await loadBooking(bookingId);
+    if (!b || b.paymentStatus !== "REFUNDED") return { sent: false, reason: "Đơn chưa được hoàn tiền" };
+    const mail = buildNoticeEmail({
+      subject: `Đã hoàn tiền đơn ${b.code} - ${b.room.hotel.name}`,
+      heading: "Đã hoàn tiền",
+      guestName: b.user.name,
+      intro: "chúng tôi đã hoàn tiền cho đơn đặt phòng đã hủy của bạn. Thời gian tiền về tài khoản tùy ngân hàng.",
+      rows: [
+        ["Mã đặt phòng", b.code],
+        ["Khách sạn", b.room.hotel.name],
+        ["Số tiền hoàn", formatVND(b.refundAmount ?? b.totalPrice)],
+      ],
+      link: `${appBase()}/bookings/${b.id}`,
+    });
+    return await deliver(b.user.email, mail, "hoàn tiền");
+  } catch (e) {
+    console.error("[email] Gửi email hoàn tiền thất bại:", e instanceof Error ? e.message : e);
+    return { sent: false, reason: "Gửi thất bại" };
+  }
+}

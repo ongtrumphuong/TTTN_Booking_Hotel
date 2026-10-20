@@ -57,6 +57,23 @@ services:
       retries: 3
       start_period: 20s
 
+  # Gọi định kỳ (5 phút/lần) để hủy các đơn chờ thanh toán đã quá hạn giữ phòng. Gọi thẳng vào ứng dụng trong mạng Docker,
+  # không đi qua proxy ngoài. Cần CRON_SECRET trong .env.prod (cùng giá trị ứng dụng đọc).
+  cron:
+    image: curlimages/curl:8.10.1
+    restart: unless-stopped
+    env_file: .env.prod
+    depends_on:
+      web:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          sleep 300
+          curl -fsS -m 30 -X POST -H "Authorization: Bearer $$CRON_SECRET" http://web:3000/api/cron/expire-bookings || echo "cron: gọi thất bại"
+        done
+
 volumes:
   pgdata:
   uploads:

@@ -14,6 +14,7 @@ import { canReviewHotel } from "@/lib/reviews";
 import { getCurrentUser } from "@/lib/session";
 import { NOINDEX, absoluteUrl, jsonLd } from "@/lib/site";
 import { unavailableQuantity, parseStay, isoDate } from "@/lib/booking";
+import { policyText } from "@/lib/cancellation";
 import { formatVND } from "@/lib/format";
 import { getHotelDetail } from "@/lib/hotels";
 import { prisma } from "@/lib/prisma";
@@ -213,6 +214,13 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
                 );
               })}
             </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-xl font-extrabold">Chính sách hủy phòng</h2>
+            <p className="rounded-2xl border border-border bg-white p-4 text-sm text-muted">
+              {policyText(hotel.freeCancelDays, hotel.lateCancelFeePercent)} Đơn chưa thanh toán hủy lúc nào cũng không mất phí.
+            </p>
           </section>
 
           <section>
