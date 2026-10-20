@@ -4,13 +4,19 @@ import type { Metadata } from "next";
 import { PayForm } from "@/components/pay-form";
 import { PENDING_HOLD_MINUTES } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
+import { isVnpayConfigured } from "@/lib/payments/vnpay";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Thanh toán" };
 
-async function PayContent({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+const PAY_ERRORS: Record<string, string> = {
+  cancelled: "Bạn đã hủy thanh toán trên VNPay. Đơn vẫn được giữ phòng, bạn có thể thanh toán lại.",
+  failed: "Thanh toán chưa thành công. Đơn vẫn được giữ phòng, vui lòng thử lại.",
+};
+
+async function PayContent({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const user = await requireUser(`/bookings/${id}/pay`);
   const booking = await prisma.booking.findFirst({
     where: { id, userId: user.id },
@@ -26,12 +32,15 @@ async function PayContent({ params }: { params: Promise<{ id: string }> }) {
       <div className="rounded-2xl border border-border bg-white p-6">
         <h1 className="text-2xl font-extrabold">Thanh toán</h1>
         <p className="mb-6 mt-1 text-sm text-muted">Mã đơn: <b>{booking.code}</b></p>
+        {sp.error && PAY_ERRORS[sp.error] && (
+          <div role="alert" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">{PAY_ERRORS[sp.error]}</div>
+        )}
         {expired ? (
           <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
             Đơn đã quá thời gian giữ phòng. Vui lòng đặt lại.
           </div>
         ) : (
-          <PayForm bookingId={booking.id} total={booking.totalPrice} />
+          <PayForm bookingId={booking.id} total={booking.totalPrice} mode={isVnpayConfigured() ? "vnpay" : "simulated"} />
         )}
       </div>
       <aside className="h-fit space-y-2 rounded-2xl border border-border bg-white p-5 text-sm">
@@ -50,7 +59,7 @@ export default function PayPage(props: PageProps<"/bookings/[id]/pay">) {
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       <Suspense fallback={<div className="h-80 animate-pulse rounded-2xl bg-border" />}>
-        <PayContent params={props.params} />
+        <PayContent params={props.params} searchParams={props.searchParams} />
       </Suspense>
     </div>
   );

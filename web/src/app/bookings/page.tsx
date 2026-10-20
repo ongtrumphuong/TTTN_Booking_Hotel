@@ -8,6 +8,16 @@ import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Đặt phòng của tôi" };
 
+async function PaymentNotice({ searchParams }: Pick<PageProps<"/bookings">, "searchParams">) {
+  const sp = await searchParams;
+  if (sp.payment !== "invalid") return null;
+  return (
+    <div role="alert" className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+      Không xác minh được kết quả thanh toán. Nếu tài khoản ngân hàng đã bị trừ tiền, vui lòng liên hệ hỗ trợ kèm mã đặt phòng.
+    </div>
+  );
+}
+
 async function List() {
   const user = await requireUser("/bookings");
   const bookings = await prisma.booking.findMany({
@@ -51,10 +61,13 @@ async function List() {
   );
 }
 
-export default function BookingsPage() {
+export default function BookingsPage(props: PageProps<"/bookings">) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="mb-6 text-2xl font-extrabold">Đặt phòng của tôi</h1>
+      <Suspense fallback={null}>
+        <PaymentNotice searchParams={props.searchParams} />
+      </Suspense>
       <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-border" />}>
         <List />
       </Suspense>

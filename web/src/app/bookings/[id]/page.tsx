@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Chi tiết đặt phòng" };
 
 const PAYMENT: Record<string, string> = { UNPAID: "Chưa thanh toán", PAID: "Đã thanh toán", REFUNDED: "Đã hoàn tiền" };
 
-async function Detail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ paid?: string }> }) {
+async function Detail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ paid?: string; payment?: string }> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const user = await requireUser(`/bookings/${id}`);
   const b = await prisma.booking.findFirst({ where: { id, userId: user.id }, include: { room: { include: { hotel: true } } } });
@@ -24,6 +24,12 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
 
   return (
     <>
+      {sp.payment === "refund" && (
+        <div role="alert" className="mb-6 rounded-2xl bg-amber-50 p-5 text-sm text-amber-900">
+          <p className="font-bold">Chúng tôi đã nhận thanh toán nhưng không giữ được phòng.</p>
+          <p>Đơn đã được hủy và bộ phận hỗ trợ sẽ hoàn tiền cho bạn. Xin lỗi vì sự bất tiện này.</p>
+        </div>
+      )}
       {sp.paid && b.status === "CONFIRMED" && (
         <div className="mb-6 flex items-center gap-3 rounded-2xl bg-emerald-50 p-5 text-emerald-900">
           <CheckCircle2 aria-hidden />

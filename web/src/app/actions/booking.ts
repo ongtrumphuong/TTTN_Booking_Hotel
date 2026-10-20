@@ -1,10 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { sendBookingConfirmation } from "@/lib/email";
+import { isVnpayConfigured } from "@/lib/payments/vnpay";
 import { requireUser } from "@/lib/session";
 import { PENDING_HOLD_MINUTES, bookedQuantity, bookingCode, parseStay, todayUTC } from "@/lib/booking";
 
@@ -82,6 +85,8 @@ export async function payBookingAction(bookingId: string, _: BookingState, formD
   const method = z.enum(METHODS).safeParse(formData.get("method"));
   if (!method.success) return { error: "Vui lòng chọn phương thức thanh toán." };
 
+  if (isVnpayConfigured()) return { error: "Hệ thống đang dùng cổng thanh toán VNPay. Vui lòng thanh toán qua VNPay." };
+
   const booking = await prisma.booking.findFirst({ where: { id: bookingId, userId: user.id } });
   if (!booking) return { error: "Không tìm thấy đơn đặt phòng." };
   if (booking.status !== "PENDING" || booking.paymentStatus !== "UNPAID") redirect(`/bookings/${bookingId}`);
@@ -91,11 +96,28 @@ export async function payBookingAction(bookingId: string, _: BookingState, formD
     return { error: `Đơn đã quá thời gian giữ phòng (${PENDING_HOLD_MINUTES} phút). Vui lòng đặt lại.` };
   }
 
-  // Thanh toán giả lập: không thu tiền thật, không nhận thông tin thẻ.
-  await prisma.booking.update({
-    where: { id: booking.id },
-    data: { paymentStatus: "PAID", status: "CONFIRMED" },
+  // Thanh toán giả lập: không thu tiền thật, không nhận thông tin thẻ. Chỉ hoạt động khi chưa cấu hình VNPay,
+  // để khi chạy thật không ai bỏ qua bước trả tiền bằng cách gọi thẳng hành động này.
+  const confirmed = await prisma.$transaction(async (tx) => {
+    const res = await tx.booking.updateMany({
+      where: { id: booking.id, status: "PENDING", paymentStatus: "UNPAID" },
+      data: { paymentStatus: "PAID", status: "CONFIRMED" },
+    });
+    if (res.count === 0) return false;
+    await tx.payment.create({
+      data: {
+        bookingId: booking.id,
+        provider: "SIMULATED",
+        txnRef: `SIM${booking.code.replace(/[^A-Za-z0-9]/g, "")}${Date.now().toString(36).toUpperCase()}`,
+        amount: booking.totalPrice,
+        status: "SUCCESS",
+        method: method.data,
+        paidAt: new Date(),
+      },
+    });
+    return true;
   });
+  if (confirmed) after(() => sendBookingConfirmation(booking.id));
   revalidatePath("/bookings");
   redirect(`/bookings/${bookingId}?paid=1`);
 }

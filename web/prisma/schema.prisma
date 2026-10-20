@@ -25,14 +25,25 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PaymentProvider {
+  SIMULATED
+  VNPAY
+}
+
+enum PaymentTxnStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String     @id @default(cuid())
+  email        String     @unique
   name         String
   phone        String?
   passwordHash String
-  role         Role      @default(USER)
-  createdAt    DateTime  @default(now())
+  role         Role       @default(USER)
+  createdAt    DateTime   @default(now())
   bookings     Booking[]
   reviews      Review[]
   favorites    Favorite[]
@@ -95,6 +106,7 @@ model Booking {
   paymentStatus PaymentStatus @default(UNPAID)
   note          String?
   createdAt     DateTime      @default(now())
+  payments      Payment[]
 
   @@index([userId])
   @@index([roomId, checkIn, checkOut])
@@ -120,4 +132,23 @@ model Favorite {
   hotel   Hotel  @relation(fields: [hotelId], references: [id], onDelete: Cascade)
 
   @@id([userId, hotelId])
+}
+
+// Mỗi lần thanh toán là một dòng riêng (txnRef duy nhất) để đối soát và xử lý kết quả cổng thanh toán đúng một lần.
+model Payment {
+  id            String           @id @default(cuid())
+  bookingId     String
+  booking       Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider      PaymentProvider
+  txnRef        String           @unique
+  amount        Int
+  status        PaymentTxnStatus @default(PENDING)
+  method        String?
+  providerTxnNo String?
+  responseCode  String?
+  note          String?
+  createdAt     DateTime         @default(now())
+  paidAt        DateTime?
+
+  @@index([bookingId])
 }

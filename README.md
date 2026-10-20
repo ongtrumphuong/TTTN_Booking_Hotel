@@ -11,6 +11,8 @@
 | Cơ sở dữ liệu | PostgreSQL 16 + Prisma ORM 6 |
 | Xác thực | next-auth v5 (Credentials, phiên JWT), mật khẩu băm bcrypt |
 | Kiểm tra dữ liệu | Zod |
+| Thanh toán | VNPay (sandbox) hoặc cổng giả lập khi chưa cấu hình khóa |
+| Email | Nodemailer (SMTP) |
 
 > Dự án dùng phiên bản Next.js mới có khác biệt so với tài liệu cũ. Tài liệu đi kèm nằm trong `web/node_modules/next/dist/docs/` (xem `web/AGENTS.md`).
 
@@ -22,7 +24,7 @@
 - Trang chi tiết khách sạn: thư viện ảnh xem phóng to (phím mũi tên, thanh ảnh nhỏ), bản đồ vị trí (OpenStreetMap), tiện nghi, danh sách phòng kèm số phòng còn trống theo ngày chọn, đánh giá.
 - Trang chủ có phần "Khách hàng nói gì" lấy từ các đánh giá tốt gần đây.
 - Đăng ký, đăng nhập, đăng xuất; trang tài khoản.
-- Đặt phòng → thanh toán giả lập → xác nhận; xem lịch sử, hủy đơn (trước ngày nhận phòng).
+- Đặt phòng → thanh toán (VNPay sandbox, hoặc giả lập khi chưa có khóa) → email xác nhận; xem lịch sử, hủy đơn (trước ngày nhận phòng).
 - Yêu thích khách sạn (nút tim trên thẻ và trang chi tiết, trang `/favorites`).
 - Viết hoặc sửa đánh giá sau khi đã hoàn tất kỳ lưu trú.
 
@@ -107,6 +109,7 @@ erDiagram
     HOTEL ||--o{ REVIEW : "nhận"
     HOTEL ||--o{ FAVORITE : "được lưu"
     ROOM ||--o{ BOOKING : "được đặt"
+    BOOKING ||--o{ PAYMENT : "có"
 
     USER {
         string id PK
@@ -162,6 +165,20 @@ erDiagram
         string note
         datetime createdAt
     }
+    PAYMENT {
+        string id PK
+        string bookingId FK
+        enum provider "SIMULATED | VNPAY"
+        string txnRef UK
+        int amount
+        enum status "PENDING | SUCCESS | FAILED"
+        string method
+        string providerTxnNo
+        string responseCode
+        string note
+        datetime createdAt
+        datetime paidAt
+    }
     REVIEW {
         string id PK
         string hotelId FK
@@ -179,19 +196,48 @@ erDiagram
 Ghi chú:
 - `REVIEW` có ràng buộc duy nhất `(hotelId, userId)`: mỗi khách chỉ có một đánh giá cho một khách sạn.
 - `FAVORITE` dùng khóa chính kép `(userId, hotelId)`.
+- `PAYMENT`: mỗi lần thanh toán là một dòng riêng với `txnRef` duy nhất, dùng để đối soát và để xử lý kết quả từ cổng thanh toán đúng một lần.
 - Xóa khách sạn sẽ xóa theo phòng, đánh giá, yêu thích (`onDelete: Cascade`). Đơn đặt phòng không bị xóa theo nên giao diện quản trị chỉ **ẩn** khách sạn, không xóa.
 - Giá lưu theo đơn vị đồng (số nguyên), ngày nhận/trả phòng lưu ở dạng ngày UTC.
 
 Có thể xem sơ đồ bằng VS Code (tiện ích Markdown Preview Mermaid Support), GitHub, hoặc dán khối `mermaid` vào <https://mermaid.live> để xuất ảnh đưa vào báo cáo.
 
-## 6. Quy tắc nghiệp vụ chính
+## 6. Thanh toán VNPay và email xác nhận
+
+**Mặc định (chưa điền khóa)**: dùng cổng thanh toán **giả lập**, không thu tiền thật, không cần thông tin thẻ; email bị bỏ qua nếu chưa cấu hình SMTP.
+
+### 6.1. Bật VNPay sandbox
+1. Đăng ký tài khoản thử nghiệm miễn phí tại <https://sandbox.vnpayment.vn/devreg/>. VNPay gửi email chứa **mã website (TmnCode)** và **khóa bí mật (HashSecret)**.
+2. Điền vào `web/.env`: `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, và `APP_URL` (ví dụ `http://localhost:3000`). Khởi động lại ứng dụng.
+3. Trang thanh toán tự chuyển sang VNPay. **Khi đã có khóa, cổng giả lập bị tắt** để không ai bỏ qua bước trả tiền.
+4. Thử với thẻ ngân hàng thử nghiệm do VNPay công bố trong tài liệu sandbox (ví dụ ngân hàng NCB).
+
+### 6.2. Cách hoạt động
+- Khách bấm thanh toán → hệ thống tạo một dòng `Payment` rồi chuyển khách sang VNPay bằng địa chỉ có chữ ký **HMAC-SHA512** (số tiền × 100, giờ GMT+7, thời hạn thanh toán bằng thời hạn giữ phòng).
+- VNPay đưa khách về `/api/payments/vnpay/return` và đồng thời gọi `/api/payments/vnpay/ipn` (máy chủ gọi máy chủ). **Cả hai đều kiểm tra chữ ký, mã giao dịch và số tiền**, rồi dùng chung một hàm xử lý an toàn khi gọi lặp: mỗi giao dịch chỉ được xác nhận đúng một lần, email chỉ gửi một lần.
+- IPN trả về `RspCode` theo bảng của VNPay: `00` thành công, `01` không thấy đơn, `02` đã xác nhận, `04` sai số tiền, `97` sai chữ ký, `99` lỗi khác.
+- Nếu tiền đã về nhưng không còn giữ được phòng (đơn đã hủy hoặc quá hạn giữ mà phòng đã hết): đơn chuyển **Đã hủy** nhưng giữ trạng thái **Đã thanh toán** kèm ghi chú trong `Payment`, để quản trị viên **hoàn tiền thủ công**.
+
+### 6.3. Chạy trên máy cá nhân
+VNPay chỉ gọi IPN vào địa chỉ công khai HTTPS nên **IPN không vào được `localhost`**. Khi chạy cục bộ, đơn vẫn được xác nhận nhờ trang quay về (đã kiểm tra chữ ký). Muốn thử cả IPN, dùng đường hầm như `ngrok http 3000` hoặc `cloudflared`, đặt `APP_URL` là địa chỉ đường hầm và khai báo IPN URL `…/api/payments/vnpay/ipn` trong trang quản lý sandbox của VNPay.
+
+### 6.4. Email xác nhận
+Điền `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` trong `web/.env`. Ví dụ Gmail: `smtp.gmail.com`, cổng `587`, mật khẩu là **Mật khẩu ứng dụng** (bật xác minh 2 bước). Email gửi sau khi đơn chuyển sang **Đã xác nhận**; gửi lỗi chỉ ghi log, không làm hỏng đặt phòng. Mọi dữ liệu do khách nhập (tên, ghi chú) đều được thoát ký tự HTML.
+
+### 6.5. Đã kiểm tra những gì
+- Chữ ký đối chiếu với thuật toán mẫu chính thức của VNPay (18 trường hợp: sai số tiền, sai khóa, thiếu chữ ký, tham số rỗng, ký tự đặc biệt…).
+- Logic xác nhận trên cơ sở dữ liệu thật (16 trường hợp: thất bại, hủy, gọi lặp, hai yêu cầu đồng thời, đơn đã hủy, quá hạn giữ phòng).
+- Các endpoint với dữ liệu đã ký, và email nhận được qua một máy chủ SMTP giả.
+- **Chưa kiểm tra với tài khoản VNPay sandbox thật** (cần khóa của riêng bạn): trình duyệt đã tới được `sandbox.vnpayment.vn` và VNPay phản hồi "không tìm thấy website" với mã website giả, nghĩa là chuyển hướng hoạt động nhưng chữ ký chỉ được xác minh bằng cách đối chiếu mẫu.
+
+## 7. Quy tắc nghiệp vụ chính
 
 **Đặt phòng**
 - Giá luôn được tính lại ở máy chủ (`đơn giá × số đêm × số phòng`), không tin giá từ trình duyệt.
 - Thời gian ở từ 1 đến 30 đêm; ngày nhận phòng không được ở quá khứ; số khách không vượt `sức chứa × số phòng`.
 - Kiểm tra phòng trống và tạo đơn trong **một giao dịch mức Serializable** để hai người đặt cùng lúc không vượt quá số phòng hiện có.
 - Đơn mới ở trạng thái **Chờ thanh toán** và **giữ phòng 30 phút**; quá hạn mà chưa thanh toán thì không còn giữ phòng và không thanh toán được nữa.
-- Thanh toán là **giả lập**: không thu tiền thật, không nhận thông tin thẻ; chỉ chọn phương thức rồi đơn chuyển sang Đã xác nhận / Đã thanh toán.
+- Thanh toán: nếu chưa cấu hình VNPay thì là **giả lập** (không thu tiền thật, không nhận thông tin thẻ); nếu đã cấu hình VNPay thì chỉ xác nhận khi cổng báo thành công (xem mục 6).
 - Khách hủy đơn trước ngày nhận phòng; đơn đã thanh toán được đánh dấu **Đã hoàn tiền**.
 
 **Quản trị đơn đặt phòng** – chuyển trạng thái một chiều:
@@ -206,7 +252,7 @@ Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống ki�
 
 **Đánh giá**: chỉ khách có đơn **Hoàn tất** tại khách sạn đó mới được viết; gửi lại sẽ cập nhật đánh giá cũ. Điểm trung bình tính từ các đánh giá.
 
-## 7. Bảo mật
+## 8. Bảo mật
 
 - Mật khẩu băm bcrypt; đăng nhập so sánh trong thời gian không phụ thuộc việc email có tồn tại.
 - Phiên là JWT mã hóa trong cookie; vai trò kiểm tra **ở từng trang và từng hành động quản trị** (`requireAdmin`), không chỉ dựa vào layout hay giao diện.
@@ -215,7 +261,7 @@ Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống ki�
 - Quản trị viên không đổi được vai trò của chính mình, tránh tự khóa quyền.
 - Mọi dữ liệu nhập đều kiểm tra bằng Zod ở máy chủ.
 
-## 8. Cấu trúc thư mục
+## 9. Cấu trúc thư mục
 
 ```
 Booking_Hotel/
@@ -224,7 +270,8 @@ Booking_Hotel/
    ├─ prisma/
    │  ├─ schema.prisma       mô hình dữ liệu
    │  ├─ migrations/         lịch sử migrate
-   │  └─ seed.ts             dữ liệu mẫu
+   │  ├─ seed.ts             dữ liệu mẫu (xóa và tạo lại)
+   │  └─ seed-reviews.ts     thêm đánh giá mẫu, không xóa dữ liệu
    └─ src/
       ├─ auth.ts             cấu hình next-auth
       ├─ app/
@@ -235,17 +282,18 @@ Booking_Hotel/
       │  ├─ favorites/       khách sạn yêu thích
       │  ├─ login/, register/, account/
       │  ├─ admin/           khu vực quản trị
-      │  ├─ api/             next-auth và danh sách yêu thích
-      │  └─ actions/         Server Actions (auth, booking, engage, admin)
+      │  ├─ api/             next-auth, danh sách yêu thích, VNPay (return, ipn)
+      │  └─ actions/         Server Actions (auth, booking, payment, engage, admin)
       ├─ components/         thành phần giao diện (admin/ cho quản trị)
-      └─ lib/                truy vấn, quy tắc đặt phòng, phiên, định dạng
+      └─ lib/                truy vấn, quy tắc đặt phòng, phiên, định dạng, email
+         └─ payments/        VNPay (ký, kiểm tra chữ ký) và xử lý kết quả thanh toán
 ```
 
-## 9. Hạn chế và hướng phát triển
+## 10. Hạn chế và hướng phát triển
 
-- Thanh toán chỉ giả lập; có thể tích hợp cổng VNPay hoặc MoMo (chế độ sandbox).
+- VNPay mới ở chế độ sandbox, chưa kiểm tra với khóa thật; chưa có hoàn tiền tự động qua cổng (hoàn tiền là thao tác thủ công); chưa tích hợp MoMo.
 - Ảnh khách sạn mẫu là ảnh ngẫu nhiên từ picsum.photos, chưa phải ảnh thật; chưa có chức năng tải ảnh lên.
-- Chưa gửi email xác nhận, chưa giới hạn số lần đăng nhập sai. Bản đồ cần truy cập được `openstreetmap.org` (nếu bị chặn sẽ hiện thông báo kèm liên kết).
+- Email mới có thư xác nhận đặt phòng (chưa có thư hủy phòng, nhắc lịch); chưa giới hạn số lần đăng nhập sai. Bản đồ cần truy cập được `openstreetmap.org` (nếu bị chặn sẽ hiện thông báo kèm liên kết).
 - Chưa có ứng dụng di động (dự kiến React Native/Expo dùng chung API).
 - Chưa có kiểm thử tự động; các luồng chính đã được kiểm tra thủ công.
 - Trước khi triển khai thật: đổi `AUTH_SECRET`, xóa tài khoản mẫu, dùng HTTPS và PostgreSQL riêng có sao lưu.
