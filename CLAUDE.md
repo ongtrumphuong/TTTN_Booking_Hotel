@@ -34,15 +34,22 @@ Next.js 16 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 ## Trạng thái (cập nhật: 2026-10-20)
 Đã xong và đã push (commit `37d9f76`): tìm kiếm/lọc, đặt phòng, VNPay sandbox, email xác nhận, yêu thích, đánh giá + kiểm duyệt, admin có biểu đồ, tải ảnh, hoàn tiền, test tự động, throttle đăng nhập, SEO, Docker; và đợt nghiệp vụ mới: hết hạn đơn, chính sách hủy/hoàn tiền, quên mật khẩu, voucher, chặn phòng.
 
+Đã kiểm tra bằng trình duyệt thật (2026-10-20): quên/đặt lại mật khẩu (token dùng lại bị từ chối), tạo voucher, mã sai/đúng và mức giảm trên form đặt phòng, đơn có voucher, trang thanh toán đúng số tiền sau giảm, hủy muộn tính phí và hoàn một phần, chặn phòng làm phòng "Hết phòng", cron hết hạn đơn (401 khi sai khóa). Đã sửa lỗi `new Date()` ở `/reset-password` (thêm `connection()`).
+
 Chưa làm/chưa kiểm:
-- **Chưa thử các màn hình mới trên trình duyệt** (đặt phòng có voucher, hủy có phí, `/admin/vouchers`, chặn phòng, quên mật khẩu). Chỉ mới có test + build.
-- `CRON_SECRET` chưa có trong `web/.env`; cron gọi `/api/cron/expire-bookings` chưa được lập lịch trong `deploy/`.
+- `CRON_SECRET` đã có trong `web/.env` (máy dev) nhưng cron gọi `/api/cron/expire-bookings` chưa được lập lịch trong `deploy/`.
+- Trang thanh toán `/bookings/[id]/pay` chỉ hiện tổng sau giảm, chưa tách dòng giảm giá.
 - Hiển thị chính sách hủy trên trang chi tiết khách sạn và trang đặt phòng (mới hiện ở chi tiết đơn).
-- Nếu đổi sang thanh toán qua VNPay có voucher: chưa thử end-to-end `amount` = `totalPrice` sau giảm.
+- Chưa thử VNPay end-to-end với đơn có voucher (số tiền gửi sang VNPay là `totalPrice` sau giảm).
+
+## Mẹo chạy thử giao diện
+- `.claude/launch.json` có cấu hình `web`; nếu cổng 3000 bận (có thể có server khác) nó tự đổi sang 3001. `APP_URL` trong `.env` là 3000 nên liên kết đặt lại mật khẩu in ra console phải đổi cổng cho khớp.
+- Tài khoản mẫu ở README mục 4. Chỉ dùng cho DB dev; dọn dữ liệu thử sau khi xong (đơn, voucher, lịch chặn).
+- Trong công cụ trình duyệt, nút submit đôi khi cần bấm bằng `ref` thay vì tọa độ; ô nhập React nên gõ bằng thao tác `type` để state cập nhật.
 
 ## Việc tiếp theo (backlog theo thứ tự đề xuất)
-1. Kiểm tra bằng tay các màn hình mới (dùng trình duyệt tích hợp), sửa lỗi giao diện nếu có; thêm `CRON_SECRET` vào `.env`/`deploy/` và hướng dẫn cron.
-2. Hiện chính sách hủy ở trang khách sạn và trang đặt phòng.
+1. Lập lịch cron cho `/api/cron/expire-bookings` trong `deploy/` (kèm `CRON_SECRET`) và ghi vào README mục 12.
+2. Hiện chính sách hủy ở trang khách sạn và trang đặt phòng; tách dòng giảm giá ở trang thanh toán.
 3. Email khi hủy đơn / hoàn tiền xong, và email nhắc trước ngày nhận phòng.
 4. Trạng thái nhận phòng/trả phòng thực tế (check-in/check-out) cho admin.
 5. Giá động (cuối tuần, mùa cao điểm, giảm theo số đêm) và thuế/phí dịch vụ.

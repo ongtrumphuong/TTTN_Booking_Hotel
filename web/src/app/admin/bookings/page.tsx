@@ -91,7 +91,7 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
                     {paymentLabel(b.status, b.paymentStatus, b.refundAmount)}
                     {needsRefund(b.status, b.paymentStatus, b.refundAmount) && ` ${formatVND(b.refundAmount ?? b.totalPrice)}`}
                   </p>
-                  {b.status === "CANCELLED" && b.paymentStatus === "PAID" && b.refundAmount === 0 && <p className="text-xs text-muted">Hủy muộn: giữ toàn bộ tiền</p>}
+                  {b.status === "CANCELLED" && b.refundAmount !== null && b.refundAmount < b.totalPrice && <p className="text-xs text-muted">Hủy muộn: {b.refundAmount === 0 ? "giữ toàn bộ tiền" : `hoàn ${formatVND(b.refundAmount)}, giữ ${formatVND(b.totalPrice - b.refundAmount)}`}</p>}
                 </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_LABEL[b.status].cls}`}>{STATUS_LABEL[b.status].text}</span>

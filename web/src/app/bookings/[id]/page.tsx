@@ -72,8 +72,15 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           <div><p className="text-muted">Trả phòng</p><p className="font-semibold">{formatDate(b.checkOut)}</p></div>
           <div><p className="text-muted">Thanh toán</p><p className="font-semibold">{paymentLabel(b.status, b.paymentStatus, b.refundAmount)}</p></div>
           {b.discount > 0 && <div><p className="text-muted">Mã giảm giá {b.voucherCode}</p><p className="font-semibold text-emerald-700">-{formatVND(b.discount)}</p></div>}
-          {b.status === "CANCELLED" && b.paymentStatus === "PAID" && b.refundAmount === 0 && (
-            <div className="sm:col-span-2"><p className="text-muted">Hoàn tiền</p><p className="font-semibold">Hủy sau hạn miễn phí nên không được hoàn tiền theo chính sách.</p></div>
+          {b.status === "CANCELLED" && b.refundAmount !== null && b.refundAmount < b.totalPrice && (
+            <div className="sm:col-span-2">
+              <p className="text-muted">Hoàn tiền</p>
+              <p className="font-semibold">
+                {b.refundAmount === 0
+                  ? "Hủy sau hạn miễn phí nên không được hoàn tiền theo chính sách."
+                  : `Hoàn ${formatVND(b.refundAmount)}; khách sạn giữ ${formatVND(b.totalPrice - b.refundAmount)} theo chính sách hủy muộn.`}
+              </p>
+            </div>
           )}
           <div><p className="text-muted">Tổng tiền</p><p className="text-lg font-extrabold text-brand">{formatVND(b.totalPrice)}</p></div>
           {b.note && <div className="sm:col-span-2"><p className="text-muted">Yêu cầu</p><p className="font-semibold">{b.note}</p></div>}

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ResetPasswordForm } from "@/components/password-forms";
@@ -8,6 +9,7 @@ import { NOINDEX } from "@/lib/site";
 export const metadata: Metadata = { title: "Đặt lại mật khẩu", robots: NOINDEX };
 
 async function Content({ searchParams }: Pick<PageProps<"/reset-password">, "searchParams">) {
+  await connection(); // hạn của token phụ thuộc thời điểm hiện tại nên không dựng sẵn
   const sp = await searchParams;
   const token = (Array.isArray(sp.token) ? sp.token[0] : sp.token) ?? "";
   if (!(await isResetTokenValid(token))) {
