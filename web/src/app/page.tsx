@@ -118,7 +118,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pt-14">
+      <section id="diem-den" className="mx-auto max-w-6xl scroll-mt-20 px-4 pt-14">
         <h2 className="text-2xl font-extrabold">Điểm đến phổ biến</h2>
         <p className="mb-6 mt-1 text-sm text-muted">Khám phá những thành phố được yêu thích nhất</p>
         <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl bg-border" />}>

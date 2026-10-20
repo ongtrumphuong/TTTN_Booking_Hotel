@@ -18,9 +18,7 @@ export function Header() {
         </div>
         <nav className="hidden items-center gap-7 whitespace-nowrap text-sm font-medium text-muted xl:flex">
           <Link href="/hotels" className="hover:text-brand">Khách sạn</Link>
-          <Link href="/hotels?city=Đà Nẵng" className="hover:text-brand">Đà Nẵng</Link>
-          <Link href="/hotels?city=Hà Nội" className="hover:text-brand">Hà Nội</Link>
-          <Link href="/hotels?city=Phú Quốc" className="hover:text-brand">Phú Quốc</Link>
+          <Link href="/#diem-den" className="hover:text-brand">Điểm đến phổ biến</Link>
         </nav>
         <Suspense fallback={<AuthButtonsFallback />}>
           <UserMenu />

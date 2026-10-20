@@ -7,10 +7,9 @@ import { Menu, X } from "lucide-react";
 
 const LINKS = [
   { href: "/hotels", label: "Tất cả khách sạn" },
-  { href: "/hotels?city=Đà Nẵng", label: "Đà Nẵng" },
-  { href: "/hotels?city=Hà Nội", label: "Hà Nội" },
-  { href: "/hotels?city=Hồ Chí Minh", label: "Hồ Chí Minh" },
-  { href: "/hotels?city=Phú Quốc", label: "Phú Quốc" },
+  { href: "/#diem-den", label: "Điểm đến phổ biến" },
+  { href: "/favorites", label: "Khách sạn yêu thích" },
+  { href: "/bookings", label: "Đặt phòng của tôi" },
 ];
 
 /** Menu điều hướng cho màn hình nhỏ; tự đóng khi chuyển trang hoặc nhấn Esc. */
