@@ -182,7 +182,7 @@ export async function searchRooms(input: SearchInput, db: Pick<Prisma.Transactio
 
   const alt = scored
     .filter((s) => !exactIds.has(s.roomId))
-    .filter((s) => (s.fits && !s.priceOk && max !== undefined && s.overBy <= max * OVER_BUDGET_TOLERANCE) || (s.priceOk && s.matched.length > 0 && !s.fits))
+    .filter((s) => (s.fits && !s.priceOk && max !== undefined && s.overBy <= max * OVER_BUDGET_TOLERANCE) || (s.priceOk && !s.fits && (s.matched.length > 0 || exact.length === 0)))
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_ALT)
     .map((s) => ({

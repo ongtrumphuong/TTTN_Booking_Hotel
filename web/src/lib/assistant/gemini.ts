@@ -1,10 +1,13 @@
 import "server-only";
 import { ProviderError, type AgentProvider, type ChatMessage, type ProviderSession, type ProviderTurn, type ToolCall, type ToolDecl } from "./provider";
 
-// Model mặc định; đổi bằng biến GEMINI_MODEL nếu tên model thay đổi hoặc muốn dùng model khác của gói miễn phí.
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+// Model mặc định: bản flash 3.x với mức suy luận tối thiểu cho phản hồi nhanh (đo thực tế khoảng 3 giây cho cả lượt gọi công cụ và lượt trả lời;
+// các bản "latest" có suy luận mặc định chậm hơn nhiều, có lúc quá 30 giây). Các model sau là dự phòng khi model chính quá tải, hết hạn hoặc không còn
+// (tên cố định như gemini-2.5-flash đã bị Google ngừng cấp cho tài khoản mới). Đổi bằng biến GEMINI_MODEL nếu cần.
+export const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
+const FALLBACK_MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest"];
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
-const TIMEOUT_MS = 25_000;
+const TIMEOUT_MS = 12_000;
 
 export const isAssistantConfigured = () => !!process.env.GEMINI_API_KEY?.trim();
 
@@ -27,35 +30,48 @@ class GeminiSession implements ProviderSession {
     private readonly tools: ToolDecl[],
     private readonly fetcher: typeof fetch,
     private readonly apiKey: string,
-    private readonly model: string,
+    private models: string[],
   ) {
     this.contents = history.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
   }
 
   async next(): Promise<ProviderTurn> {
-    let res: Response;
-    try {
-      res = await this.fetcher(`${ENDPOINT}/${encodeURIComponent(this.model)}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: this.system }] },
-          contents: this.contents,
-          tools: [{ functionDeclarations: this.tools }],
-          toolConfig: { functionCallingConfig: { mode: "AUTO" } },
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
-        }),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-    } catch (e) {
-      throw new ProviderError(`Không gọi được Gemini: ${e instanceof Error ? e.message : String(e)}`, true);
-    }
+    let data: GeminiResponse = {};
+    let lastError: ProviderError | undefined;
 
-    const data = (await res.json().catch(() => ({}))) as GeminiResponse;
-    if (!res.ok) {
+    for (const model of this.models) {
+      let res: Response;
+      try {
+        res = await this.fetcher(`${ENDPOINT}/${encodeURIComponent(model)}:generateContent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: this.system }] },
+            contents: this.contents,
+            tools: [{ functionDeclarations: this.tools }],
+            toolConfig: { functionCallingConfig: { mode: "AUTO" } },
+            generationConfig: { temperature: 0.3, maxOutputTokens: 1024, ...(/^gemini-3/.test(model) ? { thinkingConfig: { thinkingLevel: "minimal" } } : {}) },
+          }),
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
+      } catch (e) {
+        lastError = new ProviderError(`Không gọi được Gemini (${model}): ${e instanceof Error ? e.message : String(e)}`, true);
+        continue; // mất mạng/hết thời gian chờ: thử model khác
+      }
+
+      data = (await res.json().catch(() => ({}))) as GeminiResponse;
+      if (res.ok) {
+        lastError = undefined;
+        this.models = [model, ...this.models.filter((m) => m !== model)]; // các lượt sau dùng luôn model đã chạy được
+        break;
+      }
       const busy = res.status === 429 || res.status === 503 || data.error?.status === "RESOURCE_EXHAUSTED";
-      throw new ProviderError(`Gemini ${res.status}: ${data.error?.message ?? "lỗi không rõ"}`, busy);
+      lastError = new ProviderError(`Gemini ${res.status} (${model}): ${data.error?.message ?? "lỗi không rõ"}`, busy);
+      // Chỉ thử model khác khi lỗi do model (quá tải hoặc không còn). Lỗi khác (sai khóa, yêu cầu sai) thì báo ngay.
+      const unsupportedThinking = res.status === 400 && /think/i.test(data.error?.message ?? "");
+      if (!busy && res.status !== 404 && !unsupportedThinking) break;
     }
+    if (lastError) throw lastError;
 
     const content = data.candidates?.[0]?.content;
     if (!content?.parts?.length) {
@@ -88,8 +104,9 @@ class GeminiSession implements ProviderSession {
 export function createGeminiProvider(opts: { apiKey?: string; model?: string; fetcher?: typeof fetch } = {}): AgentProvider {
   const apiKey = opts.apiKey ?? process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) throw new ProviderError("Thiếu GEMINI_API_KEY");
-  const model = opts.model ?? (process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL);
+  const primary = opts.model ?? (process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL);
+  const models = [primary, ...[DEFAULT_GEMINI_MODEL, ...FALLBACK_MODELS].filter((m) => m !== primary)];
   return {
-    start: ({ system, history, tools }) => new GeminiSession(system, history, tools, opts.fetcher ?? fetch, apiKey, model),
+    start: ({ system, history, tools }) => new GeminiSession(system, history, tools, opts.fetcher ?? fetch, apiKey, [...models]),
   };
 }

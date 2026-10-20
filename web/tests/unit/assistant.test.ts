@@ -126,6 +126,45 @@ describe("bộ nối Gemini", () => {
     await expect(start(vi.fn().mockResolvedValue(jsonRes({ candidates: [], promptFeedback: { blockReason: "SAFETY" } }))).next()).rejects.toBeInstanceOf(ProviderError);
   });
 
+  it("model chính quá tải hoặc không còn thì tự chuyển sang model dự phòng và nhớ model đã chạy được", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ error: { message: "high demand" } }, 503))
+      .mockResolvedValueOnce(jsonRes({ error: { message: "no longer available" } }, 404))
+      .mockResolvedValueOnce(jsonRes({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }))
+      .mockResolvedValueOnce(jsonRes({ candidates: [{ content: { parts: [{ text: "ok lần hai" }] } }] }));
+    const s = createGeminiProvider({ apiKey: "k", model: "model-chinh", fetcher: fetcher as unknown as typeof fetch }).start({ system: "s", history: [{ role: "user", content: "x" }], tools });
+    expect((await s.next()).text).toBe("ok");
+    const urls = fetcher.mock.calls.map((c) => String(c[0]));
+    expect(urls[0]).toContain("model-chinh");
+    expect(urls[1]).not.toContain("model-chinh");
+    expect(urls[2]).not.toContain("model-chinh");
+    // Lượt sau gọi thẳng model đã chạy được, không thử lại model hỏng.
+    s.addToolResults([], []);
+    expect((await s.next()).text).toBe("ok lần hai");
+    expect(fetcher.mock.calls[3][0]).toBe(fetcher.mock.calls[2][0]);
+  });
+
+  it("chỉ gửi mức suy luận tối thiểu cho model 3.x; model khác không nhận tham số này", async () => {
+    const ok = () => jsonRes({ candidates: [{ content: { parts: [{ text: "ok" }] } }] });
+    const body = async (model: string) => {
+      const fetcher = vi.fn().mockResolvedValue(ok());
+      await createGeminiProvider({ apiKey: "k", model, fetcher: fetcher as unknown as typeof fetch })
+        .start({ system: "s", history: [{ role: "user", content: "x" }], tools })
+        .next();
+      return JSON.parse(fetcher.mock.calls[0][1].body as string).generationConfig;
+    };
+    expect((await body("gemini-3-flash-preview")).thinkingConfig).toEqual({ thinkingLevel: "minimal" });
+    expect((await body("gemini-flash-latest")).thinkingConfig).toBeUndefined();
+  });
+
+  it("lỗi không phải do model (sai khóa, yêu cầu sai) thì báo ngay, không thử model khác", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonRes({ error: { message: "API key not valid" } }, 403));
+    const s = createGeminiProvider({ apiKey: "k", fetcher: fetcher as unknown as typeof fetch }).start({ system: "s", history: [{ role: "user", content: "x" }], tools });
+    await expect(s.next()).rejects.toMatchObject({ busy: false });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
   it("thiếu khóa API thì không tạo được nhà cung cấp", () => {
     const old = process.env.GEMINI_API_KEY;
     delete process.env.GEMINI_API_KEY;

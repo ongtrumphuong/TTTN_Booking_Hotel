@@ -65,6 +65,15 @@ describe("searchRooms: tìm phòng theo yêu cầu của khách", () => {
     expect(r.exact.map((o) => o.roomId)).toContain(s.standardLake.id);
   });
 
+  it("không có phòng nào khớp hẳn thì vẫn gợi ý phòng đúng ngân sách và đủ sức chứa (kèm điều còn thiếu)", async () => {
+    const s = await seed();
+    const r = await searchRooms({ city: "Đà Lạt", checkIn: IN, checkOut: OUT, guests: 4, maxPricePerNight: 1_500_000, keywords: ["view hồ Xuân Hương"] });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.exact).toEqual([]);
+    expect(r.alternatives.map((o) => o.roomId)).toEqual([s.family.id]);
+    expect(r.alternatives[0].note).toMatch(/chưa thấy: view hồ Xuân Hương/);
+  });
+
   it("không có từ khóa: trả mọi phòng đủ điều kiện, sắp theo độ phù hợp", async () => {
     await seed();
     const r = await searchRooms({ city: "Đà Lạt", checkIn: IN, checkOut: OUT, guests: 2, maxPricePerNight: 1_000_000 });

@@ -131,7 +131,7 @@ npm run lint          # ESLint
 
 ### Trợ lý ảo (Gemini)
 
-1. Tạo khóa miễn phí tại https://aistudio.google.com/apikey và điền vào `web/.env`: `GEMINI_API_KEY="..."` (tùy chọn `GEMINI_MODEL`, mặc định `gemini-2.5-flash`). Khởi động lại server.
+1. Tạo khóa miễn phí tại https://aistudio.google.com/apikey và điền vào `web/.env`: `GEMINI_API_KEY="..."` (tùy chọn `GEMINI_MODEL`, mặc định `gemini-3-flash-preview`, tự chuyển sang `gemini-flash-latest` rồi `gemini-flash-lite-latest` nếu model chính quá tải). Khởi động lại server.
 2. Kiểm tra khóa và model: `cd web` rồi `npx tsx --env-file=.env scripts/assistant-check.ts`.
 3. Nếu DB đã seed từ trước, chạy `npx tsx prisma/update-highlights.ts --apply` để có dữ liệu "điểm nổi bật" (ví dụ "View hồ Xuân Hương") cho các khách sạn/phòng mẫu.
 Chưa điền khóa thì nút trợ lý vẫn hiện nhưng báo chưa được bật; phần còn lại của hệ thống không bị ảnh hưởng.

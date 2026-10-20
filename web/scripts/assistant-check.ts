@@ -4,7 +4,7 @@
 //
 // In ra: khóa có dùng được không, các model "flash" hỗ trợ generateContent, và thử một lượt gọi hàm (function calling) với model đang cấu hình.
 const key = process.env.GEMINI_API_KEY?.trim();
-const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+const model = process.env.GEMINI_MODEL?.trim() || "gemini-3-flash-preview";
 const base = "https://generativelanguage.googleapis.com/v1beta";
 
 async function main() {
