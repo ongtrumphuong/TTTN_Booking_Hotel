@@ -1,69 +1,123 @@
+import { Suspense } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { BadgePercent, Headset, ShieldCheck } from "lucide-react";
+import { SearchForm } from "@/components/search-form";
+import { HotelCard } from "@/components/hotel-card";
+import { getCities, getFeaturedHotels } from "@/lib/hotels";
+
+async function HeroSearch() {
+  const cities = await getCities();
+  return <SearchForm cities={cities.map((c) => c.city)} />;
+}
+
+async function Destinations() {
+  const cities = await getCities();
+  return (
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+      {cities.map((c) => (
+        <Link
+          key={c.city}
+          href={`/hotels?city=${encodeURIComponent(c.city)}`}
+          className="group relative aspect-[3/4] overflow-hidden rounded-2xl bg-border"
+        >
+          <Image src={c.image} alt={c.city} fill sizes="200px" className="object-cover transition duration-500 group-hover:scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent" />
+          <div className="absolute bottom-3 left-3 text-white">
+            <p className="font-bold">{c.city}</p>
+            <p className="text-xs text-white/80">{c.count} khách sạn</p>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+async function Featured() {
+  const hotels = await getFeaturedHotels(6);
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {hotels.map((h) => (
+        <HotelCard key={h.id} hotel={h} />
+      ))}
+    </div>
+  );
+}
+
+function GridSkeleton({ n }: { n: number }) {
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: n }, (_, i) => (
+        <div key={i} className="h-72 animate-pulse rounded-2xl bg-border" />
+      ))}
+    </div>
+  );
+}
+
+const perks = [
+  { icon: BadgePercent, title: "Giá tốt mỗi ngày", text: "Giá minh bạch, không phí ẩn, nhiều ưu đãi theo mùa." },
+  { icon: ShieldCheck, title: "Đặt phòng an toàn", text: "Xác nhận nhanh, thông tin được bảo mật tuyệt đối." },
+  { icon: Headset, title: "Hỗ trợ 24/7", text: "Đội ngũ Không Gian Số luôn sẵn sàng giúp bạn mọi lúc." },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <>
+      <section className="relative isolate overflow-hidden bg-gradient-to-br from-[#0a3fa8] via-brand to-[#3d8bff] pb-24 pt-16 text-white">
+        <div className="absolute -right-24 -top-24 -z-10 size-96 rounded-full bg-white/10 blur-3xl" aria-hidden />
+        <div className="absolute -bottom-32 left-10 -z-10 size-96 rounded-full bg-accent/20 blur-3xl" aria-hidden />
+        <div className="mx-auto max-w-6xl px-4">
+          <p className="mb-3 inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tracking-wide">
+            Không Gian Số Stay
           </p>
+          <h1 className="max-w-2xl text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
+            Tìm nơi nghỉ lý tưởng cho chuyến đi tiếp theo của bạn
+          </h1>
+          <p className="mt-4 max-w-xl text-white/80">
+            Hàng trăm khách sạn, resort trên khắp Việt Nam với giá tốt và xác nhận đặt phòng ngay lập tức.
+          </p>
+          <div className="mt-10">
+            <Suspense fallback={<div className="h-20 animate-pulse rounded-2xl bg-white/20" />}>
+              <HeroSearch />
+            </Suspense>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-14">
+        <h2 className="text-2xl font-extrabold">Điểm đến phổ biến</h2>
+        <p className="mb-6 mt-1 text-sm text-muted">Khám phá những thành phố được yêu thích nhất</p>
+        <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl bg-border" />}>
+          <Destinations />
+        </Suspense>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-14">
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <h2 className="text-2xl font-extrabold">Khách sạn nổi bật</h2>
+            <p className="mt-1 text-sm text-muted">Được đánh giá cao và đặt nhiều nhất</p>
+          </div>
+          <Link href="/hotels" className="text-sm font-semibold text-brand hover:underline">Xem tất cả →</Link>
         </div>
-      </main>
-    </div>
+        <Suspense fallback={<GridSkeleton n={6} />}>
+          <Featured />
+        </Suspense>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-14">
+        <div className="grid gap-4 md:grid-cols-3">
+          {perks.map(({ icon: Icon, title, text }) => (
+            <div key={title} className="rounded-2xl border border-border bg-white p-6">
+              <span className="mb-4 inline-flex size-11 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                <Icon size={22} aria-hidden />
+              </span>
+              <h3 className="font-bold">{title}</h3>
+              <p className="mt-1 text-sm text-muted">{text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }

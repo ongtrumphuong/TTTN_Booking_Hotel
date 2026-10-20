@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  phone        String?
+  passwordHash String
+  role         Role      @default(USER)
+  createdAt    DateTime  @default(now())
+  bookings     Booking[]
+  reviews      Review[]
+  favorites    Favorite[]
+}
+
+model Hotel {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  description String
+  address     String
+  city        String
+  country     String     @default("Việt Nam")
+  latitude    Float?
+  longitude   Float?
+  starRating  Int        @default(3)
+  images      String[]
+  amenities   String[]
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  rooms       Room[]
+  reviews     Review[]
+  favorites   Favorite[]
+
+  @@index([city])
+}
+
+model Room {
+  id            String    @id @default(cuid())
+  hotelId       String
+  hotel         Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  name          String
+  description   String
+  pricePerNight Int
+  capacity      Int       @default(2)
+  bedType       String
+  sizeM2        Int?
+  images        String[]
+  amenities     String[]
+  quantity      Int       @default(1)
+  isActive      Boolean   @default(true)
+  bookings      Booking[]
+
+  @@index([hotelId])
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  roomId        String
+  room          Room          @relation(fields: [roomId], references: [id])
+  checkIn       DateTime
+  checkOut      DateTime
+  guests        Int
+  rooms         Int           @default(1)
+  totalPrice    Int
+  status        BookingStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(UNPAID)
+  note          String?
+  createdAt     DateTime      @default(now())
+
+  @@index([userId])
+  @@index([roomId, checkIn, checkOut])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  hotelId   String
+  hotel     Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  rating    Int
+  comment   String
+  createdAt DateTime @default(now())
+
+  @@unique([hotelId, userId])
+}
+
+model Favorite {
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotelId String
+  hotel   Hotel  @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@id([userId, hotelId])
+}
