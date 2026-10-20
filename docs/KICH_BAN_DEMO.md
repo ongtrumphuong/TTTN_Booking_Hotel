@@ -43,6 +43,10 @@ ngân hàng **NCB**, số thẻ `9704198526191432198`, tên `NGUYEN VAN A`, ngà
 **Làm gì:** bấm vào *Phú Quốc Sunset Bay Resort*: thư viện ảnh, bản đồ, tiện nghi, danh sách phòng kèm số phòng còn lại ("Chỉ còn N phòng"), mục *Chính sách hủy phòng*, đánh giá.
 **Nói gì:** mỗi khách sạn có chính sách hủy riêng do quản trị cấu hình.
 
+### Bước 2b – Bản đồ Mapbox (1 phút, cần token Mapbox và Internet)
+**Làm gì:** ở trang kết quả `/hotels` bấm nút **Bản đồ** → thấy các **ghim ghi giá** (ví dụ "1,35tr", "780k") trên khắp Việt Nam; bấm một ghim để hiện thẻ khách sạn (ảnh, hạng sao, giá, nút xem). Vào trang chi tiết một khách sạn, kéo xuống mục **Vị trí**: phóng to/thu nhỏ, bấm **Vệ tinh**, bấm biểu tượng toàn màn hình.
+**Nói gì:** bản đồ tương tác dùng Mapbox với token công khai (giới hạn theo địa chỉ web); khi chưa có token hoặc mất mạng, hệ thống tự dùng bản đồ OpenStreetMap nhúng nên trang không bị lỗi.
+
 ### Bước 3 – Đăng nhập và đặt phòng có mã giảm giá (3 phút)
 Chuẩn bị: admin tạo trước mã giảm giá (xem bước 7) hoặc làm bước 7 trước.
 **Làm gì:** bấm *Đặt phòng* ở loại *Deluxe* → hệ thống yêu cầu đăng nhập, đăng nhập bằng tài khoản khách → trang xác nhận → nhập mã (ví dụ `DEMO20`) → bấm *Áp dụng* → thấy dòng *Giảm giá* và tổng tiền mới → *Tiếp tục thanh toán*.

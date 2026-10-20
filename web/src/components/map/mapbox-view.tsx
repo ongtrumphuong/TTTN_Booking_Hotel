@@ -71,6 +71,9 @@ export default function MapboxView({ token, points, mode, className = "" }: Prop
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [style, setStyle] = useState<keyof typeof STYLES>("streets");
+  // Kiểu bản đồ mà bản đồ đang dùng; chỉ gọi setStyle khi người dùng đổi kiểu (gọi lúc bản đồ đang tải kiểu ban đầu sẽ làm Mapbox lỗi nội bộ).
+  const appliedStyle = useRef<keyof typeof STYLES>("streets");
+  const wantedStyle = useRef<keyof typeof STYLES>("streets");
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -81,7 +84,8 @@ export default function MapboxView({ token, points, mode, className = "" }: Prop
     try {
       mapboxgl.accessToken = token;
       const first = points[0];
-      map = new mapboxgl.Map({ container, style: STYLES.streets, center: [first.lng, first.lat], zoom: mode === "single" ? 15 : 11, cooperativeGestures: mode === "results" });
+      appliedStyle.current = wantedStyle.current;
+      map = new mapboxgl.Map({ container, style: STYLES[wantedStyle.current], center: [first.lng, first.lat], zoom: mode === "single" ? 15 : 11, cooperativeGestures: mode === "results" });
     } catch {
       // Trình duyệt không hỗ trợ WebGL hoặc token lỗi: hiện thông báo thay vì để trống (hoãn sang lượt sau để không cập nhật state ngay trong effect).
       window.setTimeout(() => setFailed(true), 0);
@@ -113,7 +117,11 @@ export default function MapboxView({ token, points, mode, className = "" }: Prop
   }, [token, points, mode]);
 
   useEffect(() => {
-    mapRef.current?.setStyle(STYLES[style]);
+    wantedStyle.current = style;
+    if (mapRef.current && appliedStyle.current !== style) {
+      appliedStyle.current = style;
+      mapRef.current.setStyle(STYLES[style]);
+    }
   }, [style]);
 
   if (failed) {
@@ -126,8 +134,9 @@ export default function MapboxView({ token, points, mode, className = "" }: Prop
 
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-border ${className}`}>
-      <div ref={box} className="absolute inset-0" role="region" aria-label={mode === "single" ? "Bản đồ vị trí khách sạn" : "Bản đồ các khách sạn"} />
-      <div className="absolute bottom-3 left-3 z-10 flex overflow-hidden rounded-full border border-border bg-white text-xs font-semibold shadow">
+      {/* Kích thước đặt bằng style nội tuyến vì CSS của Mapbox gán position: relative cho khung bản đồ và sẽ đè lên lớp Tailwind absolute/inset-0 (khung xẹp về cao 0). */}
+      <div ref={box} style={{ position: "absolute", inset: 0 }} role="region" aria-label={mode === "single" ? "Bản đồ vị trí khách sạn" : "Bản đồ các khách sạn"} />
+      <div className="absolute left-3 top-3 z-10 flex overflow-hidden rounded-full border border-border bg-white text-xs font-semibold shadow">
         {(["streets", "satellite"] as const).map((s) => (
           <button
             key={s}
