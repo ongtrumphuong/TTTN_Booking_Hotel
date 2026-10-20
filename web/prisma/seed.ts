@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
+import { REVIEWERS, reviewsForHotel } from "./sample-reviews";
 
 const prisma = new PrismaClient();
 
@@ -52,7 +54,12 @@ async function main() {
     data: { email: USER.email, name: USER.name, phone: "0900000000", passwordHash: await bcrypt.hash(USER.password, 10) },
   });
 
-  for (const h of hotels) {
+  // Người đánh giá mẫu: mật khẩu ngẫu nhiên nên không đăng nhập được, chỉ để đánh giá hiển thị đa dạng.
+  const reviewerHash = await bcrypt.hash(randomUUID(), 10);
+  const reviewers = [];
+  for (const r of REVIEWERS) reviewers.push(await prisma.user.create({ data: { ...r, passwordHash: reviewerHash } }));
+
+  for (const [index, h] of hotels.entries()) {
     const hotel = await prisma.hotel.create({
       data: {
         slug: h.slug,
@@ -90,14 +97,11 @@ async function main() {
       });
     }
 
-    await prisma.review.create({
-      data: {
-        hotelId: hotel.id,
-        userId: user.id,
-        rating: 4 + (h.star % 2),
-        comment: "Nhân viên thân thiện, phòng sạch sẽ, vị trí thuận tiện. Sẽ quay lại.",
-      },
-    });
+    for (const r of reviewsForHotel(index)) {
+      await prisma.review.create({
+        data: { hotelId: hotel.id, userId: reviewers[r.reviewerIndex].id, rating: r.rating, comment: r.text },
+      });
+    }
   }
 
   console.log(`Đã tạo ${hotels.length} khách sạn, tài khoản admin (${admin.email}) và user (${user.email}).`);

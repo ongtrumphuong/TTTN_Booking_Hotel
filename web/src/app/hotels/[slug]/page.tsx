@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { BedDouble, Check, MapPin, Maximize2, Star, Users } from "lucide-react";
 import { FavoriteButton } from "@/components/favorite-button";
+import { Gallery } from "@/components/gallery";
+import { HotelMap } from "@/components/hotel-map";
 import { ReviewForm } from "@/components/review-form";
 import { StayBar } from "@/components/stay-bar";
 import { canReviewHotel } from "@/lib/reviews";
@@ -94,30 +96,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
         )}
       </div>
 
-      {/* 1 ảnh lớn + 2 ảnh nhỏ xếp chồng: luôn kín khung, không để ô trống dù khách sạn có 1–3+ ảnh */}
-      <div
-        className={`grid gap-2 overflow-hidden rounded-2xl md:h-[420px] md:grid-rows-2 ${
-          hotel.images.length > 1 ? "grid-cols-2 md:grid-cols-[2fr_1fr]" : "grid-cols-1"
-        }`}
-      >
-        {hotel.images.slice(0, 3).map((src, i) => (
-          <div
-            key={src}
-            className={`relative bg-border ${
-              i === 0 ? "col-span-2 aspect-[16/10] md:col-span-1 md:row-span-2 md:aspect-auto" : "aspect-[4/3] md:aspect-auto"
-            } ${hotel.images.length === 2 && i === 1 ? "col-span-2 md:col-span-1 md:row-span-2" : ""}`}
-          >
-            <Image
-              src={src}
-              alt={`${hotel.name} - ảnh ${i + 1}`}
-              fill
-              priority={i === 0}
-              sizes={i === 0 ? "(min-width: 768px) 66vw, 100vw" : "(min-width: 768px) 33vw, 50vw"}
-              className="object-cover"
-            />
-          </div>
-        ))}
-      </div>
+      <Gallery images={hotel.images} name={hotel.name} />
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_320px]">
         <div className="space-y-10">
@@ -132,6 +111,13 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
               ))}
             </ul>
           </section>
+
+          {hotel.latitude !== null && hotel.longitude !== null && (
+            <section>
+              <h2 className="mb-3 text-xl font-extrabold">Vị trí</h2>
+              <HotelMap lat={hotel.latitude} lng={hotel.longitude} name={hotel.name} address={`${hotel.address}, ${hotel.city}`} />
+            </section>
+          )}
 
           <section id="rooms" className="scroll-mt-24">
             <h2 className="mb-4 text-xl font-extrabold">Chọn phòng</h2>

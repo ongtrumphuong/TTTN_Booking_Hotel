@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BadgePercent, Headset, ShieldCheck } from "lucide-react";
+import { BadgePercent, Headset, Quote, ShieldCheck, Star } from "lucide-react";
 import { SearchForm } from "@/components/search-form";
 import { HotelCard } from "@/components/hotel-card";
-import { getCities, getFeaturedHotels } from "@/lib/hotels";
+import { getCities, getFeaturedHotels, getFeaturedReviews } from "@/lib/hotels";
 
 async function HeroSearch() {
   const cities = await getCities();
@@ -51,6 +51,35 @@ function GridSkeleton({ n }: { n: number }) {
         <div key={i} className="h-72 animate-pulse rounded-2xl bg-border" />
       ))}
     </div>
+  );
+}
+
+async function Testimonials() {
+  const reviews = await getFeaturedReviews(3);
+  if (reviews.length === 0) return null;
+  return (
+    <section className="mx-auto max-w-6xl px-4 pt-14">
+      <h2 className="text-2xl font-extrabold">Khách hàng nói gì</h2>
+      <p className="mb-6 mt-1 text-sm text-muted">Đánh giá thật từ những khách đã lưu trú</p>
+      <div className="grid gap-4 md:grid-cols-3">
+        {reviews.map((r) => (
+          <figure key={r.id} className="flex flex-col rounded-2xl border border-border bg-white p-6">
+            <Quote size={22} className="text-brand/40" aria-hidden />
+            <p className="mt-3 flex gap-0.5" aria-label={`${r.rating} trên 5 sao`}>
+              {Array.from({ length: 5 }, (_, i) => (
+                <Star key={i} size={14} className={i < r.rating ? "fill-accent text-accent" : "text-border"} aria-hidden />
+              ))}
+            </p>
+            <blockquote className="mt-3 flex-1 text-sm leading-relaxed">{r.comment}</blockquote>
+            <figcaption className="mt-4 border-t border-border pt-3 text-sm">
+              <span className="font-semibold">{r.author}</span>
+              <span className="text-muted"> · </span>
+              <Link href={`/hotels/${r.hotel.slug}`} className="text-brand hover:underline">{r.hotel.name}</Link>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -104,6 +133,10 @@ export default function Home() {
           <Featured />
         </Suspense>
       </section>
+
+      <Suspense fallback={null}>
+        <Testimonials />
+      </Suspense>
 
       <section className="mx-auto max-w-6xl px-4 pt-14">
         <div className="grid gap-4 md:grid-cols-3">

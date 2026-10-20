@@ -18,8 +18,9 @@
 
 **Khách hàng**
 - Trang chủ có ô tìm kiếm (điểm đến, ngày nhận/trả phòng, số khách), điểm đến phổ biến, khách sạn nổi bật.
-- Trang kết quả `/hotels`: lọc theo thành phố, số khách, ngày trống; sắp xếp theo đề xuất / giá / đánh giá.
-- Trang chi tiết khách sạn: thư viện ảnh, tiện nghi, danh sách phòng kèm số phòng còn trống theo ngày chọn, đánh giá.
+- Trang kết quả `/hotels`: lọc theo thành phố, số khách, ngày trống, **khoảng giá, hạng sao, tiện nghi**; sắp xếp theo đề xuất / giá / đánh giá; thẻ lọc đang bật bấm × để bỏ từng điều kiện; trên điện thoại bộ lọc thu gọn.
+- Trang chi tiết khách sạn: thư viện ảnh xem phóng to (phím mũi tên, thanh ảnh nhỏ), bản đồ vị trí (OpenStreetMap), tiện nghi, danh sách phòng kèm số phòng còn trống theo ngày chọn, đánh giá.
+- Trang chủ có phần "Khách hàng nói gì" lấy từ các đánh giá tốt gần đây.
 - Đăng ký, đăng nhập, đăng xuất; trang tài khoản.
 - Đặt phòng → thanh toán giả lập → xác nhận; xem lịch sử, hủy đơn (trước ngày nhận phòng).
 - Yêu thích khách sạn (nút tim trên thẻ và trang chi tiết, trang `/favorites`).
@@ -69,7 +70,9 @@ File `.env` không được đưa lên git.
 npx prisma migrate dev
 npx prisma db seed
 ```
-Lệnh seed **xóa toàn bộ dữ liệu cũ** rồi tạo lại: 2 tài khoản, 9 khách sạn ở 6 thành phố, 27 loại phòng, 9 đánh giá mẫu.
+Lệnh seed **xóa toàn bộ dữ liệu cũ** rồi tạo lại: 2 tài khoản đăng nhập được, 5 tài khoản người đánh giá chỉ để hiển thị (mật khẩu ngẫu nhiên), 9 khách sạn ở 6 thành phố, 27 loại phòng, 27 đánh giá mẫu.
+
+Nếu đã có dữ liệu và chỉ muốn thêm đánh giá mẫu đa dạng **mà không xóa gì**: `npx tsx prisma/seed-reviews.ts` (chạy lại nhiều lần vẫn an toàn).
 
 ### 3.6. Chạy ứng dụng
 ```bash
@@ -242,7 +245,7 @@ Booking_Hotel/
 
 - Thanh toán chỉ giả lập; có thể tích hợp cổng VNPay hoặc MoMo (chế độ sandbox).
 - Ảnh khách sạn mẫu là ảnh ngẫu nhiên từ picsum.photos, chưa phải ảnh thật; chưa có chức năng tải ảnh lên.
-- Chưa gửi email xác nhận, chưa có bản đồ, chưa giới hạn số lần đăng nhập sai.
+- Chưa gửi email xác nhận, chưa giới hạn số lần đăng nhập sai. Bản đồ cần truy cập được `openstreetmap.org` (nếu bị chặn sẽ hiện thông báo kèm liên kết).
 - Chưa có ứng dụng di động (dự kiến React Native/Expo dùng chung API).
 - Chưa có kiểm thử tự động; các luồng chính đã được kiểm tra thủ công.
 - Trước khi triển khai thật: đổi `AUTH_SECRET`, xóa tài khoản mẫu, dùng HTTPS và PostgreSQL riêng có sao lưu.

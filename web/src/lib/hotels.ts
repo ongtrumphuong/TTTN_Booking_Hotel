@@ -22,6 +22,10 @@ export type HotelSearch = {
   checkIn?: string; // yyyy-mm-dd
   checkOut?: string;
   sort?: "recommended" | "price-asc" | "price-desc" | "rating";
+  minPrice?: number; // giá một đêm, đồng
+  maxPrice?: number;
+  minStars?: number; // hạng sao tối thiểu
+  amenities?: string[]; // khách sạn phải có đủ các tiện nghi này
 };
 
 type HotelRow = Awaited<ReturnType<typeof queryHotels>>[number];
@@ -84,7 +88,7 @@ export async function searchHotels(params: HotelSearch): Promise<HotelSummary[]>
   "use cache";
   cacheLife("seconds");
   cacheTag("hotels");
-  const { city, guests = 1, checkIn, checkOut, sort = "recommended" } = params;
+  const { city, guests = 1, checkIn, checkOut, sort = "recommended", minPrice, maxPrice, minStars, amenities = [] } = params;
 
   const hotels = await queryHotels(city ? { city } : {});
   const stay = parseStay(checkIn, checkOut);
@@ -104,8 +108,17 @@ export async function searchHotels(params: HotelSearch): Promise<HotelSummary[]>
   }
 
   const result = hotels
+    .filter((h) => (minStars ? h.starRating >= minStars : true))
+    .filter((h) => amenities.every((a) => h.amenities.includes(a)))
     .map((h) => {
-      const rooms = h.rooms.filter((r) => r.capacity >= guests && r.quantity - (busy.get(r.id) ?? 0) > 0);
+      // Giá hiển thị là giá thấp nhất trong số phòng còn trống, đủ chỗ và nằm trong khoảng giá đã chọn.
+      const rooms = h.rooms.filter(
+        (r) =>
+          r.capacity >= guests &&
+          r.quantity - (busy.get(r.id) ?? 0) > 0 &&
+          (minPrice === undefined || r.pricePerNight >= minPrice) &&
+          (maxPrice === undefined || r.pricePerNight <= maxPrice),
+      );
       return toSummary(h, rooms);
     })
     .filter((h): h is HotelSummary => h !== null);
@@ -158,4 +171,41 @@ export async function getHotelsByIds(ids: string[]): Promise<HotelSummary[]> {
     .filter((h): h is HotelRow => !!h)
     .map((h) => toSummary(h))
     .filter((h): h is HotelSummary => h !== null);
+}
+
+/** Các lựa chọn cho bộ lọc: tiện nghi đang có ở khách sạn và khoảng giá thực tế. */
+export async function getFilterOptions(): Promise<{ amenities: string[]; minPrice: number; maxPrice: number }> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("hotels");
+  const [hotels, price] = await Promise.all([
+    prisma.hotel.findMany({ where: { isActive: true }, select: { amenities: true } }),
+    prisma.room.aggregate({ where: { isActive: true, hotel: { isActive: true } }, _min: { pricePerNight: true }, _max: { pricePerNight: true } }),
+  ]);
+  const counts = new Map<string, number>();
+  for (const h of hotels) for (const a of h.amenities) counts.set(a, (counts.get(a) ?? 0) + 1);
+  return {
+    amenities: [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "vi")).map(([a]) => a),
+    minPrice: price._min.pricePerNight ?? 0,
+    maxPrice: price._max.pricePerNight ?? 0,
+  };
+}
+
+/** Đánh giá tốt gần đây cho trang chủ. */
+export async function getFeaturedReviews(limit = 3) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("hotels");
+  const rows = await prisma.review.findMany({
+    where: { rating: { gte: 4 }, hotel: { isActive: true } },
+    orderBy: { createdAt: "desc" },
+    take: limit * 3,
+    include: { user: { select: { name: true } }, hotel: { select: { name: true, slug: true, city: true } } },
+  });
+  // Mỗi khách sạn chỉ xuất hiện một lần để phần này đa dạng.
+  const seen = new Set<string>();
+  return rows
+    .filter((r) => (seen.has(r.hotel.slug) ? false : (seen.add(r.hotel.slug), true)))
+    .slice(0, limit)
+    .map((r) => ({ id: r.id, rating: r.rating, comment: r.comment, author: r.user.name, hotel: r.hotel }));
 }
