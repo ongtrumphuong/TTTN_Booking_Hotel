@@ -38,7 +38,7 @@ async function List() {
 export default function FavoritesPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="mb-6 text-2xl font-extrabold">Khách sạn yêu thích</h1>
+      <h1 className="font-display mb-6 text-3xl font-semibold">Khách sạn yêu thích</h1>
       <Suspense fallback={<div className="h-72 animate-pulse rounded-2xl bg-border" />}>
         <List />
       </Suspense>

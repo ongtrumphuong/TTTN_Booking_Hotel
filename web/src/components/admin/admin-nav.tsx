@@ -16,7 +16,7 @@ const ITEMS = [
 export function AdminNav() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Quản trị" className="flex gap-1 overflow-x-auto md:flex-col">
+    <nav aria-label="Quản trị" className="flex gap-1 overflow-x-auto rounded-3xl bg-ink p-2 md:flex-col md:p-3">
       {ITEMS.map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         return (
@@ -24,8 +24,8 @@ export function AdminNav() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex items-center gap-2.5 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold ${
-              active ? "bg-brand text-white" : "text-muted hover:bg-white hover:text-foreground"
+            className={`flex items-center gap-2.5 whitespace-nowrap rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+              active ? "bg-brand text-white shadow-lg shadow-black/20" : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
             <Icon size={18} aria-hidden /> {label}

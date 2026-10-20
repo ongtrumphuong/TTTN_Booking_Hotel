@@ -12,7 +12,7 @@ export function StayBar({ defaults }: { defaults: { checkIn?: string; checkOut?:
   const lbl = "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted";
 
   return (
-    <form className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-white p-4">
+    <form className="flex flex-wrap items-end gap-3 rounded-3xl border border-border bg-white p-4">
       <label>
         <span className={lbl}>Nhận phòng</span>
         <input

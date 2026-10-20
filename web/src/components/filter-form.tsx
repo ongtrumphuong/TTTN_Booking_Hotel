@@ -45,7 +45,7 @@ export function FilterForm({
   ];
 
   return (
-    <form action="/hotels" className="space-y-6 rounded-2xl border border-border bg-white p-5">
+    <form action="/hotels" className="space-y-6 rounded-3xl border border-border bg-white p-5">
       {hidden.map(([k, v]) => v && <input key={k} type="hidden" name={k} value={v} />)}
 
       <fieldset>

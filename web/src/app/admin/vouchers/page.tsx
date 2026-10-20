@@ -21,12 +21,12 @@ async function Vouchers() {
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-extrabold">Mã giảm giá <span className="text-base font-medium text-muted">({vouchers.length})</span></h1>
+      <h1 className="font-display mb-6 text-3xl font-semibold">Mã giảm giá <span className="text-base font-medium text-muted">({vouchers.length})</span></h1>
       <VoucherForm />
 
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-border bg-white">
+      <div className="mt-6 overflow-x-auto rounded-3xl border border-border bg-white">
         <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="border-b border-border text-xs uppercase tracking-wide text-muted">
+          <thead className="border-b border-border bg-sand text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-3">Mã</th>
               <th className="px-4 py-3">Ưu đãi</th>

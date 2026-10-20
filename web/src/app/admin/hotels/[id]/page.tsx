@@ -32,7 +32,7 @@ async function EditHotel({ params }: Pick<PageProps<"/admin/hotels/[id]">, "para
     <>
       <Link href="/admin/hotels" className="text-sm font-semibold text-muted hover:text-foreground">← Danh sách khách sạn</Link>
       <div className="mb-6 mt-2 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold">{hotel.name}</h1>
+        <h1 className="font-display text-3xl font-semibold">{hotel.name}</h1>
         <Link href={`/hotels/${hotel.slug}`} className="text-sm font-semibold text-brand hover:underline">Xem trang công khai →</Link>
       </div>
 
@@ -41,7 +41,7 @@ async function EditHotel({ params }: Pick<PageProps<"/admin/hotels/[id]">, "para
       <h2 className="mb-3 mt-10 text-xl font-extrabold">Loại phòng <span className="text-base font-medium text-muted">({hotel.rooms.length})</span></h2>
       <div className="space-y-3">
         {hotel.rooms.map((r) => (
-          <details key={r.id} className="rounded-2xl border border-border bg-white">
+          <details key={r.id} className="rounded-3xl border border-border bg-white">
             <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4">
               <span>
                 <span className="font-bold">{r.name}</span>

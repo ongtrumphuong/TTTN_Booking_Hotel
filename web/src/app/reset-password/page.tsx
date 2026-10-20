@@ -27,7 +27,7 @@ export default function ResetPasswordPage(props: PageProps<"/reset-password">) {
   return (
     <div className="mx-auto max-w-md px-4 py-12">
       <div className="rounded-3xl border border-border bg-white p-8 shadow-sm">
-        <h1 className="mb-6 text-2xl font-extrabold">Đặt mật khẩu mới</h1>
+        <h1 className="font-display mb-6 text-3xl font-semibold">Đặt mật khẩu mới</h1>
         <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-border" />}>
           <Content searchParams={props.searchParams} />
         </Suspense>

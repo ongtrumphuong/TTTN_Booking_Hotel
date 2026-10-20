@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { BookingForm } from "@/components/booking-form";
+import { BookingSteps } from "@/components/booking-steps";
 import { unavailableQuantity, parseStay, todayUTC } from "@/lib/booking";
 import { policyText } from "@/lib/cancellation";
 import { formatDate, formatVND } from "@/lib/format";
@@ -38,9 +39,11 @@ async function BookContent({ params, searchParams }: { params: Promise<{ roomId:
   const fits = left > 0 && guests <= room.capacity;
 
   return (
+    <>
+    <BookingSteps current={1} />
     <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-      <div className="rounded-2xl border border-border bg-white p-6">
-        <h1 className="text-2xl font-extrabold">Xác nhận đặt phòng</h1>
+      <div className="rounded-3xl border border-border bg-white p-6">
+        <h1 className="font-display text-3xl font-semibold">Xác nhận đặt phòng</h1>
         <p className="mb-6 mt-1 text-sm text-muted">Kiểm tra thông tin rồi tiếp tục thanh toán. Phòng được giữ 30 phút sau khi tạo đơn.</p>
         {fits ? (
           <BookingForm
@@ -60,7 +63,7 @@ async function BookContent({ params, searchParams }: { params: Promise<{ roomId:
         )}
       </div>
 
-      <aside className="h-fit overflow-hidden rounded-2xl border border-border bg-white">
+      <aside className="h-fit overflow-hidden rounded-3xl border border-border bg-white lg:sticky lg:top-24">
         <div className="relative aspect-video bg-border">
           <Image src={room.images[0]} alt={room.name} fill sizes="380px" className="object-cover" />
         </div>
@@ -81,6 +84,7 @@ async function BookContent({ params, searchParams }: { params: Promise<{ roomId:
         </div>
       </aside>
     </div>
+    </>
   );
 }
 

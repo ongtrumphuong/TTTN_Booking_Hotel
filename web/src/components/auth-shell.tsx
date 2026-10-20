@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import Image from "next/image";
+import { Check } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AuthForm } from "./auth-form";
 import { Logo } from "./logo";
@@ -16,7 +18,7 @@ async function Content({ mode, searchParams }: { mode: "login" | "register"; sea
   const isLogin = mode === "login";
   return (
     <>
-      <h1 className="text-2xl font-extrabold">{isLogin ? "Chào mừng trở lại" : "Tạo tài khoản mới"}</h1>
+      <h1 className="font-display text-3xl font-semibold">{isLogin ? "Chào mừng trở lại" : "Tạo tài khoản mới"}</h1>
       <p className="mb-6 mt-1 text-sm text-muted">
         {isLogin ? "Đăng nhập để quản lý đặt phòng của bạn." : "Đăng ký để đặt phòng nhanh hơn và lưu khách sạn yêu thích."}
       </p>
@@ -25,19 +27,27 @@ async function Content({ mode, searchParams }: { mode: "login" | "register"; sea
   );
 }
 
+const SIDE_PHOTO = "https://images.unsplash.com/photo-1698809807960-758cf416e96e?auto=format&fit=crop&w=1000&q=80";
+
 export function AuthShell({ mode, searchParams }: { mode: "login" | "register"; searchParams: SP }) {
   return (
-    <div className="mx-auto grid min-h-[70vh] max-w-5xl items-center gap-10 px-4 py-12 md:grid-cols-2">
-      <div className="hidden rounded-3xl bg-gradient-to-br from-ink to-brand p-10 text-white md:block">
+    <div className="mx-auto grid min-h-[72vh] max-w-5xl items-stretch gap-6 px-4 py-10 md:grid-cols-[1.05fr_1fr]">
+      <div className="relative isolate hidden min-h-[520px] overflow-hidden rounded-[2rem] p-10 text-white md:flex md:flex-col md:justify-between">
+        <Image src={SIDE_PHOTO} alt="" fill priority sizes="520px" className="-z-20 object-cover" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-ink/90 via-ink/45 to-ink/30" />
         <Logo light />
-        <p className="mt-10 text-3xl font-extrabold leading-snug">Đặt phòng khách sạn nhanh, giá tốt, an tâm trọn vẹn.</p>
-        <ul className="mt-6 space-y-2 text-sm text-white/80">
-          <li>✓ Xác nhận đặt phòng ngay lập tức</li>
-          <li>✓ Quản lý lịch sử đặt phòng dễ dàng</li>
-          <li>✓ Hỗ trợ 24/7</li>
-        </ul>
+        <div>
+          <p className="font-display text-3xl font-semibold leading-snug">Mỗi chuyến đi đẹp bắt đầu từ một chỗ nghỉ tử tế.</p>
+          <ul className="mt-6 space-y-2.5 text-sm text-white/85">
+            {["Xác nhận đặt phòng ngay lập tức", "Chính sách hủy rõ ràng từng khách sạn", "Thanh toán an toàn qua VNPay"].map((t) => (
+              <li key={t} className="flex items-center gap-2.5">
+                <span className="flex size-5 items-center justify-center rounded-full bg-sun"><Check size={12} aria-hidden /></span> {t}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-      <div className="rounded-3xl border border-border bg-white p-8 shadow-sm">
+      <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-white p-8 shadow-xl shadow-ink/5 md:p-10">
         <Suspense fallback={<div className="h-80 animate-pulse rounded-2xl bg-border" />}>
           <Content mode={mode} searchParams={searchParams} />
         </Suspense>

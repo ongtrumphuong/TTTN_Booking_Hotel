@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import Image from "next/image";
+import { BookingSteps } from "@/components/booking-steps";
 import { PayForm } from "@/components/pay-form";
 import { holdExpired } from "@/lib/booking";
 import { policyText } from "@/lib/cancellation";
@@ -30,9 +32,11 @@ async function PayContent({ params, searchParams }: { params: Promise<{ id: stri
   const expired = holdExpired(booking.createdAt);
 
   return (
+    <>
+    <BookingSteps current={2} />
     <div className="grid gap-8 md:grid-cols-[1fr_360px]">
-      <div className="rounded-2xl border border-border bg-white p-6">
-        <h1 className="text-2xl font-extrabold">Thanh toán</h1>
+      <div className="rounded-3xl border border-border bg-white p-6">
+        <h1 className="font-display text-3xl font-semibold">Thanh toán</h1>
         <p className="mb-6 mt-1 text-sm text-muted">Mã đơn: <b>{booking.code}</b></p>
         {sp.error && PAY_ERRORS[sp.error] && (
           <div role="alert" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">{PAY_ERRORS[sp.error]}</div>
@@ -45,8 +49,14 @@ async function PayContent({ params, searchParams }: { params: Promise<{ id: stri
           <PayForm bookingId={booking.id} total={booking.totalPrice} mode={isVnpayConfigured() ? "vnpay" : "simulated"} />
         )}
       </div>
-      <aside className="h-fit space-y-2 rounded-2xl border border-border bg-white p-5 text-sm">
-        <p className="font-bold">{booking.room.hotel.name}</p>
+      <aside className="h-fit space-y-2 overflow-hidden rounded-3xl border border-border bg-white text-sm md:sticky md:top-24">
+        {booking.room.images[0] && (
+          <div className="relative aspect-video bg-border">
+            <Image src={booking.room.images[0]} alt={booking.room.name} fill sizes="360px" className="object-cover" />
+          </div>
+        )}
+        <div className="space-y-2 p-5">
+        <p className="font-display text-lg font-semibold">{booking.room.hotel.name}</p>
         <p className="text-muted">{booking.room.name} × {booking.rooms}</p>
         <p className="border-t border-border pt-2">{formatDate(booking.checkIn)} → {formatDate(booking.checkOut)}</p>
         {booking.discount > 0 && (
@@ -61,8 +71,10 @@ async function PayContent({ params, searchParams }: { params: Promise<{ id: stri
         <p className="border-t border-border pt-2 text-xs text-muted">
           <b className="text-foreground">Chính sách hủy:</b> {policyText(booking.room.hotel.freeCancelDays, booking.room.hotel.lateCancelFeePercent)}
         </p>
+        </div>
       </aside>
     </div>
+    </>
   );
 }
 

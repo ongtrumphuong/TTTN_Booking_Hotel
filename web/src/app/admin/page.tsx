@@ -53,7 +53,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/admin">, "searchParam
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold">Tổng quan</h1>
+        <h1 className="font-display text-3xl font-semibold">Tổng quan</h1>
         <div className="flex gap-2 text-sm" role="group" aria-label="Khoảng thời gian">
           {RANGES.map((r) => (
             <Link
@@ -83,7 +83,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/admin">, "searchParam
         })}
       </div>
 
-      <section className="mt-8 rounded-2xl border border-border bg-white p-5" aria-labelledby="rev-title">
+      <section className="mt-8 rounded-3xl border border-border bg-white p-5" aria-labelledby="rev-title">
         <h2 id="rev-title" className="text-lg font-extrabold">Doanh thu theo ngày</h2>
         <p className="mb-3 text-xs text-muted">Tổng tiền các đơn đã thanh toán và chưa hủy, tính theo ngày đặt.</p>
         <BarChart
@@ -94,7 +94,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/admin">, "searchParam
         />
       </section>
 
-      <section className="mt-6 rounded-2xl border border-border bg-white p-5" aria-labelledby="occ-title">
+      <section className="mt-6 rounded-3xl border border-border bg-white p-5" aria-labelledby="occ-title">
         <h2 id="occ-title" className="text-lg font-extrabold">Tỷ lệ lấp đầy {range} ngày tới</h2>
         <p className="mb-3 text-xs text-muted">
           Số phòng đã được đặt hoặc đang giữ chỗ trên tổng {stats.capacity} phòng đang bán.
@@ -109,8 +109,8 @@ async function Overview({ searchParams }: Pick<PageProps<"/admin">, "searchParam
       </section>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border bg-white p-5">
-          <h2 className="mb-3 text-lg font-extrabold">Khách sạn doanh thu cao nhất</h2>
+        <section className="rounded-3xl border border-border bg-white p-5">
+          <h2 className="font-display mb-3 text-xl font-semibold">Khách sạn doanh thu cao nhất</h2>
           {stats.topHotels.length === 0 ? (
             <p className="text-sm text-muted">Chưa có doanh thu trong kỳ.</p>
           ) : (
@@ -131,9 +131,9 @@ async function Overview({ searchParams }: Pick<PageProps<"/admin">, "searchParam
           )}
         </section>
 
-        <section className="rounded-2xl border border-border bg-white p-5">
+        <section className="rounded-3xl border border-border bg-white p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-extrabold">Đặt phòng gần đây</h2>
+            <h2 className="font-display text-xl font-semibold">Đặt phòng gần đây</h2>
             <Link href="/admin/bookings" className="text-sm font-semibold text-brand hover:underline">Xem tất cả →</Link>
           </div>
           <ul className="divide-y divide-border">
@@ -156,7 +156,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/admin">, "searchParam
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {totals.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+          <div key={label} className="flex items-center gap-3 rounded-3xl border border-border bg-white p-4">
             <Icon size={18} className="text-muted" aria-hidden />
             <div>
               <p className="text-lg font-extrabold leading-tight">{value}</p>

@@ -17,10 +17,10 @@ async function UsersList() {
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-extrabold">Người dùng <span className="text-base font-medium text-muted">({users.length})</span></h1>
-      <div className="overflow-x-auto rounded-2xl border border-border bg-white">
+      <h1 className="font-display mb-6 text-3xl font-semibold">Người dùng <span className="text-base font-medium text-muted">({users.length})</span></h1>
+      <div className="overflow-x-auto rounded-3xl border border-border bg-white">
         <table className="w-full min-w-[680px] text-left text-sm">
-          <thead className="border-b border-border text-xs uppercase tracking-wide text-muted">
+          <thead className="border-b border-border bg-sand text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-3">Họ tên</th>
               <th className="px-4 py-3">Email</th>

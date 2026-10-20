@@ -20,15 +20,15 @@ async function HotelsList() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold">Khách sạn <span className="text-base font-medium text-muted">({hotels.length})</span></h1>
+        <h1 className="font-display text-3xl font-semibold">Khách sạn <span className="text-base font-medium text-muted">({hotels.length})</span></h1>
         <Link href="/admin/hotels/new" className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-dark">
           <Plus size={16} aria-hidden /> Thêm khách sạn
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-border bg-white">
+      <div className="overflow-x-auto rounded-3xl border border-border bg-white">
         <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-border text-xs uppercase tracking-wide text-muted">
+          <thead className="border-b border-border bg-sand text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-3">Khách sạn</th>
               <th className="px-4 py-3">Thành phố</th>

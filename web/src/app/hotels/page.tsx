@@ -89,7 +89,7 @@ async function Results({ searchParams }: { searchParams: Promise<SP> }) {
     <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
       <aside>
         <details className="group lg:hidden">
-          <summary className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm font-bold">
+          <summary className="flex cursor-pointer list-none items-center justify-between rounded-3xl border border-border bg-white px-4 py-3 text-sm font-bold">
             <span className="flex items-center gap-2">
               <SlidersHorizontal size={16} aria-hidden /> Bộ lọc{count > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs text-white">{count}</span>}
             </span>
@@ -103,7 +103,7 @@ async function Results({ searchParams }: { searchParams: Promise<SP> }) {
 
       <div className="min-w-0">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-extrabold">
+          <h1 className="font-display text-2xl font-semibold">
             {f.city ? `Khách sạn tại ${f.city}` : "Tất cả khách sạn"}{" "}
             <span className="text-sm font-medium text-muted">({hotels.length} kết quả)</span>
           </h1>

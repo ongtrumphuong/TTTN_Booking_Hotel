@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { STATUS_LABEL, expireStaleBookings } from "@/lib/booking";
@@ -45,10 +46,15 @@ async function List() {
         const s = STATUS_LABEL[b.status];
         return (
           <li key={b.id}>
-            <Link href={`/bookings/${b.id}`} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-white p-5 transition hover:shadow-md">
-              <div>
+            <Link href={`/bookings/${b.id}`} className="group flex flex-wrap items-center gap-4 rounded-3xl border border-border bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ink/10">
+              {b.room.images[0] && (
+                <span className="relative size-20 shrink-0 overflow-hidden rounded-2xl bg-border sm:size-24">
+                  <Image src={b.room.images[0]} alt="" fill sizes="96px" className="object-cover transition duration-500 group-hover:scale-110" />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold tracking-wide text-muted">{b.code}</p>
-                <p className="font-bold">{b.room.hotel.name} <span className="font-normal text-muted">· {b.room.hotel.city}</span></p>
+                <p className="font-display text-lg font-semibold">{b.room.hotel.name} <span className="font-normal text-muted">· {b.room.hotel.city}</span></p>
                 <p className="text-sm text-muted">{b.room.name} × {b.rooms} · {formatDate(b.checkIn)} → {formatDate(b.checkOut)}</p>
               </div>
               <div className="text-right">
@@ -66,7 +72,7 @@ async function List() {
 export default function BookingsPage(props: PageProps<"/bookings">) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="mb-6 text-2xl font-extrabold">Đặt phòng của tôi</h1>
+      <h1 className="font-display mb-6 text-3xl font-semibold">Đặt phòng của tôi</h1>
       <Suspense fallback={null}>
         <PaymentNotice searchParams={props.searchParams} />
       </Suspense>

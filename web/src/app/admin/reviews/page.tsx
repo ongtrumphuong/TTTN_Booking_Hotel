@@ -34,7 +34,7 @@ async function ReviewsList({ searchParams }: Pick<PageProps<"/admin/reviews">, "
 
   return (
     <>
-      <h1 className="mb-1 text-2xl font-extrabold">Đánh giá</h1>
+      <h1 className="font-display mb-1 text-3xl font-semibold">Đánh giá</h1>
       <p className="mb-4 text-sm text-muted">Ẩn đánh giá không phù hợp: đánh giá bị ẩn không hiện ở trang khách sạn và không tính vào điểm trung bình.</p>
       <div className="mb-5 flex flex-wrap gap-2 text-sm">
         {FILTERS.map((f) => (

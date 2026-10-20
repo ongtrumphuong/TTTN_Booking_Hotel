@@ -110,7 +110,7 @@ export function BookingForm({ roomId, checkIn, checkOut, guests, nights, pricePe
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-60"
+        className="w-full rounded-2xl bg-sun px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-sun/25 transition hover:brightness-110 disabled:opacity-60"
       >
         {pending ? "Đang giữ phòng..." : "Tiếp tục thanh toán"}
       </button>

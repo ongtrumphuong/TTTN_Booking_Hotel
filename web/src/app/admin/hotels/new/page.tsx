@@ -12,7 +12,7 @@ async function NewHotel() {
   return (
     <>
       <Link href="/admin/hotels" className="text-sm font-semibold text-muted hover:text-foreground">← Danh sách khách sạn</Link>
-      <h1 className="mb-6 mt-2 text-2xl font-extrabold">Thêm khách sạn</h1>
+      <h1 className="font-display mb-6 mt-2 text-3xl font-semibold">Thêm khách sạn</h1>
       <HotelForm />
       <p className="mt-3 text-sm text-muted">Sau khi tạo, bạn có thể thêm các loại phòng ở trang chỉnh sửa.</p>
     </>

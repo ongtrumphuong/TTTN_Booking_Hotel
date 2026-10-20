@@ -47,7 +47,7 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
 
   return (
     <>
-      <h1 className="mb-4 text-2xl font-extrabold">Đơn đặt phòng</h1>
+      <h1 className="font-display mb-4 text-3xl font-semibold">Đơn đặt phòng</h1>
       <div className="mb-5 flex flex-wrap gap-2 text-sm">
         {FILTERS.map((f) => {
           const active = (refundOnly ? "REFUND" : (status ?? "ALL")) === f.value;
@@ -63,9 +63,9 @@ async function BookingsList({ searchParams }: Pick<PageProps<"/admin/bookings">,
         })}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-border bg-white">
+      <div className="overflow-x-auto rounded-3xl border border-border bg-white">
         <table className="w-full min-w-[820px] text-left text-sm">
-          <thead className="border-b border-border text-xs uppercase tracking-wide text-muted">
+          <thead className="border-b border-border bg-sand text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-3">Mã</th>
               <th className="px-4 py-3">Khách</th>

@@ -26,7 +26,7 @@ function Options({ name, items }: { name: string; items: { value: string; label:
       {items.map(({ value, label, icon: Icon }, i) => (
         <label
           key={value || "any"}
-          className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-white px-4 py-3 text-sm font-medium has-[:checked]:border-brand has-[:checked]:bg-brand/5"
+          className="flex cursor-pointer items-center gap-3 rounded-2xl border border-border bg-white px-4 py-3.5 text-sm font-medium transition has-[:checked]:border-brand has-[:checked]:bg-brand/5 has-[:checked]:shadow-sm"
         >
           <input type="radio" name={name} value={value} defaultChecked={i === 0} className="accent-[#0e7490]" />
           <Icon size={18} className="text-brand" aria-hidden />
@@ -45,7 +45,7 @@ function ErrorBox({ message }: { message?: string }) {
   ) : null;
 }
 
-const submitCls = "w-full rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-60";
+const submitCls = "w-full rounded-2xl bg-sun px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-sun/25 transition hover:brightness-110 disabled:opacity-60";
 
 function SimulatedForm({ bookingId, total }: { bookingId: string; total: number }) {
   const [state, action, pending] = useActionState<BookingState, FormData>(payBookingAction.bind(null, bookingId), {});
@@ -67,7 +67,7 @@ function VnpayForm({ bookingId, total }: { bookingId: string; total: number }) {
   const [state, action, pending] = useActionState<PaymentState, FormData>(startVnpayPaymentAction.bind(null, bookingId), {});
   return (
     <form action={action} className="space-y-4">
-      <div className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900">
+      <div className="rounded-xl bg-brand/10 px-4 py-3 text-sm text-brand-dark">
         Bạn sẽ được chuyển sang cổng thanh toán <b>VNPay</b>. Hệ thống không lưu thông tin thẻ của bạn.
       </div>
       <ErrorBox message={state.error} />

@@ -29,7 +29,7 @@ export function HotelForm({ hotel }: { hotel?: Hotel }) {
   );
 
   return (
-    <form action={action} className="space-y-4 rounded-2xl border border-border bg-white p-6">
+    <form action={action} className="space-y-4 rounded-3xl border border-border bg-white p-6">
       {state.error && <div role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{state.error}</div>}
       {state.ok && <div role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">Đã lưu thay đổi.</div>}
 

@@ -6,7 +6,7 @@ import { requestPasswordResetAction, resetPasswordAction, type FormState } from 
 
 const inputCls =
   "w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20";
-const btnCls = "w-full rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-60";
+const btnCls = "w-full rounded-2xl bg-sun px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-sun/25 transition hover:brightness-110 disabled:opacity-60";
 
 function Err({ msg }: { msg?: string }) {
   return msg ? <p className="mt-1 text-xs font-medium text-red-600">{msg}</p> : null;

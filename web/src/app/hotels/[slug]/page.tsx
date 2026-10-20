@@ -172,7 +172,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
                 const soldOut = r.left !== null && r.left <= 0;
                 const total = stay ? r.pricePerNight * stay.nights : null;
                 return (
-                  <article key={r.id} className="grid overflow-hidden rounded-2xl border border-border bg-white sm:grid-cols-[220px_1fr]">
+                  <article key={r.id} className="grid overflow-hidden rounded-3xl border border-border bg-white sm:grid-cols-[220px_1fr]">
                     <div className="relative min-h-40 bg-border">
                       <Image src={r.images[0]} alt={r.name} fill sizes="220px" className="object-cover" />
                     </div>
@@ -218,7 +218,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
 
           <section>
             <h2 className="mb-3 font-display text-2xl font-semibold">Chính sách hủy phòng</h2>
-            <p className="rounded-2xl border border-border bg-white p-4 text-sm text-muted">
+            <p className="rounded-3xl border border-border bg-white p-4 text-sm text-muted">
               {policyText(hotel.freeCancelDays, hotel.lateCancelFeePercent)} Đơn chưa thanh toán hủy lúc nào cũng không mất phí.
             </p>
           </section>
@@ -233,7 +233,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
             ) : (
               <ul className="space-y-3">
                 {hotel.reviews.map((rv) => (
-                  <li key={rv.id} className="rounded-2xl border border-border bg-white p-4">
+                  <li key={rv.id} className="rounded-3xl border border-border bg-white p-4">
                     <div className="flex items-center justify-between">
                       <p className="font-semibold">{rv.author}</p>
                       <p className="flex items-center gap-1 text-sm font-bold">
@@ -249,7 +249,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
         </div>
 
         <aside className="hidden lg:block">
-          <div className="sticky top-24 rounded-2xl border border-border bg-white p-5">
+          <div className="sticky top-24 rounded-3xl border border-border bg-white p-5">
             <p className="text-xs text-muted">Giá từ</p>
             <p className="text-2xl font-extrabold text-brand">
               {formatVND(Math.min(...hotel.rooms.map((r) => r.pricePerNight)))}

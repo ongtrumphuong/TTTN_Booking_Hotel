@@ -9,7 +9,7 @@ export function ReviewForm({ hotelId, initial }: { hotelId: string; initial?: { 
   const [rating, setRating] = useState(initial?.rating ?? 0);
 
   return (
-    <form action={action} className="space-y-3 rounded-2xl border border-border bg-white p-5">
+    <form action={action} className="space-y-3 rounded-3xl border border-border bg-white p-5">
       <h3 className="font-bold">{initial ? "Chỉnh sửa đánh giá của bạn" : "Viết đánh giá"}</h3>
 
       {state.error && <div role="alert" className="rounded-xl bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700">{state.error}</div>}

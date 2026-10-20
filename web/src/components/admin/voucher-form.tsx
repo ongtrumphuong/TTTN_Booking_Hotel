@@ -10,7 +10,7 @@ export function VoucherForm() {
   const [state, action, pending] = useActionState<AdminState, FormData>(createVoucherAction, {});
   const key = state.ok ? "done" : "form";
   return (
-    <form key={key} action={action} className="grid gap-3 rounded-2xl border border-border bg-white p-5 sm:grid-cols-3">
+    <form key={key} action={action} className="grid gap-3 rounded-3xl border border-border bg-white p-5 sm:grid-cols-3">
       {state.error && <div role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700 sm:col-span-3">{state.error}</div>}
       {state.ok && <div role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 sm:col-span-3">Đã tạo mã giảm giá.</div>}
       <div>
