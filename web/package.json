@@ -17,6 +17,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@photo-sphere-viewer/core": "^5.15.1",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "lucide-react": "^1.59.0",

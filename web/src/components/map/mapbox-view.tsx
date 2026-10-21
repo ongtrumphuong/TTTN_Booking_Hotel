@@ -85,7 +85,7 @@ export default function MapboxView({ token, points, mode, className = "" }: Prop
       mapboxgl.accessToken = token;
       const first = points[0];
       appliedStyle.current = wantedStyle.current;
-      map = new mapboxgl.Map({ container, style: STYLES[wantedStyle.current], center: [first.lng, first.lat], zoom: mode === "single" ? 15 : 11, cooperativeGestures: mode === "results" });
+      map = new mapboxgl.Map({ container, style: STYLES[wantedStyle.current], center: [first.lng, first.lat], zoom: mode === "single" ? 16 : 11, cooperativeGestures: mode === "results", ...(mode === "single" ? { pitch: 58, bearing: -20 } : {}) });
     } catch {
       // Trình duyệt không hỗ trợ WebGL hoặc token lỗi: hiện thông báo thay vì để trống (hoãn sang lượt sau để không cập nhật state ngay trong effect).
       window.setTimeout(() => setFailed(true), 0);
@@ -94,6 +94,31 @@ export default function MapboxView({ token, points, mode, className = "" }: Prop
     mapRef.current = map;
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new mapboxgl.FullscreenControl(), "top-right");
+    // Trang chi tiết: nghiêng bản đồ và dựng khối nhà 3D để khách hình dung khu vực xung quanh khách sạn.
+    // Sự kiện style.load chạy lại mỗi lần đổi kiểu bản đồ nên lớp 3D được thêm lại; kiểu nào không có dữ liệu tòa nhà thì bỏ qua.
+    if (mode === "single") {
+      map.on("style.load", () => {
+        if (!map.getSource("composite") || map.getLayer("add-3d-buildings")) return;
+        try {
+          map.addLayer({
+            id: "add-3d-buildings",
+            source: "composite",
+            "source-layer": "building",
+            filter: ["==", "extrude", "true"],
+            type: "fill-extrusion",
+            minzoom: 14,
+            paint: {
+              "fill-extrusion-color": "#d8d2c4",
+              "fill-extrusion-height": ["get", "height"],
+              "fill-extrusion-base": ["get", "min_height"],
+              "fill-extrusion-opacity": 0.8,
+            },
+          });
+        } catch {
+          // Kiểu bản đồ không có lớp tòa nhà: vẫn dùng bản đồ phẳng bình thường.
+        }
+      });
+    }
     map.on("error", (e) => {
       // Token sai/hết hạn hoặc bị chặn tên miền: báo cho người dùng biết thay vì để bản đồ xám.
       const status = (e.error as { status?: number } | undefined)?.status;

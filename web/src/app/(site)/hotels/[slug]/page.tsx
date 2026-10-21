@@ -9,6 +9,7 @@ import { FavoriteButton } from "@/components/favorite-button";
 import { Gallery } from "@/components/gallery";
 import { HotelMap } from "@/components/hotel-map";
 import { ReviewForm } from "@/components/review-form";
+import { PanoramaButton } from "@/components/panorama/panorama-button";
 import { StayBar } from "@/components/stay-bar";
 import { canReviewHotel } from "@/lib/reviews";
 import { getCurrentUser } from "@/lib/session";
@@ -188,6 +189,7 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
                   <article key={r.id} className="grid overflow-hidden rounded-3xl border border-border bg-white sm:grid-cols-[220px_1fr]">
                     <div className="relative min-h-40 bg-border">
                       <Image src={r.images[0]} alt={r.name} fill sizes="220px" className="object-cover" />
+                      {r.panoramaUrl && <PanoramaButton url={r.panoramaUrl} title={`${hotel.name} - ${r.name}`} />}
                     </div>
                     <div className="flex flex-col gap-3 p-5">
                       <div>

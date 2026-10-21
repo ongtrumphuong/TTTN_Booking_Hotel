@@ -103,6 +103,8 @@ model Room {
   pricePerNight  Int
   // Phụ thu (+) hoặc giảm (-) theo phần trăm cho đêm thứ Sáu và thứ Bảy.
   weekendPercent Int         @default(0)
+  // Ảnh toàn cảnh 360° (tỷ lệ 2:1) để khách xem phòng trực tiếp; để trống nếu chưa có.
+  panoramaUrl    String?
   capacity       Int         @default(2)
   bedType        String
   sizeM2         Int?

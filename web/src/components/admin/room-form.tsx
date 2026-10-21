@@ -1,5 +1,6 @@
 "use client";
 
+import { PanoramaField } from "@/components/admin/panorama-field";
 import { useActionState } from "react";
 import { createRoomAction, updateRoomAction, type AdminState } from "@/app/actions/admin";
 import { ImageUploader } from "./image-uploader";
@@ -10,6 +11,7 @@ type Room = {
   description: string;
   pricePerNight: number;
   weekendPercent: number;
+  panoramaUrl: string | null;
   capacity: number;
   bedType: string;
   sizeM2: number | null;
@@ -75,6 +77,7 @@ export function RoomForm({ hotelId, room }: { hotelId: string; room?: Room }) {
         <label className={label}>Mô tả</label>
         <textarea name="description" rows={2} required defaultValue={room?.description} className={input} />
       </div>
+      <PanoramaField initial={room?.panoramaUrl ?? null} />
       <div className="sm:col-span-2">
         <span className={label}>Ảnh phòng</span>
         <ImageUploader initial={room?.images ?? []} />

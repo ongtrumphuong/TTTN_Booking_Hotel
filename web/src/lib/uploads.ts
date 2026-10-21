@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import { isEquirectangular } from "@/lib/panorama";
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB mỗi ảnh
 export const MAX_FILES_PER_REQUEST = 10;
@@ -25,7 +26,7 @@ export class UploadError extends Error {}
  * Nhận dữ liệu thô của một ảnh, xác minh đó đúng là JPEG/PNG/WebP bằng cách giải mã thật (không tin tên tệp hay Content-Type),
  * xoay theo hướng chụp, thu nhỏ tối đa 2000px, bỏ toàn bộ siêu dữ liệu (EXIF, vị trí) và lưu lại dưới dạng WebP.
  */
-export async function saveImage(input: Buffer): Promise<string> {
+export async function saveImage(input: Buffer, opts: { panorama?: boolean } = {}): Promise<string> {
   if (input.length === 0) throw new UploadError("Tệp rỗng.");
   if (input.length > MAX_FILE_BYTES) throw new UploadError("Ảnh vượt quá 5 MB.");
 
@@ -39,12 +40,20 @@ export async function saveImage(input: Buffer): Promise<string> {
 
   let output: Buffer;
   try {
-    output = await sharp(input, { limitInputPixels: MAX_PIXELS, failOn: "error" })
-      .rotate()
-      .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
+    const img = sharp(input, { limitInputPixels: MAX_PIXELS, failOn: "error" }).rotate();
+    if (opts.panorama) {
+      // Ảnh 360° cần giữ độ phân giải cao hơn ảnh thường (tối đa 6000px chiều rộng) và phải đúng tỷ lệ 2:1.
+      const m = await sharp(input, { limitInputPixels: MAX_PIXELS }).metadata();
+      if (!isEquirectangular(m.width ?? 0, m.height ?? 0)) throw new UploadError("Ảnh 360° phải có chiều rộng gấp đôi chiều cao (ví dụ 4096×2048).");
+      img.resize({ width: 6000, withoutEnlargement: true });
+    } else {
+      img.resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true });
+    }
+    output = await img
       .webp({ quality: 82 })
       .toBuffer();
-  } catch {
+  } catch (e) {
+    if (e instanceof UploadError) throw e;
     throw new UploadError("Không xử lý được ảnh (tệp có thể bị hỏng).");
   }
 

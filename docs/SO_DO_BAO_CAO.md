@@ -354,6 +354,7 @@ erDiagram
     string name
     int pricePerNight
     int weekendPercent "phụ thu cuối tuần (%)"
+    string panoramaUrl "ảnh 360 độ"
     int capacity
     int quantity
     string_array highlights

@@ -5,6 +5,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { Prisma, type BookingStatus, type Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { isAllowedPanorama } from "@/lib/panorama";
 import { notifyBookingEvent, notifyHotelPending } from "@/lib/notify";
 import { readTicket } from "@/lib/ticket";
 import { after } from "next/server";
@@ -68,6 +69,10 @@ const roomSchema = z.object({
   bedType: z.string().trim().min(2, "Vui lòng nhập loại giường").max(60),
   sizeM2: optionalNumber(z.number().int().min(1).max(1000)),
   quantity: z.coerce.number().int().min(1).max(200),
+  panoramaUrl: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+    z.string().max(500).refine(isAllowedPanorama, "Ảnh 360° phải là ảnh tải lên, ảnh mẫu của hệ thống hoặc URL https từ máy chủ ảnh được phép.").nullable(),
+  ),
   images: z.array(imageUrl).min(1, "Cần ít nhất 1 ảnh").max(10),
   amenities: z.array(z.string().max(40)).max(30),
   highlights: z.array(z.string().max(60)).max(10, "Tối đa 10 điểm nổi bật"),
@@ -100,6 +105,7 @@ function roomInput(fd: FormData) {
     description: fd.get("description"),
     pricePerNight: fd.get("pricePerNight"),
     weekendPercent: fd.get("weekendPercent") || 0,
+    panoramaUrl: fd.get("panoramaUrl") ?? "",
     capacity: fd.get("capacity"),
     bedType: fd.get("bedType"),
     sizeM2: fd.get("sizeM2"),

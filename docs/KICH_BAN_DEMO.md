@@ -45,6 +45,10 @@ ngân hàng **NCB**, số thẻ `9704198526191432198`, tên `NGUYEN VAN A`, ngà
 **Làm gì:** bấm vào *Phú Quốc Sunset Bay Resort*: thư viện ảnh, bản đồ, tiện nghi, danh sách phòng kèm số phòng còn lại ("Chỉ còn N phòng"), mục *Chính sách hủy phòng*, đánh giá.
 **Nói gì:** mỗi khách sạn có chính sách hủy riêng do quản trị cấu hình.
 
+### Bước 2a – Xem phòng 360° (1 phút)
+**Làm gì:** ở trang một khách sạn, bấm **Xem phòng 360°** trên ảnh một loại phòng → kéo chuột để xoay quanh phòng, cuộn để phóng to, bấm biểu tượng toàn màn hình. Đóng bằng nút X hoặc bấm ra ngoài.
+**Nói gì:** khách nhìn được toàn bộ phòng trước khi đặt, giảm kỳ vọng sai và tăng tỷ lệ đặt. Đối tác tự tải ảnh 360° (chụp bằng điện thoại) cho từng loại phòng. Ảnh trong dữ liệu mẫu là ảnh nội thất CC0 minh họa.
+
 ### Bước 2b – Bản đồ Mapbox (1 phút, cần token Mapbox và Internet)
 **Làm gì:** ở trang kết quả `/hotels` bấm nút **Bản đồ** → thấy các **ghim ghi giá** (ví dụ "1,35tr", "780k") trên khắp Việt Nam; bấm một ghim để hiện thẻ khách sạn (ảnh, hạng sao, giá, nút xem). Vào trang chi tiết một khách sạn, kéo xuống mục **Vị trí**: phóng to/thu nhỏ, bấm **Vệ tinh**, bấm biểu tượng toàn màn hình.
 **Nói gì:** bản đồ tương tác dùng Mapbox với token công khai (giới hạn theo địa chỉ web); khi chưa có token hoặc mất mạng, hệ thống tự dùng bản đồ OpenStreetMap nhúng nên trang không bị lỗi.
@@ -139,6 +143,10 @@ Kiểm tra phòng trống và tạo đơn nằm trong **một giao dịch mức 
 - Ba vai trò (khách, đối tác, sàn); **quyền kiểm tra theo từng khách sạn ở máy chủ**, không chỉ ẩn nút: đối tác không sửa được khách sạn, phòng, lịch chặn hay đơn của người khác.
 - Duyệt khách sạn trước khi hiển thị; hoa hồng theo khách sạn và **chốt vào đơn lúc đặt** để đối soát không bị đổi ngầm.
 - Đối soát tính đúng cả phí hủy muộn; tạo đợt chi trả bằng giao dịch Serializable và điều kiện `payoutId = null` nên không chi trả trùng đơn (đã có test cho cả trường hợp hai yêu cầu đồng thời).
+
+### 2.4b3. Xem phòng 360° và bản đồ 3D
+- Ảnh toàn cảnh dựng lên khối cầu bằng WebGL (Photo Sphere Viewer); thư viện chỉ tải khi khách mở trình xem. Ảnh tải lên được kiểm tra thật (giải mã, tỷ lệ 2:1, bỏ siêu dữ liệu) và URL chỉ nhận từ danh sách cho phép.
+- Bản đồ khách sạn nghiêng 3D với khối nhà (fill-extrusion) giúp khách hình dung khu vực xung quanh.
 
 ### 2.4b2. Giá động, vé QR, thông báo
 - Giá mỗi đêm = giá gốc + phụ thu cuối tuần + quy tắc theo mùa, tính bằng hàm thuần (`pricing.ts`) có test; dùng chung cho đặt phòng, trợ lý ảo, trang khách sạn và lịch phòng nên mọi nơi cho cùng một con số.

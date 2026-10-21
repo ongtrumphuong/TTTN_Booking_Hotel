@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     return json({ error: "Dữ liệu tải lên không hợp lệ." }, 400);
   }
 
+  const panorama = form.get("kind") === "panorama"; // ảnh 360°: giữ độ phân giải cao hơn và kiểm tra tỷ lệ 2:1
   const files = form.getAll("files").filter((f): f is File => f instanceof File);
   if (files.length === 0) return json({ error: "Chưa chọn ảnh nào." }, 400);
   if (files.length > MAX_FILES_PER_REQUEST) return json({ error: `Mỗi lần tối đa ${MAX_FILES_PER_REQUEST} ảnh.` }, 400);
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   const errors: { name: string; error: string }[] = [];
   for (const file of files) {
     try {
-      urls.push(await saveImage(Buffer.from(await file.arrayBuffer())));
+      urls.push(await saveImage(Buffer.from(await file.arrayBuffer()), { panorama }));
     } catch (e) {
       errors.push({ name: file.name.slice(0, 80), error: e instanceof UploadError ? e.message : "Lưu ảnh thất bại." });
     }

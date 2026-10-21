@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
 import { HOTEL_HIGHLIGHTS, ROOM_HIGHLIGHTS } from "./highlights";
 import { hotelImages, roomImages } from "./photos";
+import { panoramaFor } from "./panoramas";
 import { REVIEWERS, reviewsForHotel } from "./sample-reviews";
 
 const prisma = new PrismaClient();
@@ -100,6 +101,7 @@ async function main() {
           bedType: r.bed,
           sizeM2: r.size,
           images: roomImages(r.name, index),
+          panoramaUrl: panoramaFor(r.name),
           highlights: ROOM_HIGHLIGHTS[h.slug]?.[r.name] ?? [],
           amenities: ROOM_AMENITIES,
           quantity: r.qty,

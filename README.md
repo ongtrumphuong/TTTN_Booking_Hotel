@@ -36,6 +36,7 @@
 - **Trợ lý ảo đặt phòng** (khung chat góc phải): khách nói yêu cầu bằng tiếng Việt, ví dụ "Đà Lạt 20/10 - 22/10, dưới 1tr5/đêm, view Hồ Xuân Hương"; trợ lý (Google Gemini, gói miễn phí) tìm phòng còn trống trên hệ thống và đưa **thẻ phòng**. Khách bấm "Xem và giữ phòng" → trang xác nhận → giữ phòng → **tự thanh toán**. Trợ lý chỉ tìm và tư vấn, **không thể tự đặt phòng hay thanh toán**.
 - Yêu thích khách sạn (nút tim trên thẻ và trang chi tiết, trang `/favorites`).
 - Viết hoặc sửa đánh giá sau khi đã hoàn tất kỳ lưu trú.
+- **Xem phòng 360°**: nút "Xem phòng 360°" trên ảnh phòng mở trình xem toàn cảnh (kéo để xoay, cuộn để phóng to, toàn màn hình). Trang khách sạn có **bản đồ nghiêng 3D** với khối nhà xung quanh (cần token Mapbox).
 - **Vé điện tử có mã QR** ở chi tiết đơn đã xác nhận: đưa cho lễ tân khi nhận phòng.
 - **Giá theo mùa**: giá từng đêm có thể khác nhau (cuối tuần, mùa cao điểm, ngày lễ); trang đặt phòng hiện bảng giá từng đêm.
 
@@ -44,6 +45,7 @@
 - Đối tác tự đăng khách sạn, loại phòng, ảnh, giá, chính sách hủy và lịch chặn phòng; **chỉ thấy và sửa khách sạn, đơn của mình**.
 - Khách sạn mới ở trạng thái **chờ duyệt** và ẩn cho đến khi quản trị viên sàn duyệt.
 - Xem đơn của khách sạn mình, ghi nhận **nhận phòng / trả phòng**, hủy đơn (luôn hoàn đủ tiền cho khách).
+- **Ảnh 360° cho từng loại phòng**: dán đường dẫn/URL hoặc **tải ảnh toàn cảnh** (tỷ lệ 2:1, tự giữ tối đa 6000px) ở form sửa loại phòng.
 - **Giá theo mùa**: phụ thu cuối tuần (đêm thứ Sáu, thứ Bảy) và các quy tắc giá theo khoảng ngày (+/- %) cho từng loại phòng, ở trang sửa khách sạn.
 - **Lịch phòng** `/host/calendar`: lưới 3 tuần cho thấy mỗi loại phòng còn bao nhiêu phòng trống mỗi đêm, phòng bị chặn và giá từng đêm.
 - **Nhận phòng (quét vé)** `/host/checkin`: quét mã QR trên vé của khách bằng camera (hoặc nhập mã đặt phòng) → xem thông tin đơn → xác nhận nhận phòng.
@@ -149,6 +151,9 @@ Có token Mapbox thì trang chi tiết khách sạn dùng **bản đồ tương 
 1. Đăng ký tại https://account.mapbox.com, vào mục Tokens, tạo **token công khai** (bắt đầu bằng `pk.`), nên giới hạn theo địa chỉ web của bạn.
 2. Dán vào `web/.env`: `NEXT_PUBLIC_MAPBOX_TOKEN="pk...."` rồi khởi động lại server. Khóa bí mật `sk.…` bị bỏ qua vì không được phép đưa ra trình duyệt.
 
+### Ảnh 360° mẫu
+Ba ảnh toàn cảnh nội thất (phép chiếu equirectangular, 8192×4096, giấy phép **CC0**) nằm ở `web/public/panoramas/`, tải từ [Poly Haven](https://polyhaven.com): `cabin` (phòng ngủ hai giường), `cayley_interior` (phòng khách có ban công nhìn hồ), `anniversary_lounge` (phòng khách rộng). Chúng chỉ để minh họa, không phải phòng thật của khách sạn mẫu. `seed.ts` gán ảnh theo tên loại phòng (`prisma/panoramas.ts`); với cơ sở dữ liệu đã có sẵn chạy `npx tsx prisma/update-panoramas.ts --apply` (chỉ gán cho phòng chưa có ảnh 360°). Muốn dùng ảnh thật: chụp bằng chế độ Photo Sphere/Panorama 360° của điện thoại rồi tải lên ở trang sửa loại phòng.
+
 ### Ảnh mẫu
 
 Dữ liệu mẫu dùng **ảnh thật từ Unsplash** (miễn phí theo giấy phép Unsplash) cho từng khách sạn và loại phòng, khai báo ở `web/prisma/photos.ts`. Nếu cơ sở dữ liệu đã seed từ trước bằng ảnh ngẫu nhiên, chạy `npx tsx prisma/update-images.ts` để xem và thêm `--apply` để thay (chỉ thay ảnh mẫu cũ, không đụng ảnh quản trị viên đã tải lên). Cần có Internet để hiển thị ảnh.
@@ -212,6 +217,7 @@ erDiagram
         string description
         int pricePerNight
         int weekendPercent "phụ thu cuối tuần (%)"
+        string panoramaUrl "ảnh 360 độ"
         int capacity
         string bedType
         int sizeM2
