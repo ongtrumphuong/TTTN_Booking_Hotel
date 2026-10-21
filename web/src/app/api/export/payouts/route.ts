@@ -16,7 +16,7 @@ export async function GET() {
     take: 5000,
     include: { owner: { select: { name: true, email: true } } },
   });
-  const header = ["Mã đợt", "Ngày tạo", "Đối tác", "Email đối tác", "Số đơn", "Doanh thu (₫)", "Hoa hồng sàn (₫)", "Số tiền chi trả (₫)", "Ghi chú"];
-  const rows = payouts.map((p) => [p.id, isoDate(p.createdAt), p.owner.name, p.owner.email, p.bookingCount, p.gross, p.commission, p.amount, p.note]);
+  const header = ["Mã đợt", "Ngày tạo", "Đối tác", "Email đối tác", "Số đơn", "Doanh thu (₫)", "Hoa hồng sàn (₫)", "Khuyến mãi sàn chịu (₫)", "Trừ khiếu nại (₫)", "Số tiền chi trả (₫)", "Ghi chú"];
+  const rows = payouts.map((p) => [p.id, isoDate(p.createdAt), p.owner.name, p.owner.email, p.bookingCount, p.gross, p.commission, p.promoCost, p.deductions, p.amount, p.note]);
   return csvResponse(toCsv(header, rows), `chi-tra-${isoDate(new Date()).replace(/-/g, "")}.csv`);
 }

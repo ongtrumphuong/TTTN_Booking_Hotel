@@ -1,19 +1,26 @@
 import type { Prisma } from "@prisma/client";
 
-type SettleInput = { status: string; paymentStatus: string; totalPrice: number; refundAmount: number | null };
+type SettleInput = { status: string; paymentStatus: string; totalPrice: number; refundAmount: number | null; discount?: number };
 
 /**
  * Số tiền đơn mang lại cho đối tác (trước hoa hồng):
- *  - đơn đã hoàn tất: toàn bộ số tiền khách trả;
+ *  - đơn đã hoàn tất: giá phòng TRƯỚC giảm giá = số khách trả + mã giảm giá. Mã giảm giá do sàn tạo nên **sàn chịu**,
+ *    đối tác vẫn nhận đủ như khi khách không dùng mã, và hoa hồng cũng tính trên giá trước giảm;
  *  - đơn bị hủy muộn đã thu tiền: chỉ phần phí hủy khách sạn giữ lại (tổng tiền trừ tiền hoàn);
  *  - các đơn còn lại: 0 (chưa hoàn tất, hủy hoàn đủ, chưa trả tiền).
+ * Đơn hủy muộn: phí giữ lại tính trên số tiền khách đã thực trả (sàn không bù phần giảm giá cho phí hủy).
  */
 export function settlementGross(b: SettleInput): number {
-  if (b.status === "COMPLETED") return b.totalPrice;
+  if (b.status === "COMPLETED") return b.totalPrice + (b.discount ?? 0);
   if (b.status === "CANCELLED" && b.paymentStatus !== "UNPAID" && b.refundAmount !== null && b.refundAmount < b.totalPrice) {
     return b.totalPrice - b.refundAmount;
   }
   return 0;
+}
+
+/** Tiền mã giảm giá sàn phải chịu cho đơn này: chỉ đơn hoàn tất mới phát sinh (đơn hủy không có doanh thu để bù). */
+export function promoCost(b: SettleInput): number {
+  return b.status === "COMPLETED" ? (b.discount ?? 0) : 0;
 }
 
 /** Tách tổng thu thành hoa hồng của sàn và tiền chi cho đối tác (làm tròn hoa hồng từng đơn). */
@@ -41,7 +48,10 @@ export type SettleRow = {
   checkIn: Date;
   checkOut: Date;
   kind: SettleKind;
+  /** Doanh thu trước hoa hồng (đơn hoàn tất: giá trước giảm giá). */
   gross: number;
+  /** Tiền mã giảm giá của sàn trong đơn này (sàn chịu), 0 nếu không có. */
+  promo: number;
   commission: number;
   payout: number;
   commissionPercent: number;
@@ -56,6 +66,7 @@ const settleSelect = {
   paymentStatus: true,
   totalPrice: true,
   refundAmount: true,
+  discount: true,
   commissionPercent: true,
   checkIn: true,
   checkOut: true,
@@ -80,6 +91,7 @@ function toRows(bookings: SettleBooking[]): SettleRow[] {
         checkOut: b.checkOut,
         kind: (b.status === "COMPLETED" ? "COMPLETED" : "LATE_CANCEL") as SettleKind,
         gross,
+        promo: promoCost(b),
         commission,
         payout,
         commissionPercent: b.commissionPercent,
@@ -102,6 +114,7 @@ export const sumRows = (rows: SettleRow[]) => ({
   gross: rows.reduce((s, r) => s + r.gross, 0),
   commission: rows.reduce((s, r) => s + r.commission, 0),
   payout: rows.reduce((s, r) => s + r.payout, 0),
+  promo: rows.reduce((s, r) => s + r.promo, 0),
 });
 
 export type DeductionRow = { id: string; bookingCode: string; hotelName: string; amount: number; resolvedAt: Date | null };

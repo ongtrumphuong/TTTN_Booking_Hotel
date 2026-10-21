@@ -64,7 +64,7 @@ Mã ở `web/src/lib/assistant/` (`search.ts` công cụ tìm phòng, `agent.ts`
 - Lượt dùng voucher **không có bộ đếm**: đếm các đơn có `voucherCode` đang giữ chỗ hoặc `COMPLETED`.
 - Phòng bị chặn (`RoomBlock`) tính theo từng đêm (`maxBlockedRooms`), ngày kết thúc lưu dạng nửa mở (+1 ngày).
 - Đánh giá chỉ cho khách có đơn `COMPLETED` tại khách sạn đó.
-- Khách sạn đối tác: `ownerId` + `approval` (PENDING/APPROVED/REJECTED) + `commissionPercent`; chưa duyệt thì `isActive = false` (nên các truy vấn công khai không cần biết đến `approval`). `Booking.commissionPercent` được chốt lúc đặt (0 nếu khách sạn của sàn). Doanh thu đối soát = `settlementGross` (đơn hoàn tất: đủ tiền; hủy muộn: phần phí giữ lại). `Payout` gom đơn, đơn gắn bằng `payoutId = null`.
+- Khách sạn đối tác: `ownerId` + `approval` (PENDING/APPROVED/REJECTED) + `commissionPercent`; chưa duyệt thì `isActive = false` (nên các truy vấn công khai không cần biết đến `approval`). `Booking.commissionPercent` được chốt lúc đặt (0 nếu khách sạn của sàn). Doanh thu đối soát = `settlementGross` (đơn hoàn tất: **giá trước giảm giá = totalPrice + discount**, vì mã giảm giá do sàn tạo nên **sàn chịu** (`promoCost`, `Payout.promoCost`), hoa hồng cũng tính trên giá trước giảm; hủy muộn: phần phí giữ lại, tính trên số tiền khách thực trả). `Payout` gom đơn, đơn gắn bằng `payoutId = null`.
 - Đối tác không được: xác nhận đã nhận tiền (CONFIRMED), hoàn tiền, đặt hoa hồng, duyệt khách sạn.
 
 ## Trạng thái (cập nhật: 2026-10-20)

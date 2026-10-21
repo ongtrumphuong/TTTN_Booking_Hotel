@@ -25,6 +25,7 @@ async function Payouts() {
     }),
   );
   const totalCommission = rows.reduce((s, r) => s + r.sum.commission, 0) + history.reduce((s, h) => s + h.commission, 0);
+  const totalPromo = rows.reduce((s, r) => s + r.sum.promo, 0) + history.reduce((s, h) => s + h.promoCost, 0);
 
   return (
     <>
@@ -34,11 +35,12 @@ async function Payouts() {
       </div>
       <p className="mb-6 max-w-2xl text-sm text-muted">
         Sàn thu tiền của khách. Với mỗi đối tác: doanh thu từ đơn đã hoàn tất (và phí hủy muộn khách sạn được giữ) trừ hoa hồng của sàn là số tiền sàn chi trả.
-        Hoa hồng tính theo tỷ lệ đã chốt tại thời điểm khách đặt phòng.
+        Hoa hồng tính theo tỷ lệ đã chốt tại thời điểm khách đặt phòng, trên giá phòng trước giảm giá. Mã giảm giá do sàn tạo nên <b>sàn chịu</b>: đối tác vẫn nhận như khi khách không dùng mã.
       </p>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid gap-4 sm:grid-cols-4">
         <div className="rounded-3xl border border-border bg-white p-5"><p className="text-sm text-muted">Hoa hồng sàn (đã + chưa chi trả)</p><p className="mt-1 text-2xl font-extrabold text-brand">{formatVND(totalCommission)}</p></div>
+        <div className="rounded-3xl border border-border bg-white p-5"><p className="text-sm text-muted">Khuyến mãi sàn chịu</p><p className="mt-1 text-2xl font-extrabold">-{formatVND(totalPromo)}</p><p className="mt-0.5 text-xs text-muted">Thu nhập ròng của sàn: {formatVND(totalCommission - totalPromo)}</p></div>
         <div className="rounded-3xl border border-border bg-white p-5"><p className="text-sm text-muted">Cần chi trả cho đối tác</p><p className="mt-1 text-2xl font-extrabold">{formatVND(rows.reduce((s, r) => s + r.net, 0))}</p></div>
         <div className="rounded-3xl border border-border bg-white p-5"><p className="text-sm text-muted">Đã chi trả</p><p className="mt-1 text-2xl font-extrabold">{formatVND(history.reduce((s, h) => s + h.amount, 0))}</p></div>
       </div>

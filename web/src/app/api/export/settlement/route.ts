@@ -7,9 +7,9 @@ import { listDeductions, listPayoutLines, listUnsettled, type SettleRow } from "
 
 const KIND = { COMPLETED: "Đơn hoàn tất", LATE_CANCEL: "Phí hủy muộn" } as const;
 
-const HEADER = ["Loại", "Mã đơn", "Khách sạn", "Khách", "Nhận phòng", "Trả phòng", "Thu (₫)", "Hoa hồng (%)", "Hoa hồng (₫)", "Đối tác nhận (₫)"];
+const HEADER = ["Loại", "Mã đơn", "Khách sạn", "Khách", "Nhận phòng", "Trả phòng", "Thu, giá trước giảm (₫)", "Giảm giá sàn chịu (₫)", "Hoa hồng (%)", "Hoa hồng (₫)", "Đối tác nhận (₫)"];
 
-const lineOf = (r: SettleRow): CsvValue[] => [KIND[r.kind], r.code, r.hotelName, r.guestName, isoDate(r.checkIn), isoDate(r.checkOut), r.gross, r.commissionPercent, r.commission, r.payout];
+const lineOf = (r: SettleRow): CsvValue[] => [KIND[r.kind], r.code, r.hotelName, r.guestName, isoDate(r.checkIn), isoDate(r.checkOut), r.gross, r.promo, r.commissionPercent, r.commission, r.payout];
 
 /**
  * Xuất đối soát chi tiết từng đơn để đối tác/sàn đối chiếu sổ sách.
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     ]);
     const lines = [
       ...rows.map(lineOf),
-      ...disputes.map((d): CsvValue[] => ["Trừ khiếu nại", d.booking.code, d.hotel.name, "", "", "", "", "", "", -d.partnerBearsAmount]),
+      ...disputes.map((d): CsvValue[] => ["Trừ khiếu nại", d.booking.code, d.hotel.name, "", "", "", "", "", "", "", -d.partnerBearsAmount]),
     ];
     return csvResponse(toCsv(HEADER, lines), `doi-soat-dot-chi-tra-${date}.csv`);
   }
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     const ownerId = user.role === "ADMIN" ? q.get("owner") : user.id;
     if (!ownerId) return NextResponse.json({ error: "Quản trị viên cần chỉ định đối tác (owner)." }, { status: 400 });
     const [rows, deductions] = await Promise.all([listUnsettled(prisma, ownerId), listDeductions(prisma, ownerId)]);
-    const lines = [...rows.map(lineOf), ...deductions.map((d): CsvValue[] => ["Trừ khiếu nại", d.bookingCode, d.hotelName, "", "", "", "", "", "", -d.amount])];
+    const lines = [...rows.map(lineOf), ...deductions.map((d): CsvValue[] => ["Trừ khiếu nại", d.bookingCode, d.hotelName, "", "", "", "", "", "", "", -d.amount])];
     return csvResponse(toCsv(HEADER, lines), `doi-soat-chua-chi-tra-${date}.csv`);
   }
 

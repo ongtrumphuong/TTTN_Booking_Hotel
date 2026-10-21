@@ -29,7 +29,7 @@ async function Payouts() {
         </div>
       </div>
       <p className="mb-6 max-w-2xl text-sm text-muted">
-        Sàn thu tiền của khách và chi trả cho bạn sau khi trừ hoa hồng. Chỉ đơn đã hoàn tất (khách đã trả phòng) và phí hủy muộn được tính vào đối soát.
+        Sàn thu tiền của khách và chi trả cho bạn sau khi trừ hoa hồng. Chỉ đơn đã hoàn tất (khách đã trả phòng) và phí hủy muộn được tính vào đối soát. Mã giảm giá do sàn tạo là <b>sàn chịu</b>: bạn nhận theo giá phòng trước giảm.
       </p>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-4">
@@ -60,7 +60,7 @@ async function Payouts() {
               <tr key={r.id}>
                 <td className="px-4 py-3 font-mono text-xs font-semibold">{r.code}</td>
                 <td className="px-4 py-3">{r.hotelName}</td>
-                <td className="px-4 py-3">{formatVND(r.gross)}</td>
+                <td className="px-4 py-3">{formatVND(r.gross)}{r.promo > 0 && <span className="block text-xs text-muted">đã gồm mã giảm {formatVND(r.promo)} do sàn chịu</span>}</td>
                 <td className="px-4 py-3 text-muted">{formatVND(r.commission)} ({r.commissionPercent}%)</td>
                 <td className="px-4 py-3 font-bold">{formatVND(r.payout)}</td>
               </tr>

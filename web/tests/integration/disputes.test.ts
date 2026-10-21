@@ -153,7 +153,7 @@ describe("sàn quyết định và trừ vào chi trả", () => {
     // Đơn hoàn tất 2.000.000, hoa hồng 10% => đối tác nhận 1.800.000; trừ 300.000 => 1.500.000.
     const rows = await listUnsettled(prisma, owner.id);
     expect(rows.map((r) => r.id)).toEqual([done.id]);
-    expect(sumRows(rows)).toEqual({ gross: 2_000_000, commission: 200_000, payout: 1_800_000 });
+    expect(sumRows(rows)).toEqual({ gross: 2_000_000, commission: 200_000, payout: 1_800_000, promo: 0 });
     const deds = await listDeductions(prisma, owner.id);
     expect(deds).toHaveLength(1);
     expect(netPayout(rows, deds)).toBe(1_500_000);

@@ -286,6 +286,8 @@ model Payout {
   bookings     Booking[]
   // Khoản trừ do khiếu nại đối tác phải chịu, tính vào đợt chi trả này.
   deductions   Int       @default(0)
+  // Tiền mã giảm giá của sàn trong các đơn thuộc đợt này (sàn chịu, đối tác vẫn nhận theo giá trước giảm).
+  promoCost    Int       @default(0)
   disputes     Dispute[]
 
   @@index([ownerId, createdAt])

@@ -95,7 +95,7 @@ export async function createPayoutAction(ownerId: string, note: string): Promise
         const net = sum.payout - deducted;
         if (net < 0) throw new Error("NEGATIVE");
         const payout = await tx.payout.create({
-          data: { ownerId, gross: sum.gross, commission: sum.commission, deductions: deducted, amount: net, bookingCount: rows.length, note: cleanNote, createdById: admin.id },
+          data: { ownerId, gross: sum.gross, commission: sum.commission, promoCost: sum.promo, deductions: deducted, amount: net, bookingCount: rows.length, note: cleanNote, createdById: admin.id },
         });
         const linked = await tx.booking.updateMany({ where: { id: { in: rows.map((r) => r.id) }, payoutId: null }, data: { payoutId: payout.id } });
         if (linked.count !== rows.length) throw new Error("CONFLICT");

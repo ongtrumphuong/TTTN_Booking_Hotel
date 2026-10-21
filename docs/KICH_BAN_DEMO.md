@@ -88,7 +88,7 @@ Chuẩn bị: admin tạo trước mã giảm giá (xem bước 7) hoặc làm b
 3. Đăng nhập admin → **Đối tác**: thấy khách sạn chờ duyệt, bấm **Duyệt**; đổi **hoa hồng** của một khách sạn.
 4. Để có số liệu đối soát: dùng tài khoản khách đặt phòng ở một khách sạn của đối tác, thanh toán, rồi đối tác bấm **Nhận phòng** và **Hoàn tất** (cần đúng ngày nhận phòng là hôm nay; hoặc chuẩn bị sẵn vài đơn đã hoàn tất).
 5. Đối tác mở **Đối soát & chi trả**: thấy tổng thu, hoa hồng sàn, số tiền sẽ nhận. Admin mở **Đối soát** → **Tạo đợt chi trả** → đối tác thấy khoản đã nhận trong lịch sử.
-**Nói gì:** sàn thu tiền của khách; đối tác nhận doanh thu trừ hoa hồng. Hoa hồng được **chốt vào đơn lúc đặt**, nên đổi hoa hồng chỉ áp dụng cho đơn sau. Đối tác không tự xác nhận thanh toán hay hoàn tiền vì tiền do sàn giữ.
+**Nói gì:** sàn thu tiền của khách; đối tác nhận doanh thu trừ hoa hồng. Hoa hồng được **chốt vào đơn lúc đặt**, nên đổi hoa hồng chỉ áp dụng cho đơn sau. Mã giảm giá do sàn tạo nên **sàn chịu**: khách dùng mã giảm 100.000 ₫ thì đối tác vẫn nhận đủ như giá gốc, sàn bù phần giảm (hiện ở thẻ "Khuyến mãi sàn chịu" trang Đối soát). Đối tác không tự xác nhận thanh toán hay hoàn tiền vì tiền do sàn giữ.
 
 ### Bước 7b2 – Giá theo mùa, vé QR, lịch phòng và thông báo (5 phút)
 **Làm gì:**

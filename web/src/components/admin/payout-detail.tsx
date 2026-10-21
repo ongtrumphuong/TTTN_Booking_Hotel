@@ -46,7 +46,7 @@ export async function PayoutDetail({ id, user }: { id: string; user: Pick<Sessio
         <div className="rounded-3xl border border-border bg-white p-5"><p className="text-sm text-muted">Khoản trừ khiếu nại</p><p className="mt-1 text-xl font-extrabold">-{formatVND(payout.deductions)}</p></div>
         <div className="rounded-3xl border border-brand/30 bg-brand/5 p-5"><p className="text-sm text-muted">{user.role === "ADMIN" ? "Đã chi trả" : "Bạn đã nhận"}</p><p className="mt-1 text-xl font-extrabold text-brand">{formatVND(payout.amount)}</p></div>
       </div>
-      <p className="mb-6 text-xs text-muted">Công thức: tổng thu − hoa hồng sàn − khoản trừ khiếu nại = số tiền chi trả. Hoa hồng của từng đơn theo tỷ lệ đã chốt lúc khách đặt phòng.</p>
+      <p className="mb-6 text-xs text-muted">Công thức: tổng thu (giá phòng trước giảm giá) − hoa hồng sàn − khoản trừ khiếu nại = số tiền chi trả. Hoa hồng của từng đơn theo tỷ lệ đã chốt lúc khách đặt phòng. Mã giảm giá do sàn chịu{payout.promoCost > 0 ? ` (đợt này: ${formatVND(payout.promoCost)})` : ""}.</p>
 
       <div className="overflow-x-auto rounded-3xl border border-border bg-white">
         <table className="w-full min-w-[820px] text-left text-sm">
@@ -60,7 +60,7 @@ export async function PayoutDetail({ id, user }: { id: string; user: Pick<Sessio
                 <td className="px-4 py-3">{KIND[r.kind]}</td>
                 <td className="px-4 py-3"><p>{r.hotelName}</p><p className="text-xs text-muted">{r.guestName}</p></td>
                 <td className="whitespace-nowrap px-4 py-3 text-xs">{formatDate(r.checkIn)} → {formatDate(r.checkOut)}</td>
-                <td className="px-4 py-3">{formatVND(r.gross)}</td>
+                <td className="px-4 py-3">{formatVND(r.gross)}{r.promo > 0 && <span className="block text-xs text-muted">đã gồm mã giảm {formatVND(r.promo)} do sàn chịu</span>}</td>
                 <td className="px-4 py-3 text-muted">{formatVND(r.commission)} ({r.commissionPercent}%)</td>
                 <td className="px-4 py-3 font-bold">{formatVND(r.payout)}</td>
               </tr>

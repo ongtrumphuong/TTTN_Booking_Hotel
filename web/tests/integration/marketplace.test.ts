@@ -206,7 +206,7 @@ describe("đối soát và chi trả", () => {
     const { done, lateCancel } = await setup();
     const rows = await listUnsettled(prisma, hostA.id);
     expect(rows.map((r) => r.id).sort()).toEqual([done.id, lateCancel.id].sort());
-    expect(sumRows(rows)).toEqual({ gross: 1_500_000, commission: 150_000, payout: 1_350_000 });
+    expect(sumRows(rows)).toEqual({ gross: 1_500_000, commission: 150_000, payout: 1_350_000, promo: 0 });
     expect(await listUnsettled(prisma, hostB.id)).toEqual([]);
   });
 
