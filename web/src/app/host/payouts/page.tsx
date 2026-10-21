@@ -18,7 +18,10 @@ async function Payouts() {
 
   return (
     <>
-      <h1 className="font-display mb-2 text-3xl font-semibold">Đối soát &amp; chi trả</h1>
+      <div className="mb-2 flex flex-wrap items-end justify-between gap-3">
+        <h1 className="font-display text-3xl font-semibold">Đối soát &amp; chi trả</h1>
+        <a href="/api/export/payouts" className="rounded-xl border border-brand px-4 py-2 text-sm font-bold text-brand hover:bg-brand/5">Xuất CSV lịch sử chi trả</a>
+      </div>
       <p className="mb-6 max-w-2xl text-sm text-muted">
         Sàn thu tiền của khách và chi trả cho bạn sau khi trừ hoa hồng. Chỉ đơn đã hoàn tất (khách đã trả phòng) và phí hủy muộn được tính vào đối soát.
       </p>

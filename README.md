@@ -36,6 +36,7 @@
 - **Trợ lý ảo đặt phòng** (khung chat góc phải): khách nói yêu cầu bằng tiếng Việt, ví dụ "Đà Lạt 20/10 - 22/10, dưới 1tr5/đêm, view Hồ Xuân Hương"; trợ lý (Google Gemini, gói miễn phí) tìm phòng còn trống trên hệ thống và đưa **thẻ phòng**. Khách bấm "Xem và giữ phòng" → trang xác nhận → giữ phòng → **tự thanh toán**. Trợ lý chỉ tìm và tư vấn, **không thể tự đặt phòng hay thanh toán**.
 - Yêu thích khách sạn (nút tim trên thẻ và trang chi tiết, trang `/favorites`).
 - Viết hoặc sửa đánh giá sau khi đã hoàn tất kỳ lưu trú.
+- **Phiếu thanh toán** in/lưu PDF được cho đơn đã thanh toán (nút "Xem phiếu thanh toán" ở chi tiết đơn).
 - **Xem phòng 360°**: nút "Xem phòng 360°" trên ảnh phòng mở trình xem toàn cảnh (kéo để xoay, cuộn để phóng to, toàn màn hình). Trang khách sạn có **bản đồ nghiêng 3D** với khối nhà xung quanh (cần token Mapbox).
 - **Vé điện tử có mã QR** ở chi tiết đơn đã xác nhận: đưa cho lễ tân khi nhận phòng.
 - **Giá theo mùa**: giá từng đêm có thể khác nhau (cuối tuần, mùa cao điểm, ngày lễ); trang đặt phòng hiện bảng giá từng đêm.
@@ -47,6 +48,8 @@
 - Xem đơn của khách sạn mình, ghi nhận **nhận phòng / trả phòng**, hủy đơn (luôn hoàn đủ tiền cho khách).
 - **Ảnh 360° cho từng loại phòng**: dán đường dẫn/URL hoặc **tải ảnh toàn cảnh** (tỷ lệ 2:1, tự giữ tối đa 6000px) ở form sửa loại phòng.
 - **Giá theo mùa**: phụ thu cuối tuần (đêm thứ Sáu, thứ Bảy) và các quy tắc giá theo khoảng ngày (+/- %) cho từng loại phòng, ở trang sửa khách sạn.
+- **Phản hồi đánh giá** `/host/reviews`: xem đánh giá của khách sạn mình (lọc "chưa phản hồi"), viết phản hồi công khai hiện dưới đánh giá ở trang khách sạn; có thông báo khi có đánh giá mới. Đối tác không ẩn/xóa được đánh giá (kiểm duyệt là việc của sàn).
+- **Xuất CSV** đơn đặt phòng (theo bộ lọc trạng thái) và lịch sử chi trả, mở được bằng Excel.
 - **Lịch phòng** `/host/calendar`: lưới 3 tuần cho thấy mỗi loại phòng còn bao nhiêu phòng trống mỗi đêm, phòng bị chặn và giá từng đêm.
 - **Nhận phòng (quét vé)** `/host/checkin`: quét mã QR trên vé của khách bằng camera (hoặc nhập mã đặt phòng) → xem thông tin đơn → xác nhận nhận phòng.
 - **Thông báo**: chuông ở thanh trên và trang `/host/notifications` báo đơn mới đã thanh toán, đơn bị hủy, kết quả duyệt khách sạn; đơn mới và đơn hủy còn gửi email cho đối tác (khi đã cấu hình SMTP).
@@ -62,6 +65,7 @@
 - **Đối tác**: duyệt hoặc từ chối khách sạn của đối tác (từ chối phải nêu lý do), đặt **hoa hồng (0–50%) cho từng khách sạn**, gán khách sạn cho đối tác.
 - **Đối soát**: mỗi đối tác có tổng thu, hoa hồng sàn và tiền chi trả chưa đối soát; nút **Tạo đợt chi trả** gộp các đơn lại, kèm lịch sử.
 - Quản trị viên cũng có **Lịch phòng** (`/admin/calendar`), **Nhận phòng (quét vé)** (`/admin/checkin`) và **Thông báo** (khách sạn của đối tác chờ duyệt, đơn của khách sạn do sàn tự vận hành).
+- **Nhật ký thao tác** (`/admin/audit`): ghi ai làm gì với tiền, khách sạn, giá, quyền, mã giảm giá, kiểm duyệt (đổi trạng thái đơn, hoàn tiền, đợt chi trả, hoa hồng, duyệt/từ chối khách sạn, đổi giá phòng...); chỉ ghi thêm, lọc theo loại thao tác. Quản trị viên cũng phản hồi được đánh giá và xuất CSV.
 - Mã giảm giá: tạo, bật/tắt, xem số lượt đã dùng. Lịch chặn phòng theo từng loại phòng. Chính sách hủy theo từng khách sạn.
 
 ## 3. Cài đặt và chạy
@@ -183,6 +187,7 @@ erDiagram
     ROOM ||--o{ BOOKING : "được đặt"
     ROOM ||--o{ PRICERULE : "có quy tắc giá"
     USER ||--o{ NOTIFICATION : "nhận"
+    USER ||--o{ AUDITLOG : "thực hiện"
     BOOKING ||--o{ PAYMENT : "có"
 
     USER {
@@ -268,6 +273,7 @@ erDiagram
         string userId FK
         int rating
         string comment
+        string reply "phản hồi của khách sạn"
         boolean isHidden
         datetime createdAt
     }
@@ -291,6 +297,15 @@ erDiagram
         string body
         string href
         datetime readAt
+    }
+    AUDITLOG {
+        string id PK
+        string actorId FK
+        string actorName
+        string actorRole
+        string action
+        string summary
+        datetime createdAt
     }
 ```
 
@@ -378,6 +393,10 @@ Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống ki�
 - An toàn: giới hạn 30 tin/giờ/IP và 200 tin/giờ toàn hệ thống (bảo vệ hạn mức miễn phí); lịch sử gửi lên được làm sạch (chỉ user/assistant, tối đa 12 tin, 800 ký tự/tin); nội dung do đối tác nhập (tên, mô tả, điểm nổi bật) được coi là dữ liệu, không phải chỉ dẫn; lỗi quá tải/hết lượt báo thân thiện.
 
 **Đánh giá**: chỉ khách có đơn **Hoàn tất** tại khách sạn đó mới được viết; gửi lại sẽ cập nhật đánh giá cũ. Điểm trung bình tính từ các đánh giá **đang hiển thị** (đánh giá bị quản trị viên ẩn không được tính; tác giả vẫn thấy thông báo đánh giá của mình đang bị ẩn).
+
+**Nhật ký thao tác** (`src/lib/audit.ts`): `audit(actor, action, summary)` ghi bảng `AuditLog` (tên và vai trò chụp lại lúc làm), gọi ở mọi server action về tiền/duyệt/giá/quyền sau khi thao tác thành công; thao tác bị từ chối không để lại dòng nào; lỗi ghi nhật ký không làm hỏng thao tác chính.
+
+**Xuất CSV** (`src/lib/csv.ts`, `/api/export/bookings`, `/api/export/payouts`): quản trị viên xuất mọi dòng, đối tác chỉ dòng của mình, khách bị từ chối (403). Tệp có BOM UTF-8 và chặn CSV injection (ô văn bản bắt đầu bằng `= + - @` được thêm dấu nháy đơn) vì tên khách, ghi chú do người dùng nhập.
 
 **Vé điện tử và nhận phòng**: mã QR chứa `mã đặt phòng.chữ ký` (HMAC từ `AUTH_SECRET`, `src/lib/ticket.ts`) nên không làm giả được vé từ mã đoán. Quét chỉ để **tìm đơn**; quyền xử lý vẫn do `canManageHotel` quyết định ở máy chủ, vé của khách sạn khác báo như không tồn tại. Lễ tân cũng gõ tay được mã đặt phòng khi khách quên vé.
 

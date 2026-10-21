@@ -4,6 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
+import { audit } from "@/lib/audit";
 import { notifyHotelDecision } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -21,20 +22,22 @@ function refresh() {
 
 /** Duyệt khách sạn của đối tác: từ lúc này khách sạn hiển thị công khai. */
 export async function approveHotelAction(hotelId: string): Promise<PartnerState> {
-  await requireAdmin("/admin/partners");
+  const admin = await requireAdmin("/admin/partners");
   const res = await prisma.hotel.updateMany({ where: { id: hotelId, ownerId: { not: null } }, data: { approval: "APPROVED", approvalNote: null, isActive: true } });
   if (res.count === 0) return { error: "Không tìm thấy khách sạn của đối tác." };
+  await audit(admin, "HOTEL_APPROVE", `Duyệt khách sạn ${hotelId}`, { type: "Hotel", id: hotelId });
   after(() => notifyHotelDecision(hotelId, true));
   refresh();
   return { ok: true };
 }
 
 export async function rejectHotelAction(hotelId: string, note: string): Promise<PartnerState> {
-  await requireAdmin("/admin/partners");
+  const admin = await requireAdmin("/admin/partners");
   const reason = String(note ?? "").trim().slice(0, 300);
   if (reason.length < 3) return { error: "Vui lòng nhập lý do từ chối (ít nhất 3 ký tự) để đối tác chỉnh sửa." };
   const res = await prisma.hotel.updateMany({ where: { id: hotelId, ownerId: { not: null } }, data: { approval: "REJECTED", approvalNote: reason, isActive: false } });
   if (res.count === 0) return { error: "Không tìm thấy khách sạn của đối tác." };
+  await audit(admin, "HOTEL_REJECT", `Từ chối khách sạn ${hotelId}: ${reason}`, { type: "Hotel", id: hotelId });
   after(() => notifyHotelDecision(hotelId, false, reason));
   refresh();
   return { ok: true };
@@ -44,17 +47,19 @@ const commissionSchema = z.coerce.number().int().min(0, "Hoa hồng từ 0% đ�
 
 /** Đổi hoa hồng của khách sạn. Chỉ áp dụng cho các đơn đặt sau này; đơn cũ giữ tỷ lệ đã chốt lúc đặt. */
 export async function setCommissionAction(hotelId: string, percent: string): Promise<PartnerState> {
-  await requireAdmin("/admin/partners");
+  const admin = await requireAdmin("/admin/partners");
   const parsed = commissionSchema.safeParse(percent);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const before = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { commissionPercent: true } });
   await prisma.hotel.update({ where: { id: hotelId }, data: { commissionPercent: parsed.data } });
+  await audit(admin, "COMMISSION", `Hoa hồng khách sạn ${hotelId}: ${before?.commissionPercent ?? "?"}% → ${parsed.data}%`, { type: "Hotel", id: hotelId });
   refresh();
   return { ok: true };
 }
 
 /** Gán khách sạn cho một đối tác theo email (hoặc để trống để chuyển về khách sạn do sàn tự vận hành). */
 export async function assignOwnerAction(hotelId: string, ownerEmail: string): Promise<PartnerState> {
-  await requireAdmin("/admin/partners");
+  const admin = await requireAdmin("/admin/partners");
   const email = String(ownerEmail ?? "").trim().toLowerCase();
   if (!email) {
     await prisma.hotel.update({ where: { id: hotelId }, data: { ownerId: null, approval: "APPROVED", approvalNote: null } });
@@ -63,6 +68,7 @@ export async function assignOwnerAction(hotelId: string, ownerEmail: string): Pr
     if (!owner || owner.role !== "HOST") return { error: "Không có đối tác nào dùng email này. Người dùng cần đăng ký làm đối tác trước." };
     await prisma.hotel.update({ where: { id: hotelId }, data: { ownerId: owner.id } });
   }
+  await audit(admin, "OWNER_ASSIGN", email ? `Gán khách sạn ${hotelId} cho đối tác ${email}` : `Chuyển khách sạn ${hotelId} về sàn tự vận hành`, { type: "Hotel", id: hotelId });
   refresh();
   return { ok: true };
 }
@@ -93,6 +99,7 @@ export async function createPayoutAction(ownerId: string, note: string): Promise
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
     if (!created) return { error: "Không có đơn nào cần đối soát cho đối tác này." };
+    await audit(admin, "PAYOUT_CREATE", `Tạo đợt chi trả cho đối tác ${ownerId}${cleanNote ? ` (${cleanNote})` : ""}`, { type: "User", id: ownerId });
   } catch (e) {
     if (e instanceof Error && e.message === "CONFLICT") return { error: "Dữ liệu vừa thay đổi, vui lòng thử lại." };
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") return { error: "Hệ thống đang bận, vui lòng thử lại." };

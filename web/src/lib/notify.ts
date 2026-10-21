@@ -94,3 +94,20 @@ export async function notifyHotelDecision(hotelId: string, approved: boolean, no
     console.error("[notify] Gửi thông báo kết quả duyệt thất bại:", e instanceof Error ? e.message : e);
   }
 }
+
+/** Báo chủ khách sạn (hoặc các quản trị viên nếu là khách sạn của sàn) có đánh giá mới để kịp phản hồi. */
+export async function notifyNewReview(hotelId: string, guestName: string, rating: number) {
+  try {
+    const h = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { name: true, ownerId: true } });
+    if (!h) return;
+    const recipients = h.ownerId ? [h.ownerId] : (await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } })).map((u) => u.id);
+    await notifyUsers(recipients, {
+      kind: "REVIEW_NEW",
+      title: `Đánh giá mới tại ${h.name}`,
+      body: `${guestName} đánh giá ${rating}/5 sao. Hãy phản hồi để khách thấy bạn quan tâm.`,
+      href: h.ownerId ? "/host/reviews" : "/admin/reviews",
+    });
+  } catch (e) {
+    console.error("[notify] Gửi thông báo đánh giá mới thất bại:", e instanceof Error ? e.message : e);
+  }
+}

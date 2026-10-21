@@ -266,6 +266,12 @@ async function HotelContent({ params, searchParams }: { params: Promise<{ slug: 
                       </p>
                     </div>
                     <p className="mt-1 text-sm text-muted">{rv.comment}</p>
+                    {rv.reply && (
+                      <div className="mt-3 rounded-2xl bg-brand/5 p-3 text-sm">
+                        <p className="font-semibold text-brand">Phản hồi từ khách sạn</p>
+                        <p className="mt-0.5 whitespace-pre-line break-words text-muted">{rv.reply}</p>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

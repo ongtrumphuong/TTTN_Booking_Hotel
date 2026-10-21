@@ -97,6 +97,9 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           {b.status === "PENDING" && b.paymentStatus === "UNPAID" && (
             <Link href={`/bookings/${b.id}/pay`} className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-dark">Thanh toán ngay</Link>
           )}
+          {b.paymentStatus !== "UNPAID" && (
+            <Link href={`/bookings/${b.id}/invoice`} className="rounded-lg border border-brand px-4 py-2 text-sm font-bold text-brand hover:bg-brand/5">Xem phiếu thanh toán</Link>
+          )}
           {canCancel && <CancelButton bookingId={b.id} confirmText={confirmText} />}
           <Link href="/bookings" className="rounded-lg px-4 py-2 text-sm font-semibold text-muted hover:bg-background">← Tất cả đặt phòng</Link>
         </div>

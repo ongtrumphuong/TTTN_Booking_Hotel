@@ -99,6 +99,14 @@ Chuẩn bị: admin tạo trước mã giảm giá (xem bước 7) hoặc làm b
 5. Đăng nhập lại đối tác: chuông **Thông báo** có số đơn mới; mở **Nhận phòng (quét vé)**, quét mã QR (hoặc nhập mã đặt phòng) vào đúng ngày nhận phòng → thông tin đơn hiện ra → **Xác nhận nhận phòng**.
 **Nói gì:** giá do máy chủ tính từng đêm nên khách không sửa được; giá chốt vào đơn lúc đặt. Mã QR có chữ ký nên không làm giả được, và đối tác chỉ quét được vé của khách sạn mình.
 
+### Bước 7b3 – Phản hồi đánh giá, nhật ký, xuất CSV, phiếu thanh toán (4 phút)
+**Làm gì:**
+1. Đối tác → **Đánh giá**: lọc **Chưa phản hồi**, bấm **Phản hồi**, viết lời cảm ơn, lưu. Mở trang khách sạn đó: phản hồi hiện dưới đánh giá.
+2. Đối tác → **Đơn đặt phòng** → **Xuất CSV** → mở bằng Excel (tiếng Việt không vỡ chữ).
+3. Admin → đổi hoa hồng một khách sạn, hoặc xác nhận hoàn tiền một đơn → mở **Nhật ký thao tác**: thấy dòng vừa làm kèm tên người thực hiện và giờ. Lọc theo loại thao tác.
+4. Khách → chi tiết một đơn đã thanh toán → **Xem phiếu thanh toán** → **In / lưu PDF**.
+**Nói gì:** các thao tác về tiền đều để lại dấu vết không sửa được, trả lời câu hỏi "ai đã làm gì, lúc nào". Tệp CSV chặn công thức độc hại do người dùng nhập; đối tác chỉ xuất được dữ liệu của mình.
+
 ### Bước 7c – Trợ lý ảo đặt phòng (3 phút, cần khóa Gemini và Internet)
 **Chuẩn bị:** điền `GEMINI_API_KEY` trong `web/.env`, khởi động lại server, chạy `npx tsx --env-file=.env scripts/assistant-check.ts` để chắc khóa dùng được; DB đã seed từ trước thì chạy thêm `npx tsx prisma/update-highlights.ts --apply`. Đăng nhập tài khoản khách.
 **Làm gì:**
@@ -143,6 +151,11 @@ Kiểm tra phòng trống và tạo đơn nằm trong **một giao dịch mức 
 - Ba vai trò (khách, đối tác, sàn); **quyền kiểm tra theo từng khách sạn ở máy chủ**, không chỉ ẩn nút: đối tác không sửa được khách sạn, phòng, lịch chặn hay đơn của người khác.
 - Duyệt khách sạn trước khi hiển thị; hoa hồng theo khách sạn và **chốt vào đơn lúc đặt** để đối soát không bị đổi ngầm.
 - Đối soát tính đúng cả phí hủy muộn; tạo đợt chi trả bằng giao dịch Serializable và điều kiện `payoutId = null` nên không chi trả trùng đơn (đã có test cho cả trường hợp hai yêu cầu đồng thời).
+
+### 2.4b4. Truy vết, xuất dữ liệu, phản hồi
+- Nhật ký thao tác chỉ ghi thêm; mỗi dòng chụp lại tên và vai trò người làm; thao tác bị từ chối không để lại dòng.
+- CSV: BOM UTF-8 cho Excel; chặn CSV injection; phạm vi theo chủ khách sạn kiểm ở máy chủ.
+- Phản hồi đánh giá kiểm quyền theo khách sạn; không phân biệt "không tồn tại" với "không phải của bạn".
 
 ### 2.4b3. Xem phòng 360° và bản đồ 3D
 - Ảnh toàn cảnh dựng lên khối cầu bằng WebGL (Photo Sphere Viewer); thư viện chỉ tải khi khách mở trình xem. Ảnh tải lên được kiểm tra thật (giải mã, tỷ lệ 2:1, bỏ siêu dữ liệu) và URL chỉ nhận từ danh sách cho phép.

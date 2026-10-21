@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
+import { notifyNewReview } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
 import { canReviewHotel } from "@/lib/reviews";
 import { getCurrentUser, requireUser } from "@/lib/session";
@@ -43,12 +45,14 @@ export async function submitReviewAction(hotelId: string, _: ReviewState, formDa
   const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, select: { slug: true } });
   if (!hotel) return { error: "Khách sạn không tồn tại." };
 
+  const existed = await prisma.review.findUnique({ where: { hotelId_userId: { hotelId, userId: user.id } }, select: { id: true } });
   await prisma.review.upsert({
     where: { hotelId_userId: { hotelId, userId: user.id } },
     create: { hotelId, userId: user.id, ...parsed.data },
     update: parsed.data,
   });
 
+  if (!existed) after(() => notifyNewReview(hotelId, user.name, parsed.data.rating));
   updateTag("hotels"); // điểm trung bình và danh sách đánh giá nằm trong dữ liệu được cache
   revalidatePath(`/hotels/${hotel.slug}`);
   return { ok: true };

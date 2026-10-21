@@ -155,15 +155,18 @@ model Booking {
 }
 
 model Review {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   hotelId   String
-  hotel     Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  hotel     Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
   rating    Int
   comment   String
-  isHidden  Boolean  @default(false)
-  createdAt DateTime @default(now())
+  isHidden  Boolean   @default(false)
+  // Phản hồi của khách sạn (đối tác hoặc quản trị viên) dưới đánh giá của khách.
+  reply     String?
+  repliedAt DateTime?
+  createdAt DateTime  @default(now())
 
   @@unique([hotelId, userId])
   @@index([hotelId, isHidden])
@@ -294,4 +297,20 @@ model Notification {
   createdAt DateTime  @default(now())
 
   @@index([userId, readAt, createdAt])
+}
+
+/// Nhật ký thao tác nhạy cảm (tiền, duyệt khách sạn, đổi quyền...) để truy vết ai đã làm gì. Chỉ ghi thêm, không sửa/xóa.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorName  String
+  actorRole  String
+  action     String
+  targetType String?
+  targetId   String?
+  summary    String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
 }

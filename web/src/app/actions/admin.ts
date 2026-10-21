@@ -5,6 +5,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { Prisma, type BookingStatus, type Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { audit } from "@/lib/audit";
 import { isAllowedPanorama } from "@/lib/panorama";
 import { notifyBookingEvent, notifyHotelPending } from "@/lib/notify";
 import { readTicket } from "@/lib/ticket";
@@ -173,7 +174,10 @@ export async function toggleHotelAction(id: string) {
   if (!(await canManageHotel(user, id))) return;
   const hotel = await prisma.hotel.findUnique({ where: { id }, select: { isActive: true, approval: true } });
   // Khách sạn của đối tác chưa được duyệt thì chỉ quản trị viên mới bật hiển thị được.
-  if (hotel && (user.role === "ADMIN" || hotel.approval === "APPROVED")) await prisma.hotel.update({ where: { id }, data: { isActive: !hotel.isActive } });
+  if (hotel && (user.role === "ADMIN" || hotel.approval === "APPROVED")) {
+    await prisma.hotel.update({ where: { id }, data: { isActive: !hotel.isActive } });
+    await audit(user, "HOTEL_TOGGLE", `${hotel.isActive ? "Ẩn" : "Hiện"} khách sạn ${id}`, { type: "Hotel", id });
+  }
   refreshCatalog();
 }
 
@@ -199,7 +203,11 @@ export async function updateRoomAction(roomId: string, _: AdminState, fd: FormDa
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   try {
+    const before = await prisma.room.findUnique({ where: { id: roomId }, select: { pricePerNight: true, weekendPercent: true } });
     const room = await prisma.room.update({ where: { id: roomId }, data: parsed.data });
+    if (before && (before.pricePerNight !== room.pricePerNight || before.weekendPercent !== room.weekendPercent)) {
+      await audit(user, "ROOM_PRICE", `Phòng "${room.name}": giá ${before.pricePerNight} → ${room.pricePerNight}, phụ thu cuối tuần ${before.weekendPercent}% → ${room.weekendPercent}%`, { type: "Room", id: roomId });
+    }
     refreshHotelPage(room.hotelId);
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") return { error: "Không tìm thấy phòng." };
@@ -236,6 +244,7 @@ export async function checkInBookingAction(bookingId: string): Promise<AdminStat
   // Điều kiện trong where để hai lần bấm cùng lúc chỉ ghi một lần.
   const res = await prisma.booking.updateMany({ where: { id: bookingId, status: "CONFIRMED", checkedInAt: null }, data: { checkedInAt: new Date() } });
   if (res.count === 0) return { error: "Khách đã nhận phòng rồi." };
+  await audit(user, "BOOKING_CHECKIN", `Ghi nhận nhận phòng đơn ${bookingId}`, { type: "Booking", id: bookingId });
   revalidatePath("/admin/bookings");
   revalidatePath("/host/bookings");
   return { ok: true };
@@ -285,6 +294,7 @@ export async function updateBookingStatusAction(bookingId: string, next: Booking
     throw e;
   }
 
+  await audit(user, "BOOKING_STATUS", `Đơn ${bookingId} → ${next}`, { type: "Booking", id: bookingId });
   if (next === "CANCELLED") {
     after(() => sendBookingCancelled(bookingId));
     after(() => notifyBookingEvent(bookingId, "CANCELLED"));
@@ -312,6 +322,7 @@ export async function markRefundedAction(bookingId: string, note: string): Promi
     return true;
   });
   if (!done) return { error: "Đơn này không ở trạng thái chờ hoàn tiền." };
+  await audit(admin, "REFUND_DONE", `Xác nhận đã hoàn tiền đơn ${bookingId}${cleanNote ? ` (${cleanNote})` : ""}`, { type: "Booking", id: bookingId });
   after(() => sendRefundCompleted(bookingId));
 
   revalidatePath("/admin/bookings");
@@ -329,19 +340,21 @@ async function refreshReviews(hotelId: string) {
 }
 
 export async function toggleReviewHiddenAction(reviewId: string): Promise<AdminState> {
-  await requireAdmin("/admin/reviews");
+  const admin = await requireAdmin("/admin/reviews");
   const r = await prisma.review.findUnique({ where: { id: reviewId }, select: { isHidden: true, hotelId: true } });
   if (!r) return { error: "Không tìm thấy đánh giá." };
   await prisma.review.update({ where: { id: reviewId }, data: { isHidden: !r.isHidden } });
+  await audit(admin, "REVIEW_MOD", `${r.isHidden ? "Hiện lại" : "Ẩn"} đánh giá ${reviewId}`, { type: "Review", id: reviewId });
   await refreshReviews(r.hotelId);
   return { ok: true };
 }
 
 export async function deleteReviewAction(reviewId: string): Promise<AdminState> {
-  await requireAdmin("/admin/reviews");
-  const r = await prisma.review.findUnique({ where: { id: reviewId }, select: { hotelId: true } });
+  const admin = await requireAdmin("/admin/reviews");
+  const r = await prisma.review.findUnique({ where: { id: reviewId }, select: { hotelId: true, rating: true, comment: true } });
   if (!r) return { error: "Không tìm thấy đánh giá." };
   await prisma.review.delete({ where: { id: reviewId } });
+  await audit(admin, "REVIEW_MOD", `Xóa đánh giá ${reviewId} (${r.rating} sao): "${r.comment.slice(0, 80)}"`, { type: "Review", id: reviewId });
   await refreshReviews(r.hotelId);
   return { ok: true };
 }
@@ -353,7 +366,8 @@ export async function updateUserRoleAction(userId: string, role: Role): Promise<
   if (role !== "USER" && role !== "ADMIN" && role !== "HOST") return { error: "Vai trò không hợp lệ." };
   if (userId === admin.id) return { error: "Bạn không thể đổi vai trò của chính mình." };
 
-  await prisma.user.update({ where: { id: userId }, data: { role } });
+  const target = await prisma.user.update({ where: { id: userId }, data: { role }, select: { email: true } });
+  await audit(admin, "USER_ROLE", `Đổi vai trò ${target.email} thành ${role}`, { type: "User", id: userId });
   revalidatePath("/admin/users");
   return { ok: true };
 }
@@ -387,7 +401,7 @@ const voucherSchema = z
   .refine((v) => !v.startsAt || !v.endsAt || v.startsAt <= v.endsAt, { message: "Ngày kết thúc phải sau ngày bắt đầu", path: ["endsAt"] });
 
 export async function createVoucherAction(_: AdminState, fd: FormData): Promise<AdminState> {
-  await requireAdmin("/admin/vouchers");
+  const admin = await requireAdmin("/admin/vouchers");
   const parsed = voucherSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { kind, value, ...rest } = parsed.data;
@@ -398,14 +412,18 @@ export async function createVoucherAction(_: AdminState, fd: FormData): Promise<
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return { error: "Mã giảm giá này đã tồn tại." };
     throw e;
   }
+  await audit(admin, "VOUCHER", `Tạo mã giảm giá ${parsed.data.code}`, { type: "Voucher", id: parsed.data.code });
   revalidatePath("/admin/vouchers");
   return { ok: true };
 }
 
 export async function toggleVoucherAction(id: string) {
-  await requireAdmin("/admin/vouchers");
-  const v = await prisma.voucher.findUnique({ where: { id }, select: { isActive: true } });
-  if (v) await prisma.voucher.update({ where: { id }, data: { isActive: !v.isActive } });
+  const admin = await requireAdmin("/admin/vouchers");
+  const v = await prisma.voucher.findUnique({ where: { id }, select: { isActive: true, code: true } });
+  if (v) {
+    await prisma.voucher.update({ where: { id }, data: { isActive: !v.isActive } });
+    await audit(admin, "VOUCHER", `${v.isActive ? "Tắt" : "Bật"} mã giảm giá ${v.code}`, { type: "Voucher", id });
+  }
   revalidatePath("/admin/vouchers");
 }
 
@@ -484,6 +502,7 @@ export async function createPriceRuleAction(roomId: string, _: AdminState, fd: F
   await prisma.priceRule.create({
     data: { roomId, name: parsed.data.name, startDate: start, endDate: new Date(lastNight.getTime() + 86_400_000), percent: parsed.data.percent },
   });
+  await audit(user, "PRICE_RULE", `Thêm quy tắc giá "${parsed.data.name}" ${parsed.data.percent > 0 ? "+" : ""}${parsed.data.percent}% (${parsed.data.startDate} → ${parsed.data.endDate}) cho phòng ${roomId}`, { type: "Room", id: roomId });
   refreshCatalog();
   refreshHotelPage(room.hotelId);
   return { ok: true };
@@ -494,6 +513,7 @@ export async function deletePriceRuleAction(ruleId: string) {
   const r = await prisma.priceRule.findUnique({ where: { id: ruleId }, select: { room: { select: { hotelId: true } } } });
   if (!r || !(await canManageHotel(user, r.room.hotelId))) return;
   await prisma.priceRule.delete({ where: { id: ruleId } });
+  await audit(user, "PRICE_RULE", `Xóa quy tắc giá ${ruleId}`, { type: "PriceRule", id: ruleId });
   refreshCatalog();
   refreshHotelPage(r.room.hotelId);
 }
@@ -565,4 +585,26 @@ export async function lookupTicketAction(raw: string): Promise<TicketLookup> {
       reason,
     },
   };
+}
+
+/* ---------- Phản hồi đánh giá ---------- */
+
+/** Khách sạn (đối tác hoặc quản trị viên) phản hồi công khai dưới đánh giá của khách. Để trống để gỡ phản hồi. */
+export async function replyReviewAction(reviewId: string, text: string): Promise<AdminState> {
+  const user = await requireStaff("/admin/reviews");
+  const r = await prisma.review.findUnique({ where: { id: reviewId }, select: { hotelId: true, hotel: { select: { slug: true } } } });
+  // Không phân biệt "không tồn tại" với "không thuộc khách sạn của bạn".
+  if (!r || !(await canManageHotel(user, r.hotelId))) return { error: NO_ACCESS };
+
+  const reply = String(text ?? "").trim();
+  if (reply.length > 1000) return { error: "Phản hồi tối đa 1000 ký tự." };
+  if (reply.length > 0 && reply.length < 3) return { error: "Phản hồi tối thiểu 3 ký tự." };
+
+  await prisma.review.update({ where: { id: reviewId }, data: reply ? { reply, repliedAt: new Date() } : { reply: null, repliedAt: null } });
+  await audit(user, "REVIEW_REPLY", reply ? `Phản hồi đánh giá ${reviewId}: "${reply.slice(0, 80)}"` : `Gỡ phản hồi đánh giá ${reviewId}`, { type: "Review", id: reviewId });
+  updateTag("hotels");
+  revalidatePath(`/hotels/${r.hotel.slug}`);
+  revalidatePath("/host/reviews");
+  revalidatePath("/admin/reviews");
+  return { ok: true };
 }

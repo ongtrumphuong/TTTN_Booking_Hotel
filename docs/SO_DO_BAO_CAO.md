@@ -320,6 +320,7 @@ erDiagram
   ROOM ||--o{ BOOKING : "được đặt"
   ROOM ||--o{ PRICERULE : "có quy tắc giá"
   USER ||--o{ NOTIFICATION : "nhận"
+  USER ||--o{ AUDITLOG : "thực hiện"
   ROOM ||--o{ ROOM_BLOCK : "bị chặn"
   BOOKING ||--o{ PAYMENT : "có giao dịch"
   VOUCHER ||..o{ BOOKING : "áp dụng qua mã"
@@ -418,6 +419,7 @@ erDiagram
     string userId FK
     int rating
     string comment
+    string reply "phản hồi của khách sạn"
     bool isHidden
   }
   FAVORITE {
@@ -457,6 +459,15 @@ erDiagram
       string body
       string href
       datetime readAt
+  }
+  AUDITLOG {
+      string id PK
+      string actorId FK
+      string actorName
+      string actorRole
+      string action
+      string summary
+      datetime createdAt
   }
 ```
 

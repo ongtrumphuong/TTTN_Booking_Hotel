@@ -35,6 +35,12 @@ Mỗi vai trò chỉ dùng giao diện của mình: khách/chưa đăng nhập d
 - **Lịch phòng**: `lib/occupancy.ts` (hàm thuần), `components/admin/occupancy-calendar.tsx`, trang `/admin|host/calendar` (3 tuần, chọn khách sạn, điều hướng theo tuần).
 - `resetDb` trong tests phải có `PriceRule`, `Notification` (đã thêm).
 
+## Phản hồi đánh giá, nhật ký thao tác, xuất CSV, phiếu thanh toán (2026-10-21)
+- **Phản hồi**: `Review.reply/repliedAt`; `replyReviewAction` (admin.ts, quyền theo `canManageHotel`, rỗng = gỡ); danh sách dùng chung `components/admin/reviews-view.tsx` cho `/admin/reviews` và `/host/reviews` (đối tác không ẩn/xóa); khách thấy phản hồi ở trang khách sạn (`getHotelDetail` trả `reply`). `notifyNewReview` báo chủ khách sạn.
+- **Nhật ký**: `lib/audit.ts` (`audit(actor, action, summary, target)`, danh sách `AUDIT_ACTIONS`), bảng `AuditLog`, trang `/admin/audit`. **Thêm server action nhạy cảm mới thì phải gọi `audit(...)` sau khi thành công.** `resetDb` có `AuditLog`.
+- **CSV**: `lib/csv.ts` (`toCsv`, `csvCell` chặn công thức), route `/api/export/{bookings,payouts}` kiểm vai trò và phạm vi theo chủ khách sạn.
+- **Phiếu thanh toán**: `/bookings/[id]/invoice` (chỉ đơn của chính khách và đã thanh toán), in bằng `window.print()` (`components/print-button.tsx`, lớp `print:`).
+
 ## Xem phòng 360° (2026-10-21)
 `Room.panoramaUrl` (ảnh equirectangular 2:1). Trình xem `components/panorama/panorama-viewer.tsx` (thư viện `@photo-sphere-viewer/core`, import động, chỉ tải khi mở) trong hộp thoại `<dialog>` ở `panorama-button.tsx`, đặt trên ảnh phòng ở trang khách sạn. URL hợp lệ kiểm bằng `lib/panorama.ts` (`isAllowedPanorama`: `/panoramas/*.jpg` đóng gói sẵn, `/api/uploads/*.webp`, hoặc https từ host trong `image-hosts.ts`); tải ảnh 360° lên qua `/api/admin/uploads` với `kind=panorama` (kiểm tỷ lệ 2:1, giữ tối đa 6000px). Ảnh mẫu CC0 từ Poly Haven ở `web/public/panoramas/` (`prisma/panoramas.ts`, `prisma/update-panoramas.ts`). **Không thêm ảnh lớn hơn ~5 MB vào `public/`** (ảnh `brown_photostudio_*` của Poly Haven là 40 MB, đã bỏ). Bản đồ trang khách sạn (`mode="single"`) nghiêng 58° và thêm lớp `add-3d-buildings` (fill-extrusion) mỗi lần `style.load`.
 

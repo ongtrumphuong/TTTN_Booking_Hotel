@@ -51,7 +51,15 @@ export async function BookingsView({ searchParams, user }: { searchParams: Promi
 
   return (
     <>
-      <h1 className="font-display mb-4 text-3xl font-semibold">Đơn đặt phòng</h1>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <h1 className="font-display text-3xl font-semibold">Đơn đặt phòng</h1>
+        <a
+          href={`/api/export/bookings${refundOnly ? "?status=REFUND" : status ? `?status=${status}` : ""}`}
+          className="rounded-xl border border-brand px-4 py-2 text-sm font-bold text-brand hover:bg-brand/5"
+        >
+          Xuất CSV{refundOnly ? " (cần hoàn tiền)" : status ? ` (${STATUS_LABEL[status]?.text.toLowerCase()})` : ""}
+        </a>
+      </div>
       <div className="mb-5 flex flex-wrap gap-2 text-sm">
         {FILTERS.filter((f) => isAdmin || f.value !== "REFUND").map((f) => {
           const active = (refundOnly ? "REFUND" : (status ?? "ALL")) === f.value;

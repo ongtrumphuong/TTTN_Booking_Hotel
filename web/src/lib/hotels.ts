@@ -169,6 +169,8 @@ export async function getHotelDetail(slug: string) {
       rating: r.rating,
       comment: r.comment,
       author: r.user.name,
+      reply: r.reply,
+      repliedAt: r.repliedAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
     })),
   };
