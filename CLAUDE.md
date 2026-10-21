@@ -35,6 +35,12 @@ Mỗi vai trò chỉ dùng giao diện của mình: khách/chưa đăng nhập d
 - **Lịch phòng**: `lib/occupancy.ts` (hàm thuần), `components/admin/occupancy-calendar.tsx`, trang `/admin|host/calendar` (3 tuần, chọn khách sạn, điều hướng theo tuần).
 - `resetDb` trong tests phải có `PriceRule`, `Notification` (đã thêm).
 
+## Khiếu nại và đối soát chi tiết (2026-10-21)
+- **Khiếu nại**: bảng `Dispute` (1 đơn một khiếu nại), `lib/dispute.ts` (hàm thuần `canDispute`, `validateResolution`, nhãn), `app/actions/dispute.ts` (`createDisputeAction`, `respondDisputeAction`, `resolveDisputeAction`, `markDisputeRefundedAction`), danh sách dùng chung `components/admin/disputes-view.tsx` cho `/admin/disputes` và `/host/disputes`, phía khách `components/dispute-section.tsx` ở chi tiết đơn. Khách không có thông báo trong ứng dụng, chỉ email kết quả (`sendNotice`) và trạng thái ở chi tiết đơn.
+- **Tiền**: `Dispute.refundAmount` (sàn hoàn khách) = `partnerBearsAmount` (trừ vào đợt chi trả của đối tác, qua `listDeductions`) + phần sàn chịu. `createPayoutAction` gộp đơn chưa đối soát và các khoản trừ chưa gắn `payoutId`; `Payout.deductions`; số âm thì từ chối (`NEGATIVE`). **Mọi chỗ hiển thị "đối tác sẽ nhận" phải trừ khoản trừ** (`netPayout`, `sumDeductions`): host dashboard, `/host/payouts`, `/admin/payouts`.
+- **Đối soát chi tiết**: `settlement.ts` có `listPayoutLines`, `SettleRow` thêm `guestName/checkIn/checkOut/kind`; trang `components/admin/payout-detail.tsx` (`/admin|host/payouts/[id]`); CSV `/api/export/settlement?payout=<id>|unsettled=1[&owner=<id>]`.
+- `resetDb` có `Dispute`.
+
 ## Phản hồi đánh giá, nhật ký thao tác, xuất CSV, phiếu thanh toán (2026-10-21)
 - **Phản hồi**: `Review.reply/repliedAt`; `replyReviewAction` (admin.ts, quyền theo `canManageHotel`, rỗng = gỡ); danh sách dùng chung `components/admin/reviews-view.tsx` cho `/admin/reviews` và `/host/reviews` (đối tác không ẩn/xóa); khách thấy phản hồi ở trang khách sạn (`getHotelDetail` trả `reply`). `notifyNewReview` báo chủ khách sạn.
 - **Nhật ký**: `lib/audit.ts` (`audit(actor, action, summary, target)`, danh sách `AUDIT_ACTIONS`), bảng `AuditLog`, trang `/admin/audit`. **Thêm server action nhạy cảm mới thì phải gọi `audit(...)` sau khi thành công.** `resetDb` có `AuditLog`.

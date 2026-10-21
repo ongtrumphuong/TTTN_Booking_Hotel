@@ -107,6 +107,15 @@ Chuẩn bị: admin tạo trước mã giảm giá (xem bước 7) hoặc làm b
 4. Khách → chi tiết một đơn đã thanh toán → **Xem phiếu thanh toán** → **In / lưu PDF**.
 **Nói gì:** các thao tác về tiền đều để lại dấu vết không sửa được, trả lời câu hỏi "ai đã làm gì, lúc nào". Tệp CSV chặn công thức độc hại do người dùng nhập; đối tác chỉ xuất được dữ liệu của mình.
 
+### Bước 7b4 – Khiếu nại và đối soát chi tiết (5 phút)
+**Làm gì:**
+1. Chuẩn bị sẵn một đơn **đã hoàn tất** của khách tại khách sạn đối tác (hoặc dùng đơn demo ở bước 7b). Khách mở chi tiết đơn → **Gặp vấn đề với kỳ lưu trú?** → chọn loại, mô tả → **Gửi khiếu nại**.
+2. Đối tác → **Khiếu nại**: thấy khiếu nại mới (có thông báo ở chuông) → viết phản hồi → gửi.
+3. Admin → **Khiếu nại**: đọc cả hai phía → **Chấp nhận, hoàn tiền** (ví dụ hoàn 500.000 ₫, đối tác chịu 300.000 ₫, sàn chịu 200.000 ₫) + lý do → Lưu. Bấm **Đã hoàn tiền cho khách** sau khi hoàn.
+4. Admin → **Đối soát**: cột **Trừ khiếu nại** hiện -300.000 ₫; tạo đợt chi trả → bấm **Chi tiết**: từng đơn, hoa hồng, dòng "Trừ khiếu nại", **Xuất CSV chi tiết**.
+5. Khách mở lại chi tiết đơn: thấy phản hồi của khách sạn và quyết định của sàn.
+**Nói gì:** sàn không chỉ chuyển đơn mà còn là bên trung gian giải quyết tranh chấp: khách được bảo vệ, đối tác được nói phía mình, sàn quyết định và chia ai chịu bao nhiêu. Phần đối tác chịu được trừ tự động vào kỳ chi trả sau nên đối soát luôn khớp.
+
 ### Bước 7c – Trợ lý ảo đặt phòng (3 phút, cần khóa Gemini và Internet)
 **Chuẩn bị:** điền `GEMINI_API_KEY` trong `web/.env`, khởi động lại server, chạy `npx tsx --env-file=.env scripts/assistant-check.ts` để chắc khóa dùng được; DB đã seed từ trước thì chạy thêm `npx tsx prisma/update-highlights.ts --apply`. Đăng nhập tài khoản khách.
 **Làm gì:**
@@ -151,6 +160,11 @@ Kiểm tra phòng trống và tạo đơn nằm trong **một giao dịch mức 
 - Ba vai trò (khách, đối tác, sàn); **quyền kiểm tra theo từng khách sạn ở máy chủ**, không chỉ ẩn nút: đối tác không sửa được khách sạn, phòng, lịch chặn hay đơn của người khác.
 - Duyệt khách sạn trước khi hiển thị; hoa hồng theo khách sạn và **chốt vào đơn lúc đặt** để đối soát không bị đổi ngầm.
 - Đối soát tính đúng cả phí hủy muộn; tạo đợt chi trả bằng giao dịch Serializable và điều kiện `payoutId = null` nên không chi trả trùng đơn (đã có test cho cả trường hợp hai yêu cầu đồng thời).
+
+### 2.4b5. Khiếu nại và chia trách nhiệm tài chính
+- Quy tắc nghiệp vụ là hàm thuần có test (`canDispute`, `validateResolution`); mọi chuyển trạng thái có điều kiện trạng thái nên hai quản trị viên không quyết định chồng nhau.
+- Tiền hoàn chia rõ phần đối tác chịu và phần sàn chịu; khoản đối tác chịu nằm chờ rồi trừ vào đúng một đợt chi trả (không trừ hai lần, không tạo đợt chi trả âm).
+- Đối soát có trang chi tiết và CSV từng dòng để đối tác đối chiếu sổ sách.
 
 ### 2.4b4. Truy vết, xuất dữ liệu, phản hồi
 - Nhật ký thao tác chỉ ghi thêm; mỗi dòng chụp lại tên và vai trò người làm; thao tác bị từ chối không để lại dòng.

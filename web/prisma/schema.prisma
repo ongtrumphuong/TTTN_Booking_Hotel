@@ -33,6 +33,21 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum DisputeCategory {
+  ROOM_MISMATCH
+  CLEANLINESS
+  SERVICE
+  OVERCHARGE
+  OTHER
+}
+
 enum PaymentProvider {
   SIMULATED
   VNPAY
@@ -59,6 +74,7 @@ model User {
   hotels        Hotel[]              @relation("HotelOwner")
   payouts       Payout[]             @relation("PayoutOwner")
   notifications Notification[]
+  disputes      Dispute[]
 }
 
 model Hotel {
@@ -90,6 +106,7 @@ model Hotel {
   rooms                Room[]
   reviews              Review[]
   favorites            Favorite[]
+  disputes             Dispute[]
 
   @@index([city])
 }
@@ -147,6 +164,7 @@ model Booking {
   checkedOutAt      DateTime?
   createdAt         DateTime      @default(now())
   payments          Payment[]
+  dispute           Dispute?
 
   @@index([userId])
   @@index([roomId, checkIn, checkOut])
@@ -266,6 +284,9 @@ model Payout {
   createdById  String
   createdAt    DateTime  @default(now())
   bookings     Booking[]
+  // Khoản trừ do khiếu nại đối tác phải chịu, tính vào đợt chi trả này.
+  deductions   Int       @default(0)
+  disputes     Dispute[]
 
   @@index([ownerId, createdAt])
 }
@@ -313,4 +334,35 @@ model AuditLog {
 
   @@index([createdAt])
   @@index([action, createdAt])
+}
+
+/// Khiếu nại của khách về một đơn đã nhận phòng. Sàn đứng giữa: đối tác phản hồi, sàn quyết định hoàn tiền và chia ai chịu.
+model Dispute {
+  id                 String          @id @default(cuid())
+  bookingId          String          @unique
+  booking            Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User            @relation(fields: [userId], references: [id])
+  hotelId            String
+  hotel              Hotel           @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  category           DisputeCategory
+  description        String
+  status             DisputeStatus   @default(OPEN)
+  hostResponse       String?
+  hostRespondedAt    DateTime?
+  resolution         String?
+  /// Số tiền sàn hoàn cho khách (0 nếu bác bỏ).
+  refundAmount       Int             @default(0)
+  /// Phần trong số tiền hoàn mà đối tác chịu (trừ vào đợt chi trả); phần còn lại do sàn chịu.
+  partnerBearsAmount Int             @default(0)
+  resolvedAt         DateTime?
+  resolvedById       String?
+  refundedAt         DateTime?
+  payoutId           String?
+  payout             Payout?         @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  createdAt          DateTime        @default(now())
+
+  @@index([hotelId, status])
+  @@index([status, createdAt])
+  @@index([userId])
 }

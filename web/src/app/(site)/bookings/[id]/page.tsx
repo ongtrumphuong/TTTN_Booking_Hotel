@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CheckCircle2 } from "lucide-react";
 import { BookingSteps } from "@/components/booking-steps";
+import { DisputeSection } from "@/components/dispute-section";
 import { TicketQr } from "@/components/ticket-qr";
 import { CancelButton } from "@/components/cancel-button";
 import { STATUS_LABEL, needsRefund, paymentLabel, todayUTC } from "@/lib/booking";
@@ -18,7 +19,7 @@ export const metadata: Metadata = { title: "Chi tiết đặt phòng", robots: N
 async function Detail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ paid?: string; payment?: string }> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const user = await requireUser(`/bookings/${id}`);
-  const b = await prisma.booking.findFirst({ where: { id, userId: user.id }, include: { room: { include: { hotel: true } } } });
+  const b = await prisma.booking.findFirst({ where: { id, userId: user.id }, include: { room: { include: { hotel: true } }, dispute: true } });
   if (!b) notFound();
 
   const status = STATUS_LABEL[b.status];
@@ -104,6 +105,7 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           <Link href="/bookings" className="rounded-lg px-4 py-2 text-sm font-semibold text-muted hover:bg-background">← Tất cả đặt phòng</Link>
         </div>
       </div>
+      <DisputeSection booking={b} dispute={b.dispute} />
     </>
   );
 }

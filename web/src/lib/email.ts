@@ -267,3 +267,6 @@ export async function sendRefundCompleted(bookingId: string) {
 export async function sendStaffNotice(to: string, d: NoticeData) {
   return deliver(to, buildNoticeEmail({ ...d, link: d.link }), "thông báo đối tác");
 }
+
+/** Gửi email thông báo ngắn tới bất kỳ ai (khách, đối tác). Không bao giờ ném lỗi. */
+export const sendNotice = (to: string, d: NoticeData) => deliver(to, buildNoticeEmail(d), "thông báo");

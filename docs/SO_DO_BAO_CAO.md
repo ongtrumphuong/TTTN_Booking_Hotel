@@ -323,6 +323,10 @@ erDiagram
   USER ||--o{ AUDITLOG : "thực hiện"
   ROOM ||--o{ ROOM_BLOCK : "bị chặn"
   BOOKING ||--o{ PAYMENT : "có giao dịch"
+  BOOKING ||--o| DISPUTE : "có khiếu nại"
+  USER ||--o{ DISPUTE : "gửi"
+  HOTEL ||--o{ DISPUTE : "bị khiếu nại"
+  PAYOUT ||--o{ DISPUTE : "trừ vào"
   VOUCHER ||..o{ BOOKING : "áp dụng qua mã"
 
   USER {
@@ -433,6 +437,7 @@ erDiagram
     int commission
     int amount
     int bookingCount
+    int deductions "khoản trừ khiếu nại"
     string note
     datetime createdAt
   }
@@ -468,6 +473,20 @@ erDiagram
       string action
       string summary
       datetime createdAt
+  }
+  DISPUTE {
+      string id PK
+      string bookingId FK
+      string userId FK
+      string hotelId FK
+      enum category
+      enum status "OPEN | UNDER_REVIEW | RESOLVED | REJECTED"
+      string description
+      string hostResponse
+      string resolution
+      int refundAmount
+      int partnerBearsAmount
+      string payoutId FK
   }
 ```
 

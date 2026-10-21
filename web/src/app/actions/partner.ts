@@ -8,7 +8,7 @@ import { audit } from "@/lib/audit";
 import { notifyHotelDecision } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
-import { listUnsettled, sumRows } from "@/lib/settlement";
+import { listDeductions, listUnsettled, sumDeductions, sumRows } from "@/lib/settlement";
 
 export type PartnerState = { error?: string; ok?: boolean };
 
@@ -87,13 +87,20 @@ export async function createPayoutAction(ownerId: string, note: string): Promise
         const owner = await tx.user.findUnique({ where: { id: ownerId }, select: { role: true } });
         if (!owner || owner.role !== "HOST") return false;
         const rows = await listUnsettled(tx, ownerId);
-        if (rows.length === 0) return false;
+        // Khoản trừ do khiếu nại đã giải quyết mà đối tác chịu cũng được gộp vào đợt chi trả này.
+        const deductions = await listDeductions(tx, ownerId);
+        if (rows.length === 0 && deductions.length === 0) return false;
         const sum = sumRows(rows);
+        const deducted = sumDeductions(deductions);
+        const net = sum.payout - deducted;
+        if (net < 0) throw new Error("NEGATIVE");
         const payout = await tx.payout.create({
-          data: { ownerId, gross: sum.gross, commission: sum.commission, amount: sum.payout, bookingCount: rows.length, note: cleanNote, createdById: admin.id },
+          data: { ownerId, gross: sum.gross, commission: sum.commission, deductions: deducted, amount: net, bookingCount: rows.length, note: cleanNote, createdById: admin.id },
         });
         const linked = await tx.booking.updateMany({ where: { id: { in: rows.map((r) => r.id) }, payoutId: null }, data: { payoutId: payout.id } });
         if (linked.count !== rows.length) throw new Error("CONFLICT");
+        const linkedDisputes = await tx.dispute.updateMany({ where: { id: { in: deductions.map((d) => d.id) }, payoutId: null }, data: { payoutId: payout.id } });
+        if (linkedDisputes.count !== deductions.length) throw new Error("CONFLICT");
         return true;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -101,6 +108,7 @@ export async function createPayoutAction(ownerId: string, note: string): Promise
     if (!created) return { error: "Không có đơn nào cần đối soát cho đối tác này." };
     await audit(admin, "PAYOUT_CREATE", `Tạo đợt chi trả cho đối tác ${ownerId}${cleanNote ? ` (${cleanNote})` : ""}`, { type: "User", id: ownerId });
   } catch (e) {
+    if (e instanceof Error && e.message === "NEGATIVE") return { error: "Các khoản trừ do khiếu nại lớn hơn doanh thu chờ đối soát. Hãy chờ thêm đơn hoàn tất rồi chi trả." };
     if (e instanceof Error && e.message === "CONFLICT") return { error: "Dữ liệu vừa thay đổi, vui lòng thử lại." };
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") return { error: "Hệ thống đang bận, vui lòng thử lại." };
     throw e;

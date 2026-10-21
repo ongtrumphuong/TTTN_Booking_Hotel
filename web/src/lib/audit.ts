@@ -20,6 +20,7 @@ export const AUDIT_ACTIONS = {
   VOUCHER: "Mã giảm giá",
   REVIEW_MOD: "Kiểm duyệt đánh giá",
   REVIEW_REPLY: "Phản hồi đánh giá",
+  DISPUTE: "Khiếu nại",
 } as const;
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
 

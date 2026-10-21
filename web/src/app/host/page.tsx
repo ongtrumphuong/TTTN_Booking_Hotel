@@ -7,7 +7,7 @@ import { STATUS_LABEL } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireHost } from "@/lib/session";
-import { listUnsettled, sumRows } from "@/lib/settlement";
+import { listDeductions, listUnsettled, sumDeductions, sumRows } from "@/lib/settlement";
 
 export const metadata: Metadata = { title: "Khu vực đối tác" };
 
@@ -18,12 +18,13 @@ async function Overview() {
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
 
-  const [hotels, pendingHotels, monthBookings, upcoming, unsettled, received, recent] = await Promise.all([
+  const [hotels, pendingHotels, monthBookings, upcoming, unsettled, deductions, received, recent] = await Promise.all([
     prisma.hotel.count({ where: { ownerId: user.id } }),
     prisma.hotel.count({ where: { ownerId: user.id, approval: "PENDING" } }),
     prisma.booking.count({ where: { ...mine, createdAt: { gte: monthStart }, status: { not: "CANCELLED" } } }),
     prisma.booking.count({ where: { ...mine, status: "CONFIRMED", checkOut: { gte: monthStart } } }),
     listUnsettled(prisma, user.id),
+    listDeductions(prisma, user.id),
     prisma.payout.aggregate({ where: { ownerId: user.id }, _sum: { amount: true } }),
     prisma.booking.findMany({
       where: mine,
@@ -38,7 +39,7 @@ async function Overview() {
     { label: "Khách sạn", value: `${hotels}${pendingHotels ? ` (${pendingHotels} chờ duyệt)` : ""}`, icon: Hotel },
     { label: "Đơn mới trong tháng", value: String(monthBookings), icon: CalendarCheck },
     { label: "Đơn đã xác nhận sắp tới", value: String(upcoming), icon: Clock },
-    { label: "Sàn sẽ chi trả (chưa đối soát)", value: formatVND(owed.payout), icon: Wallet },
+    { label: "Sàn sẽ chi trả (chưa đối soát)", value: formatVND(owed.payout - sumDeductions(deductions)), icon: Wallet },
     { label: "Đã nhận từ sàn", value: formatVND(received._sum.amount ?? 0), icon: BedDouble },
   ];
 

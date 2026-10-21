@@ -36,6 +36,7 @@
 - **Trợ lý ảo đặt phòng** (khung chat góc phải): khách nói yêu cầu bằng tiếng Việt, ví dụ "Đà Lạt 20/10 - 22/10, dưới 1tr5/đêm, view Hồ Xuân Hương"; trợ lý (Google Gemini, gói miễn phí) tìm phòng còn trống trên hệ thống và đưa **thẻ phòng**. Khách bấm "Xem và giữ phòng" → trang xác nhận → giữ phòng → **tự thanh toán**. Trợ lý chỉ tìm và tư vấn, **không thể tự đặt phòng hay thanh toán**.
 - Yêu thích khách sạn (nút tim trên thẻ và trang chi tiết, trang `/favorites`).
 - Viết hoặc sửa đánh giá sau khi đã hoàn tất kỳ lưu trú.
+- **Khiếu nại**: sau khi nhận phòng (đến 14 ngày sau ngày trả phòng), khách gửi khiếu nại ở chi tiết đơn (phòng không đúng mô tả, vệ sinh, dịch vụ, bị thu thêm tiền...), theo dõi trạng thái và nhận quyết định qua email.
 - **Phiếu thanh toán** in/lưu PDF được cho đơn đã thanh toán (nút "Xem phiếu thanh toán" ở chi tiết đơn).
 - **Xem phòng 360°**: nút "Xem phòng 360°" trên ảnh phòng mở trình xem toàn cảnh (kéo để xoay, cuộn để phóng to, toàn màn hình). Trang khách sạn có **bản đồ nghiêng 3D** với khối nhà xung quanh (cần token Mapbox).
 - **Vé điện tử có mã QR** ở chi tiết đơn đã xác nhận: đưa cho lễ tân khi nhận phòng.
@@ -48,6 +49,8 @@
 - Xem đơn của khách sạn mình, ghi nhận **nhận phòng / trả phòng**, hủy đơn (luôn hoàn đủ tiền cho khách).
 - **Ảnh 360° cho từng loại phòng**: dán đường dẫn/URL hoặc **tải ảnh toàn cảnh** (tỷ lệ 2:1, tự giữ tối đa 6000px) ở form sửa loại phòng.
 - **Giá theo mùa**: phụ thu cuối tuần (đêm thứ Sáu, thứ Bảy) và các quy tắc giá theo khoảng ngày (+/- %) cho từng loại phòng, ở trang sửa khách sạn.
+- **Khiếu nại** `/host/disputes`: xem khiếu nại về khách sạn mình và phản hồi (sửa lại được cho đến khi sàn quyết định). Nếu sàn chấp nhận và đối tác phải chịu một phần, khoản đó được **trừ vào đợt chi trả kế tiếp**.
+- **Chi tiết đối soát**: mỗi đợt chi trả có trang chi tiết `/host/payouts/<id>` (từng đơn, loại doanh thu, hoa hồng đã chốt, khoản trừ khiếu nại) và xuất CSV từng dòng (cả đơn chưa đối soát).
 - **Phản hồi đánh giá** `/host/reviews`: xem đánh giá của khách sạn mình (lọc "chưa phản hồi"), viết phản hồi công khai hiện dưới đánh giá ở trang khách sạn; có thông báo khi có đánh giá mới. Đối tác không ẩn/xóa được đánh giá (kiểm duyệt là việc của sàn).
 - **Xuất CSV** đơn đặt phòng (theo bộ lọc trạng thái) và lịch sử chi trả, mở được bằng Excel.
 - **Lịch phòng** `/host/calendar`: lưới 3 tuần cho thấy mỗi loại phòng còn bao nhiêu phòng trống mỗi đêm, phòng bị chặn và giá từng đêm.
@@ -65,6 +68,8 @@
 - **Đối tác**: duyệt hoặc từ chối khách sạn của đối tác (từ chối phải nêu lý do), đặt **hoa hồng (0–50%) cho từng khách sạn**, gán khách sạn cho đối tác.
 - **Đối soát**: mỗi đối tác có tổng thu, hoa hồng sàn và tiền chi trả chưa đối soát; nút **Tạo đợt chi trả** gộp các đơn lại, kèm lịch sử.
 - Quản trị viên cũng có **Lịch phòng** (`/admin/calendar`), **Nhận phòng (quét vé)** (`/admin/checkin`) và **Thông báo** (khách sạn của đối tác chờ duyệt, đơn của khách sạn do sàn tự vận hành).
+- **Khiếu nại** (`/admin/disputes`): sàn đứng giữa khách và khách sạn. Sau khi đối tác phản hồi, sàn **quyết định**: chấp nhận (nhập số tiền hoàn, chia **phần đối tác chịu** và **phần sàn chịu**) hoặc bác bỏ, bắt buộc có lý do. Hoàn tiền cho khách làm ngoài hệ thống rồi bấm "Đã hoàn tiền cho khách". Khách sạn do sàn tự vận hành thì sàn chịu toàn bộ.
+- **Đối soát chi tiết** (`/admin/payouts/<id>`) và xuất CSV từng dòng.
 - **Nhật ký thao tác** (`/admin/audit`): ghi ai làm gì với tiền, khách sạn, giá, quyền, mã giảm giá, kiểm duyệt (đổi trạng thái đơn, hoàn tiền, đợt chi trả, hoa hồng, duyệt/từ chối khách sạn, đổi giá phòng...); chỉ ghi thêm, lọc theo loại thao tác. Quản trị viên cũng phản hồi được đánh giá và xuất CSV.
 - Mã giảm giá: tạo, bật/tắt, xem số lượt đã dùng. Lịch chặn phòng theo từng loại phòng. Chính sách hủy theo từng khách sạn.
 
@@ -189,6 +194,10 @@ erDiagram
     USER ||--o{ NOTIFICATION : "nhận"
     USER ||--o{ AUDITLOG : "thực hiện"
     BOOKING ||--o{ PAYMENT : "có"
+    BOOKING ||--o| DISPUTE : "có khiếu nại"
+    USER ||--o{ DISPUTE : "gửi"
+    HOTEL ||--o{ DISPUTE : "bị khiếu nại"
+    PAYOUT ||--o{ DISPUTE : "trừ vào"
 
     USER {
         string id PK
@@ -307,6 +316,20 @@ erDiagram
         string summary
         datetime createdAt
     }
+    DISPUTE {
+        string id PK
+        string bookingId FK
+        string userId FK
+        string hotelId FK
+        enum category
+        enum status "OPEN | UNDER_REVIEW | RESOLVED | REJECTED"
+        string description
+        string hostResponse
+        string resolution
+        int refundAmount
+        int partnerBearsAmount
+        string payoutId FK
+    }
 ```
 
 Ghi chú:
@@ -393,6 +416,8 @@ Khi xác nhận một đơn chờ đã quá hạn giữ phòng, hệ thống ki�
 - An toàn: giới hạn 30 tin/giờ/IP và 200 tin/giờ toàn hệ thống (bảo vệ hạn mức miễn phí); lịch sử gửi lên được làm sạch (chỉ user/assistant, tối đa 12 tin, 800 ký tự/tin); nội dung do đối tác nhập (tên, mô tả, điểm nổi bật) được coi là dữ liệu, không phải chỉ dẫn; lỗi quá tải/hết lượt báo thân thiện.
 
 **Đánh giá**: chỉ khách có đơn **Hoàn tất** tại khách sạn đó mới được viết; gửi lại sẽ cập nhật đánh giá cũ. Điểm trung bình tính từ các đánh giá **đang hiển thị** (đánh giá bị quản trị viên ẩn không được tính; tác giả vẫn thấy thông báo đánh giá của mình đang bị ẩn).
+
+**Khiếu nại** (`src/lib/dispute.ts`, `src/app/actions/dispute.ts`): quy tắc thuần ở `canDispute` (đơn đã thanh toán, từ ngày nhận phòng đến 14 ngày sau ngày trả phòng, mỗi đơn một khiếu nại bằng ràng buộc duy nhất) và `validateResolution` (hoàn từ 1 đến tổng tiền đơn; phần đối tác chịu từ 0 đến số tiền hoàn; luôn cần lý do). Trạng thái: Chờ đối tác phản hồi → Sàn đang xem xét → Đã giải quyết / Đã bác bỏ; mọi lần chuyển trạng thái có điều kiện `status` trong `where` để hai người không ghi đè nhau. **Phần đối tác chịu** nằm ở `Dispute.partnerBearsAmount`, chờ ở trạng thái `payoutId = null` rồi được gộp vào đợt chi trả kế tiếp: `amount = tổng thu − hoa hồng − khoản trừ`; nếu khoản trừ lớn hơn doanh thu thì không tạo đợt chi trả (giữ lại cho kỳ sau). Hoa hồng đã tính trên đơn không được hoàn lại khi khiếu nại được chấp nhận (quy ước đơn giản hóa).
 
 **Nhật ký thao tác** (`src/lib/audit.ts`): `audit(actor, action, summary)` ghi bảng `AuditLog` (tên và vai trò chụp lại lúc làm), gọi ở mọi server action về tiền/duyệt/giá/quyền sau khi thao tác thành công; thao tác bị từ chối không để lại dòng nào; lỗi ghi nhật ký không làm hỏng thao tác chính.
 

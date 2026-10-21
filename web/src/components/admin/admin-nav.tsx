@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarCheck, CalendarDays, Handshake, LayoutDashboard, MessageSquareText, ScanLine, ScrollText, TicketPercent, UserRound, Users, Wallet } from "lucide-react";
+import { BedDouble, CalendarCheck, CalendarDays, Handshake, LayoutDashboard, MessageSquareText, ScanLine, ScrollText, ShieldAlert, TicketPercent, UserRound, Users, Wallet } from "lucide-react";
 
 const HOST_ITEMS = [
   { href: "/host", label: "Tổng quan", icon: LayoutDashboard, exact: true },
@@ -11,6 +11,7 @@ const HOST_ITEMS = [
   { href: "/host/calendar", label: "Lịch phòng", icon: CalendarDays },
   { href: "/host/checkin", label: "Nhận phòng (quét vé)", icon: ScanLine },
   { href: "/host/reviews", label: "Đánh giá", icon: MessageSquareText },
+  { href: "/host/disputes", label: "Khiếu nại", icon: ShieldAlert },
   { href: "/host/payouts", label: "Đối soát & chi trả", icon: Wallet },
   { href: "/host/account", label: "Tài khoản", icon: UserRound },
 ];
@@ -23,6 +24,7 @@ const ITEMS = [
   { href: "/admin/checkin", label: "Nhận phòng (quét vé)", icon: ScanLine },
   { href: "/admin/reviews", label: "Đánh giá", icon: MessageSquareText },
   { href: "/admin/vouchers", label: "Mã giảm giá", icon: TicketPercent },
+  { href: "/admin/disputes", label: "Khiếu nại", icon: ShieldAlert },
   { href: "/admin/partners", label: "Đối tác", icon: Handshake },
   { href: "/admin/payouts", label: "Đối soát", icon: Wallet },
   { href: "/admin/users", label: "Người dùng", icon: Users },
