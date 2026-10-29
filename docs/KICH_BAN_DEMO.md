@@ -116,6 +116,16 @@ Chuẩn bị: admin tạo trước mã giảm giá (xem bước 7) hoặc làm b
 5. Khách mở lại chi tiết đơn: thấy phản hồi của khách sạn và quyết định của sàn.
 **Nói gì:** sàn không chỉ chuyển đơn mà còn là bên trung gian giải quyết tranh chấp: khách được bảo vệ, đối tác được nói phía mình, sàn quyết định và chia ai chịu bao nhiêu. Phần đối tác chịu được trừ tự động vào kỳ chi trả sau nên đối soát luôn khớp.
 
+### Bước 7b5 – Đổi ngày ở, khách không đến, tự hoàn tất đơn (5 phút)
+**Chuẩn bị:** một đơn **đã thanh toán, còn xa ngày nhận phòng** (để đổi ngày) và một đơn **đã xác nhận có ngày nhận phòng đã qua** mà chưa nhận phòng (để báo không đến); có thể tạo nhanh bằng cách đặt rồi sửa ngày trong cơ sở dữ liệu thử. Dọn các đơn này sau buổi demo.
+**Làm gì:**
+1. Khách → chi tiết đơn đã thanh toán → **Đổi ngày ở** → chọn khoảng ngày có **số đêm khác** (khác giá): hệ thống từ chối và nêu hai mức giá. Chọn khoảng ngày **cùng giá** → đổi thành công, nút biến mất và hiện "Đơn này đã đổi ngày ở 1 lần". Đối tác nhận thông báo "Khách đổi ngày ở".
+2. Đối tác (hoặc admin) → **Đơn đặt phòng**: đơn đã qua ngày nhận phòng mà chưa nhận có nút **Khách không đến** → bấm, hộp xác nhận nêu số tiền **giữ lại** và **hoàn khách** → đơn hiện nhãn **Không đến**, khách nhận email, nhật ký thao tác ghi lại.
+3. Admin → **Đối soát**: phí giữ lại vào doanh thu đối tác với loại **Phí khách không đến**.
+4. Khách bị ghi không đến → chi tiết đơn → mục **Bạn đã đến nhưng bị ghi là không đến?** → gửi khiếu nại; admin quyết định hoàn thêm (tối đa bằng phần phí đã bị giữ).
+5. Tự hoàn tất: gọi cron `/api/cron/expire-bookings` (hoặc đợi dịch vụ cron) → đơn đã nhận phòng và qua ngày trả phòng tự chuyển **Hoàn tất**; đơn không ghi nhận nhận phòng được chờ thêm 2 ngày để khách sạn kịp báo không đến.
+**Nói gì:** đổi ngày không làm thất thoát tiền: đơn đã trả chỉ đổi sang ngày cùng giá, một lần, trong hạn hủy miễn phí, nên không thành cách né phí hủy muộn và không phải thu thêm hay hoàn chênh lệch. Khách không đến bị giữ phí như hủy muộn, nhưng khách vẫn có đường khiếu nại nếu bị ghi nhầm. Đơn tự hoàn tất để doanh thu luôn vào đối soát mà không phụ thuộc ai bấm nút.
+
 ### Bước 7c – Trợ lý ảo đặt phòng (3 phút, cần khóa Gemini và Internet)
 **Chuẩn bị:** điền `GEMINI_API_KEY` trong `web/.env`, khởi động lại server, chạy `npx tsx --env-file=.env scripts/assistant-check.ts` để chắc khóa dùng được; DB đã seed từ trước thì chạy thêm `npx tsx prisma/update-highlights.ts --apply`. Đăng nhập tài khoản khách.
 **Làm gì:**

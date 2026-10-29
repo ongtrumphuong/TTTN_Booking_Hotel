@@ -39,7 +39,8 @@ Mỗi vai trò chỉ dùng giao diện của mình: khách/chưa đăng nhập d
 - **Không đến**: `markNoShowAction` (admin.ts) đặt `CANCELLED` + `Booking.noShow` (không thêm trạng thái mới để dùng chung luồng hoàn tiền và đối soát); phí giữ = `noShowQuote` (% hủy muộn); từ ngày sau ngày nhận phòng (`canMarkNoShow`). Nhãn hiển thị dùng `statusLabel(status, noShow)`, **không** dùng `STATUS_LABEL[...]` trực tiếp ở chỗ có đơn hủy.
 - **Tự hoàn tất**: `completeFinishedStays` trong `lib/booking.ts`, gọi ở cron `expire-bookings` và đầu `createPayoutAction`; đơn chưa nhận phòng chờ thêm `NO_SHOW_REPORT_DAYS` ngày. Test tạo đơn CONFIRMED ở quá khứ rồi mong nó **không** vào đối soát thì phải dùng ngày trả phòng trong vòng 2 ngày hoặc ở tương lai.
 - **Đổi ngày**: `rescheduleBookingAction` (booking.ts) + `checkReschedule` (`lib/lifecycle.ts`, hàm thuần): 1 lần, trong hạn hủy miễn phí nếu đã trả tiền, đơn đã trả/có mã chỉ đổi sang ngày **cùng giá**. `unavailableQuantity`/`bookedQuantity` có tham số `excludeBookingId`.
-- Test: `tests/unit/lifecycle.test.ts`, `tests/integration/noshow-reschedule.test.ts`.
+- **Khiếu nại đơn không đến**: `canDispute` nhận đơn `CANCELLED` + `noShow` còn phí bị giữ (`isNoShowWithFee`); sàn chỉ hoàn thêm tối đa phần phí đó (`maxDisputeRefund`, tham số `maxRefund` của `validateResolution`). Đối soát có loại dòng `NO_SHOW` ("Phí khách không đến").
+- Test: `tests/unit/lifecycle.test.ts`, `tests/integration/noshow-reschedule.test.ts`, các test không đến trong `tests/unit/dispute.test.ts` và `tests/integration/disputes.test.ts`.
 
 ## Khiếu nại và đối soát chi tiết (2026-10-21)
 - **Khiếu nại**: bảng `Dispute` (1 đơn một khiếu nại), `lib/dispute.ts` (hàm thuần `canDispute`, `validateResolution`, nhãn), `app/actions/dispute.ts` (`createDisputeAction`, `respondDisputeAction`, `resolveDisputeAction`, `markDisputeRefundedAction`), danh sách dùng chung `components/admin/disputes-view.tsx` cho `/admin/disputes` và `/host/disputes`, phía khách `components/dispute-section.tsx` ở chi tiết đơn. Khách không có thông báo trong ứng dụng, chỉ email kết quả (`sendNotice`) và trạng thái ở chi tiết đơn.
@@ -73,7 +74,10 @@ Mã ở `web/src/lib/assistant/` (`search.ts` công cụ tìm phòng, `agent.ts`
 - Khách sạn đối tác: `ownerId` + `approval` (PENDING/APPROVED/REJECTED) + `commissionPercent`; chưa duyệt thì `isActive = false` (nên các truy vấn công khai không cần biết đến `approval`). `Booking.commissionPercent` được chốt lúc đặt (0 nếu khách sạn của sàn). Doanh thu đối soát = `settlementGross` (đơn hoàn tất: **giá trước giảm giá = totalPrice + discount**, vì mã giảm giá do sàn tạo nên **sàn chịu** (`promoCost`, `Payout.promoCost`), hoa hồng cũng tính trên giá trước giảm; hủy muộn: phần phí giữ lại, tính trên số tiền khách thực trả). `Payout` gom đơn, đơn gắn bằng `payoutId = null`.
 - Đối tác không được: xác nhận đã nhận tiền (CONFIRMED), hoàn tiền, đặt hoa hồng, duyệt khách sạn.
 
-## Trạng thái (cập nhật: 2026-10-20)
+## Trạng thái (cập nhật: 2026-10-29)
+Vòng đời đơn đã đủ: đặt, thanh toán, hủy, đổi ngày, không đến, tự hoàn tất, đối soát, khiếu nại (kể cả đơn không đến). Đã thử bằng trình duyệt thật (2026-10-29): đổi ngày (từ chối khác giá, chấp nhận cùng giá), báo không đến, cron tự hoàn tất. Báo cáo Word ở `D:\DoAnTotNghiep\Thực tập tốt nghiệp\` (bản `_v2` mới nhất) và kịch bản demo có bước 7b5.
+
+Mốc cũ (2026-10-20):
 Đã xong và đã push (commit `37d9f76`): tìm kiếm/lọc, đặt phòng, VNPay sandbox, email xác nhận, yêu thích, đánh giá + kiểm duyệt, admin có biểu đồ, tải ảnh, hoàn tiền, test tự động, throttle đăng nhập, SEO, Docker; và đợt nghiệp vụ mới: hết hạn đơn, chính sách hủy/hoàn tiền, quên mật khẩu, voucher, chặn phòng.
 
 Đã kiểm tra bằng trình duyệt thật (2026-10-20): quên/đặt lại mật khẩu (token dùng lại bị từ chối), tạo voucher, mã sai/đúng và mức giảm trên form đặt phòng, đơn có voucher, trang thanh toán đúng số tiền sau giảm, hủy muộn tính phí và hoàn một phần, chặn phòng làm phòng "Hết phòng", cron hết hạn đơn (401 khi sai khóa). Đã sửa lỗi `new Date()` ở `/reset-password` (thêm `connection()`).

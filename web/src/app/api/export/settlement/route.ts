@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { listDeductions, listPayoutLines, listUnsettled, type SettleRow } from "@/lib/settlement";
 
-const KIND = { COMPLETED: "Đơn hoàn tất", LATE_CANCEL: "Phí hủy muộn" } as const;
+const KIND = { COMPLETED: "Đơn hoàn tất", LATE_CANCEL: "Phí hủy muộn", NO_SHOW: "Phí khách không đến" } as const;
 
 const HEADER = ["Loại", "Mã đơn", "Khách sạn", "Khách", "Nhận phòng", "Trả phòng", "Thu, giá trước giảm (₫)", "Giảm giá sàn chịu (₫)", "Hoa hồng (%)", "Hoa hồng (₫)", "Đối tác nhận (₫)"];
 

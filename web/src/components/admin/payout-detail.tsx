@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { SessionUser } from "@/lib/session";
 import { listPayoutLines, sumRows } from "@/lib/settlement";
 
-const KIND = { COMPLETED: "Đơn hoàn tất", LATE_CANCEL: "Phí hủy muộn" } as const;
+const KIND = { COMPLETED: "Đơn hoàn tất", LATE_CANCEL: "Phí hủy muộn", NO_SHOW: "Phí khách không đến" } as const;
 
 /** Chi tiết một đợt chi trả: từng đơn, hoa hồng đã chốt và các khoản trừ do khiếu nại. Quản trị viên xem mọi đợt; đối tác chỉ đợt của mình. */
 export async function PayoutDetail({ id, user }: { id: string; user: Pick<SessionUser, "id" | "role"> }) {

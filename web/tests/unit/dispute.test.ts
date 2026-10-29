@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DISPUTE_WINDOW_DAYS, canDispute, isFinal, validateResolution } from "@/lib/dispute";
+import { DISPUTE_WINDOW_DAYS, canDispute, isFinal, maxDisputeRefund, validateResolution } from "@/lib/dispute";
 
 const D = (s: string) => new Date(`${s}T00:00:00.000Z`);
 const base = { status: "COMPLETED", paymentStatus: "PAID", checkIn: D("2026-10-10"), checkOut: D("2026-10-12") };
@@ -75,5 +75,27 @@ describe("isFinal", () => {
     expect(isFinal("REJECTED")).toBe(true);
     expect(isFinal("OPEN")).toBe(false);
     expect(isFinal("UNDER_REVIEW")).toBe(false);
+  });
+});
+
+describe("đơn bị ghi không đến", () => {
+  const ns = { status: "CANCELLED", paymentStatus: "REFUNDED", checkIn: D("2026-10-10"), checkOut: D("2026-10-12"), noShow: true, totalPrice: 2_000_000, refundAmount: 1_000_000 };
+
+  it("khiếu nại được khi khách sạn đã giữ phí; không khi hoàn đủ, chưa trả tiền, hoặc là đơn hủy thường", () => {
+    expect(canDispute(ns, D("2026-10-12"), false)).toEqual({ ok: true });
+    expect(canDispute({ ...ns, refundAmount: 2_000_000 }, D("2026-10-12"), false)).toMatchObject({ ok: false });
+    expect(canDispute({ ...ns, paymentStatus: "UNPAID" }, D("2026-10-12"), false)).toMatchObject({ ok: false });
+    expect(canDispute({ ...ns, noShow: false }, D("2026-10-12"), false)).toMatchObject({ ok: false });
+    expect(canDispute(ns, D("2026-10-27"), false)).toMatchObject({ ok: false }); // quá hạn như đơn thường
+  });
+
+  it("mức hoàn tối đa là phần phí bị giữ, đơn thường là cả tổng tiền", () => {
+    expect(maxDisputeRefund(ns)).toBe(1_000_000);
+    expect(maxDisputeRefund({ status: "COMPLETED", totalPrice: 2_000_000 })).toBe(2_000_000);
+  });
+
+  it("validateResolution chặn hoàn vượt mức tối đa", () => {
+    const r = validateResolution({ decision: "REFUND", refund: 1_200_000, partnerBears: 0, note: "Có bằng chứng" }, { totalPrice: 2_000_000, hasOwner: true, maxRefund: 1_000_000 });
+    expect(r).toMatchObject({ ok: false });
   });
 });

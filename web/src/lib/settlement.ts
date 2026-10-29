@@ -37,8 +37,8 @@ export const unsettledWhere = (ownerId?: string): Prisma.BookingWhereInput => ({
   OR: [{ status: "COMPLETED" }, { status: "CANCELLED", paymentStatus: { in: ["PAID", "REFUNDED"] }, refundAmount: { not: null } }],
 });
 
-/** Loại doanh thu của một dòng đối soát: đơn hoàn tất (thu đủ) hoặc phí hủy muộn khách sạn được giữ. */
-export type SettleKind = "COMPLETED" | "LATE_CANCEL";
+/** Loại doanh thu của một dòng đối soát: đơn hoàn tất (thu đủ), phí hủy muộn hoặc phí khách không đến mà khách sạn được giữ. */
+export type SettleKind = "COMPLETED" | "LATE_CANCEL" | "NO_SHOW";
 
 export type SettleRow = {
   id: string;
@@ -67,6 +67,7 @@ const settleSelect = {
   totalPrice: true,
   refundAmount: true,
   discount: true,
+  noShow: true,
   commissionPercent: true,
   checkIn: true,
   checkOut: true,
@@ -89,7 +90,7 @@ function toRows(bookings: SettleBooking[]): SettleRow[] {
         guestName: b.user.name,
         checkIn: b.checkIn,
         checkOut: b.checkOut,
-        kind: (b.status === "COMPLETED" ? "COMPLETED" : "LATE_CANCEL") as SettleKind,
+        kind: (b.status === "COMPLETED" ? "COMPLETED" : b.noShow ? "NO_SHOW" : "LATE_CANCEL") as SettleKind,
         gross,
         promo: promoCost(b),
         commission,

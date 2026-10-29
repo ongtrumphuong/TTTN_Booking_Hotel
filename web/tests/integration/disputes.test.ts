@@ -230,3 +230,47 @@ describe("xuất CSV đối soát chi tiết", () => {
     expect((await call(`?payout=${payout.id}`)).status).toBe(403);
   });
 });
+
+describe("khiếu nại đơn bị ghi không đến", () => {
+  async function noShowBooking() {
+    const ctx = await setup();
+    const b = await mkBooking({ userId: ctx.guest.id, roomId: ctx.hotel.rooms[0].id, checkIn: daysFromToday(-2), checkOut: daysFromToday(0), status: "CANCELLED", paymentStatus: "REFUNDED", total: 2_000_000, code: bookingCode() });
+    // Khách sạn giữ 1.000.000 phí, đã hoàn 1.000.000.
+    await prisma.booking.update({ where: { id: b.id }, data: { noShow: true, refundAmount: 1_000_000, commissionPercent: 10 } });
+    return { ...ctx, b };
+  }
+
+  it("khách khiếu nại được; sàn chỉ hoàn thêm tối đa phần phí đã bị giữ", async () => {
+    const { admin, guest, b } = await noShowBooking();
+    as(guest, "USER");
+    expect(await createDisputeAction(b.id, {}, fd({ category: "OTHER", description: "Tôi đã đến nhận phòng lúc 14 giờ nhưng quầy ghi là không đến." }))).toEqual({ ok: true });
+    const d = await prisma.dispute.findUniqueOrThrow({ where: { bookingId: b.id } });
+
+    as(admin, "ADMIN");
+    const tooMuch = await resolveDisputeAction(d.id, { decision: "REFUND", refund: 1_500_000, partnerBears: 1_500_000, note: "Khách có bằng chứng đã đến" });
+    expect(tooMuch.error).toMatch(/phần phí không đến/);
+    expect(await resolveDisputeAction(d.id, { decision: "REFUND", refund: 1_000_000, partnerBears: 1_000_000, note: "Khách có bằng chứng đã đến" })).toEqual({ ok: true });
+  });
+
+  it("đơn không đến chưa bị giữ phí (đã hoàn đủ) hoặc chưa trả tiền thì không khiếu nại được", async () => {
+    const { guest, b } = await noShowBooking();
+    as(guest, "USER");
+    await prisma.booking.update({ where: { id: b.id }, data: { refundAmount: 2_000_000 } });
+    expect(await createDisputeAction(b.id, {}, fd(GOOD))).toMatchObject({ error: expect.stringContaining("đã thanh toán") });
+    await prisma.booking.update({ where: { id: b.id }, data: { refundAmount: 1_000_000, paymentStatus: "UNPAID" } });
+    expect(await createDisputeAction(b.id, {}, fd(GOOD))).toMatchObject({ error: expect.stringContaining("đã thanh toán") });
+  });
+
+  it("đơn hủy thường (không phải không đến) vẫn không khiếu nại được", async () => {
+    const { guest, b } = await noShowBooking();
+    as(guest, "USER");
+    await prisma.booking.update({ where: { id: b.id }, data: { noShow: false } });
+    expect(await createDisputeAction(b.id, {}, fd(GOOD))).toMatchObject({ error: expect.stringContaining("đã thanh toán") });
+  });
+
+  it("dòng đối soát của đơn không đến ghi loại NO_SHOW", async () => {
+    const { owner } = await noShowBooking();
+    const rows = await listUnsettled(prisma, owner.id);
+    expect(rows.find((r) => r.kind === "NO_SHOW")).toMatchObject({ gross: 1_000_000, commission: 100_000, payout: 900_000 });
+  });
+});

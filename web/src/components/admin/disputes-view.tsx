@@ -2,7 +2,7 @@ import Link from "next/link";
 import { DisputeRefundButton } from "@/components/admin/dispute-refund-button";
 import { DisputeResolve } from "@/components/admin/dispute-resolve";
 import { DisputeRespond } from "@/components/admin/dispute-respond";
-import { CATEGORY_LABEL, DISPUTE_STATUS, isFinal, type DisputeStatusKey } from "@/lib/dispute";
+import { CATEGORY_LABEL, DISPUTE_STATUS, isFinal, type DisputeStatusKey, maxDisputeRefund } from "@/lib/dispute";
 import { formatDate, formatDateTime, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import type { SessionUser } from "@/lib/session";
@@ -35,7 +35,7 @@ export async function DisputesView({ searchParams, user }: { searchParams: Promi
       include: {
         user: { select: { name: true, email: true } },
         hotel: { select: { name: true, ownerId: true } },
-        booking: { select: { code: true, totalPrice: true, checkIn: true, checkOut: true, room: { select: { name: true } } } },
+        booking: { select: { code: true, totalPrice: true, status: true, noShow: true, refundAmount: true, checkIn: true, checkOut: true, room: { select: { name: true } } } },
       },
     }),
     prisma.dispute.count({ where: { ...scope, status: { in: ["OPEN", "UNDER_REVIEW"] } } }),
@@ -66,7 +66,7 @@ export async function DisputesView({ searchParams, user }: { searchParams: Promi
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="text-sm"><b>{d.hotel.name}</b> · đơn <span className="font-mono text-xs font-semibold">{d.booking.code}</span></p>
-                  <p className="text-xs text-muted">{d.user.name}{isAdmin ? ` (${d.user.email})` : ""} · {d.booking.room.name} · {formatDate(d.booking.checkIn)} → {formatDate(d.booking.checkOut)} · {formatVND(d.booking.totalPrice)} · gửi {formatDateTime(d.createdAt)}</p>
+                  <p className="text-xs text-muted">{d.user.name}{isAdmin ? ` (${d.user.email})` : ""} · {d.booking.room.name} · {formatDate(d.booking.checkIn)} → {formatDate(d.booking.checkOut)} · {formatVND(d.booking.totalPrice)}{d.booking.status === "CANCELLED" && d.booking.noShow ? " · đơn bị ghi không đến" : ""} · gửi {formatDateTime(d.createdAt)}</p>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${st.cls}`}>{st.text}</span>
               </div>
@@ -94,7 +94,7 @@ export async function DisputesView({ searchParams, user }: { searchParams: Promi
                   {isAdmin && d.status === "RESOLVED" && d.refundAmount > 0 && (d.refundedAt ? <p className="mt-1 text-xs text-muted">Đã hoàn tiền cho khách ngày {formatDate(d.refundedAt)}.</p> : <DisputeRefundButton disputeId={d.id} />)}
                 </div>
               )}
-              {isAdmin && !isFinal(d.status) && <DisputeResolve disputeId={d.id} totalPrice={d.booking.totalPrice} hasOwner={!!d.hotel.ownerId} />}
+              {isAdmin && !isFinal(d.status) && <DisputeResolve disputeId={d.id} totalPrice={maxDisputeRefund(d.booking)} hasOwner={!!d.hotel.ownerId} />}
             </li>
           );
         })}

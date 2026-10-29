@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { BedDouble, CalendarCheck, Hotel, Percent, TrendingUp, Undo2, Users, Wallet } from "lucide-react";
 import { AdminFallback } from "@/components/admin/fallback";
 import { AreaChart, BarChart, formatCompactVND } from "@/components/admin/charts";
-import { STATUS_LABEL } from "@/lib/booking";
+import { statusLabel } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -145,7 +145,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/admin">, "searchParam
                   <p className="text-xs text-muted">{b.user.name} · {formatDate(b.checkIn)}</p>
                 </div>
                 <div className="text-right">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_LABEL[b.status].cls}`}>{STATUS_LABEL[b.status].text}</span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${statusLabel(b.status, b.noShow).cls}`}>{statusLabel(b.status, b.noShow).text}</span>
                   <p className="mt-1 font-bold">{formatVND(b.totalPrice)}</p>
                 </div>
               </li>

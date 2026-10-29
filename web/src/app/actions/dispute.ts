@@ -7,7 +7,7 @@ import { z } from "zod";
 import { NO_ACCESS, canManageHotel } from "@/lib/access";
 import { audit } from "@/lib/audit";
 import { todayUTC } from "@/lib/booking";
-import { CATEGORIES, canDispute, isFinal, validateResolution, type DisputeCategoryKey } from "@/lib/dispute";
+import { CATEGORIES, canDispute, isFinal, maxDisputeRefund, validateResolution, type DisputeCategoryKey } from "@/lib/dispute";
 import { sendNotice } from "@/lib/email";
 import { formatVND } from "@/lib/format";
 import { notifyUsers } from "@/lib/notify";
@@ -105,7 +105,7 @@ export async function resolveDisputeAction(disputeId: string, input: ResolveInpu
   const admin = await requireAdmin("/admin/disputes");
   const d = await prisma.dispute.findUnique({
     where: { id: disputeId },
-    include: { user: { select: { name: true, email: true } }, booking: { select: { id: true, code: true, totalPrice: true } }, hotel: { select: { name: true, ownerId: true } } },
+    include: { user: { select: { name: true, email: true } }, booking: { select: { id: true, code: true, totalPrice: true, status: true, noShow: true, refundAmount: true } }, hotel: { select: { name: true, ownerId: true } } },
   });
   if (!d) return { error: "Không tìm thấy khiếu nại." };
   if (isFinal(d.status)) return { error: "Khiếu nại này đã được xử lý." };
@@ -113,7 +113,7 @@ export async function resolveDisputeAction(disputeId: string, input: ResolveInpu
   const decision = input?.decision === "REFUND" ? "REFUND" : "REJECT";
   const v = validateResolution(
     { decision, refund: Number(input?.refund), partnerBears: Number(input?.partnerBears) || 0, note: String(input?.note ?? "") },
-    { totalPrice: d.booking.totalPrice, hasOwner: !!d.hotel.ownerId },
+    { totalPrice: d.booking.totalPrice, hasOwner: !!d.hotel.ownerId, maxRefund: maxDisputeRefund(d.booking) },
   );
   if (!v.ok) return { error: v.error };
 
