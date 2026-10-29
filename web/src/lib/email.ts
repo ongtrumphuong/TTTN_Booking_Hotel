@@ -225,10 +225,14 @@ export async function sendBookingCancelled(bookingId: string) {
       if (b.refundAmount < b.totalPrice) rows.push(["Phí hủy giữ lại", formatVND(b.totalPrice - b.refundAmount)]);
     }
     const mail = buildNoticeEmail({
-      subject: `Đã hủy đặt phòng ${b.code} - ${b.room.hotel.name}`,
-      heading: "Đơn đặt phòng đã được hủy",
+      subject: b.noShow ? `Ghi nhận không đến nhận phòng ${b.code} - ${b.room.hotel.name}` : `Đã hủy đặt phòng ${b.code} - ${b.room.hotel.name}`,
+      heading: b.noShow ? "Đơn đặt phòng được ghi nhận là không đến" : "Đơn đặt phòng đã được hủy",
       guestName: b.user.name,
-      intro: paid && (b.refundAmount ?? b.totalPrice) > 0 ? "đơn đặt phòng của bạn đã được hủy. Chúng tôi sẽ hoàn tiền và báo lại khi hoàn tất." : "đơn đặt phòng của bạn đã được hủy.",
+      intro: b.noShow
+        ? `khách sạn ghi nhận bạn không đến nhận phòng nên đơn đã đóng theo chính sách hủy muộn${paid && (b.refundAmount ?? 0) > 0 ? "; phần tiền còn lại sẽ được hoàn cho bạn và chúng tôi sẽ báo khi hoàn tất" : ""}. Nếu có nhầm lẫn, vui lòng liên hệ khách sạn hoặc bộ phận hỗ trợ.`
+        : paid && (b.refundAmount ?? b.totalPrice) > 0
+          ? "đơn đặt phòng của bạn đã được hủy. Chúng tôi sẽ hoàn tiền và báo lại khi hoàn tất."
+          : "đơn đặt phòng của bạn đã được hủy.",
       rows,
       link: `${appBase()}/bookings/${b.id}`,
     });

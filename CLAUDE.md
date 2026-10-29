@@ -35,6 +35,12 @@ Mỗi vai trò chỉ dùng giao diện của mình: khách/chưa đăng nhập d
 - **Lịch phòng**: `lib/occupancy.ts` (hàm thuần), `components/admin/occupancy-calendar.tsx`, trang `/admin|host/calendar` (3 tuần, chọn khách sạn, điều hướng theo tuần).
 - `resetDb` trong tests phải có `PriceRule`, `Notification` (đã thêm).
 
+## Khách không đến, tự hoàn tất đơn, đổi ngày ở (2026-10-29)
+- **Không đến**: `markNoShowAction` (admin.ts) đặt `CANCELLED` + `Booking.noShow` (không thêm trạng thái mới để dùng chung luồng hoàn tiền và đối soát); phí giữ = `noShowQuote` (% hủy muộn); từ ngày sau ngày nhận phòng (`canMarkNoShow`). Nhãn hiển thị dùng `statusLabel(status, noShow)`, **không** dùng `STATUS_LABEL[...]` trực tiếp ở chỗ có đơn hủy.
+- **Tự hoàn tất**: `completeFinishedStays` trong `lib/booking.ts`, gọi ở cron `expire-bookings` và đầu `createPayoutAction`; đơn chưa nhận phòng chờ thêm `NO_SHOW_REPORT_DAYS` ngày. Test tạo đơn CONFIRMED ở quá khứ rồi mong nó **không** vào đối soát thì phải dùng ngày trả phòng trong vòng 2 ngày hoặc ở tương lai.
+- **Đổi ngày**: `rescheduleBookingAction` (booking.ts) + `checkReschedule` (`lib/lifecycle.ts`, hàm thuần): 1 lần, trong hạn hủy miễn phí nếu đã trả tiền, đơn đã trả/có mã chỉ đổi sang ngày **cùng giá**. `unavailableQuantity`/`bookedQuantity` có tham số `excludeBookingId`.
+- Test: `tests/unit/lifecycle.test.ts`, `tests/integration/noshow-reschedule.test.ts`.
+
 ## Khiếu nại và đối soát chi tiết (2026-10-21)
 - **Khiếu nại**: bảng `Dispute` (1 đơn một khiếu nại), `lib/dispute.ts` (hàm thuần `canDispute`, `validateResolution`, nhãn), `app/actions/dispute.ts` (`createDisputeAction`, `respondDisputeAction`, `resolveDisputeAction`, `markDisputeRefundedAction`), danh sách dùng chung `components/admin/disputes-view.tsx` cho `/admin/disputes` và `/host/disputes`, phía khách `components/dispute-section.tsx` ở chi tiết đơn. Khách không có thông báo trong ứng dụng, chỉ email kết quả (`sendNotice`) và trạng thái ở chi tiết đơn.
 - **Tiền**: `Dispute.refundAmount` (sàn hoàn khách) = `partnerBearsAmount` (trừ vào đợt chi trả của đối tác, qua `listDeductions`) + phần sàn chịu. `createPayoutAction` gộp đơn chưa đối soát và các khoản trừ chưa gắn `payoutId`; `Payout.deductions`; số âm thì từ chối (`NEGATIVE`). **Mọi chỗ hiển thị "đối tác sẽ nhận" phải trừ khoản trừ** (`netPayout`, `sumDeductions`): host dashboard, `/host/payouts`, `/admin/payouts`.

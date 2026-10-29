@@ -19,14 +19,14 @@ const appBase = () => (process.env.APP_URL?.trim() || "http://localhost:3000").r
  * khách sạn của đối tác thì báo đối tác (thông báo + email); khách sạn do sàn tự vận hành thì báo các quản trị viên.
  * Không bao giờ ném lỗi để không làm hỏng luồng thanh toán/hủy đơn.
  */
-export async function notifyBookingEvent(bookingId: string, event: "PAID" | "CANCELLED") {
+export async function notifyBookingEvent(bookingId: string, event: "PAID" | "CANCELLED" | "RESCHEDULED") {
   try {
     const b = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: { user: { select: { name: true } }, room: { select: { name: true, hotel: { select: { name: true, ownerId: true, owner: { select: { name: true, email: true } } } } } } },
     });
     if (!b) return;
-    if (event === "PAID" && b.status !== "CONFIRMED") return;
+    if ((event === "PAID" || event === "RESCHEDULED") && b.status !== "CONFIRMED") return;
     if (event === "CANCELLED" && b.status !== "CANCELLED") return;
 
     const owner = b.room.hotel.owner;
@@ -37,15 +37,20 @@ export async function notifyBookingEvent(bookingId: string, event: "PAID" | "CAN
     const paid = event === "PAID";
 
     const summary = `${b.code} · ${b.user.name} · ${b.room.name} × ${b.rooms} · ${formatDate(b.checkIn)} → ${formatDate(b.checkOut)} · ${formatVND(b.totalPrice)}`;
-    const title = paid ? `Đơn mới tại ${b.room.hotel.name}` : `Đơn bị hủy tại ${b.room.hotel.name}`;
-    await notifyUsers(recipients, { kind: paid ? "BOOKING_PAID" : "BOOKING_CANCELLED", title, body: summary, href: `${base}/bookings` });
+    const moved = event === "RESCHEDULED";
+    const title = paid ? `Đơn mới tại ${b.room.hotel.name}` : moved ? `Khách đổi ngày ở tại ${b.room.hotel.name}` : `Đơn bị hủy tại ${b.room.hotel.name}`;
+    await notifyUsers(recipients, { kind: paid ? "BOOKING_PAID" : moved ? "BOOKING_RESCHEDULED" : "BOOKING_CANCELLED", title, body: summary, href: `${base}/bookings` });
 
     if (owner) {
       await sendStaffNotice(owner.email, {
-        subject: `${paid ? "Đơn mới" : "Đơn bị hủy"} ${b.code} - ${b.room.hotel.name}`,
-        heading: paid ? "Bạn có đơn đặt phòng mới" : "Một đơn đặt phòng đã bị hủy",
+        subject: `${paid ? "Đơn mới" : moved ? "Khách đổi ngày" : "Đơn bị hủy"} ${b.code} - ${b.room.hotel.name}`,
+        heading: paid ? "Bạn có đơn đặt phòng mới" : moved ? "Một đơn đặt phòng đã đổi ngày ở" : "Một đơn đặt phòng đã bị hủy",
         guestName: owner.name,
-        intro: paid ? "khách sạn của bạn vừa có một đơn đặt phòng đã thanh toán." : "một đơn đặt phòng đã thanh toán tại khách sạn của bạn vừa bị hủy.",
+        intro: paid
+          ? "khách sạn của bạn vừa có một đơn đặt phòng đã thanh toán."
+          : moved
+            ? "một khách vừa đổi ngày ở của đơn tại khách sạn của bạn. Ngày dưới đây là ngày mới."
+            : "một đơn đặt phòng đã thanh toán tại khách sạn của bạn vừa bị hủy.",
         rows: [
           ["Mã đặt phòng", b.code],
           ["Khách", b.user.name],

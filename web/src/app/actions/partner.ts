@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { audit } from "@/lib/audit";
+import { completeFinishedStays } from "@/lib/booking";
 import { notifyHotelDecision } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
@@ -81,6 +82,7 @@ export async function createPayoutAction(ownerId: string, note: string): Promise
   const admin = await requireAdmin("/admin/payouts");
   const cleanNote = String(note ?? "").trim().slice(0, 300) || null;
 
+  await completeFinishedStays(prisma); // đơn đã ở xong mà chưa ai bấm hoàn tất vẫn phải vào đợt chi trả
   try {
     const created = await prisma.$transaction(
       async (tx) => {

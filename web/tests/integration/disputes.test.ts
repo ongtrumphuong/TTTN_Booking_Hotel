@@ -170,7 +170,7 @@ describe("sàn quyết định và trừ vào chi trả", () => {
     const { admin, owner, hotel, guest } = await setup();
     // Đơn lớn đã nằm trong đợt cũ; khiếu nại mới trừ 900k nhưng chưa có doanh thu mới.
     await prisma.booking.updateMany({ data: { payoutId: (await prisma.payout.create({ data: { ownerId: owner.id, gross: 1, commission: 0, amount: 1, bookingCount: 1, createdById: admin.id } })).id } });
-    const b2 = await mkBooking({ userId: guest.id, roomId: hotel.rooms[0].id, checkIn: daysFromToday(-9), checkOut: daysFromToday(-7), status: "CONFIRMED", paymentStatus: "PAID", total: 1_000_000, code: bookingCode() });
+    const b2 = await mkBooking({ userId: guest.id, roomId: hotel.rooms[0].id, checkIn: daysFromToday(-2), checkOut: daysFromToday(0), status: "CONFIRMED", paymentStatus: "PAID", total: 1_000_000, code: bookingCode() });
     as(guest, "USER");
     await createDisputeAction(b2.id, {}, fd(GOOD));
     const d = await prisma.dispute.findUniqueOrThrow({ where: { bookingId: b2.id } });

@@ -7,6 +7,7 @@ export type AuditActor = { id: string; name: string; role: string };
 export const AUDIT_ACTIONS = {
   BOOKING_STATUS: "Đổi trạng thái đơn",
   BOOKING_CHECKIN: "Nhận phòng",
+  BOOKING_NOSHOW: "Khách không đến",
   REFUND_DONE: "Xác nhận hoàn tiền",
   PAYOUT_CREATE: "Tạo đợt chi trả",
   COMMISSION: "Đổi hoa hồng",

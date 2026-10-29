@@ -7,7 +7,8 @@ import { BookingSteps } from "@/components/booking-steps";
 import { DisputeSection } from "@/components/dispute-section";
 import { TicketQr } from "@/components/ticket-qr";
 import { CancelButton } from "@/components/cancel-button";
-import { STATUS_LABEL, needsRefund, paymentLabel, todayUTC } from "@/lib/booking";
+import { needsRefund, isoDate, paymentLabel, statusLabel, todayUTC } from "@/lib/booking";
+import { RescheduleForm } from "@/components/reschedule-form";
 import { cancelQuote, policyText } from "@/lib/cancellation";
 import { formatDate, formatDateTime, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +23,8 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
   const b = await prisma.booking.findFirst({ where: { id, userId: user.id }, include: { room: { include: { hotel: true } }, dispute: true } });
   if (!b) notFound();
 
-  const status = STATUS_LABEL[b.status];
+  const status = statusLabel(b.status, b.noShow);
+  const today = todayUTC();
   const canCancel = (b.status === "PENDING" || b.status === "CONFIRMED") && b.checkIn > todayUTC() && !b.checkedInAt;
   const { freeCancelDays, lateCancelFeePercent } = b.room.hotel;
   const quote = cancelQuote({ checkIn: b.checkIn, today: todayUTC(), paid: b.paymentStatus === "PAID" ? b.totalPrice : 0, freeCancelDays, lateFeePercent: lateCancelFeePercent });
@@ -32,6 +34,13 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
       : quote.free
         ? `Hủy đơn này sẽ được hoàn đủ ${formatVND(quote.refund)}. Bạn chắc chắn muốn hủy?`
         : `Đã quá hạn hủy miễn phí: khách sạn giữ ${formatVND(quote.fee)}, bạn được hoàn ${formatVND(quote.refund)}. Bạn vẫn muốn hủy?`;
+  // Chỉ để quyết định có hiện nút đổi ngày; luật đầy đủ (giá, phòng trống) do server kiểm tra khi bấm.
+  const canReschedule =
+    (b.status === "PENDING" || b.status === "CONFIRMED") &&
+    !b.checkedInAt &&
+    b.dateChanges < 1 &&
+    b.checkIn > today &&
+    (b.paymentStatus !== "PAID" || Math.round((b.checkIn.getTime() - today.getTime()) / 86_400_000) >= freeCancelDays);
   const refunding = needsRefund(b.status, b.paymentStatus, b.refundAmount);
 
   return (
@@ -83,8 +92,9 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
             <div className="sm:col-span-2">
               <p className="text-muted">Hoàn tiền</p>
               <p className="font-semibold">
+                {b.noShow ? "Khách sạn ghi nhận bạn không đến nhận phòng. " : ""}
                 {b.refundAmount === 0
-                  ? "Hủy sau hạn miễn phí nên không được hoàn tiền theo chính sách."
+                  ? "Không được hoàn tiền theo chính sách hủy muộn."
                   : `Hoàn ${formatVND(b.refundAmount)}; khách sạn giữ ${formatVND(b.totalPrice - b.refundAmount)} theo chính sách hủy muộn.`}
               </p>
             </div>
@@ -94,6 +104,12 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
         </div>
 
         {canCancel && <p className="mt-6 rounded-xl bg-background px-4 py-3 text-xs text-muted">Chính sách hủy: {policyText(freeCancelDays, lateCancelFeePercent)}</p>}
+        {canReschedule && (
+          <p className="mt-3 rounded-xl bg-background px-4 py-3 text-xs text-muted">
+            Đổi ngày ở: được đổi 1 lần, không mất phí{freeCancelDays > 0 && b.paymentStatus === "PAID" ? `, trước ngày nhận phòng ít nhất ${freeCancelDays} ngày` : ""}. Đơn đã thanh toán hoặc có mã giảm giá chỉ đổi được sang ngày có cùng giá.
+          </p>
+        )}
+        {b.dateChanges > 0 && <p className="mt-3 text-xs text-muted">Đơn này đã đổi ngày ở 1 lần.</p>}
         <div className="mt-6 flex flex-wrap gap-3 border-t border-border pt-5">
           {b.status === "PENDING" && b.paymentStatus === "UNPAID" && (
             <Link href={`/bookings/${b.id}/pay`} className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-dark">Thanh toán ngay</Link>
@@ -101,6 +117,7 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           {b.paymentStatus !== "UNPAID" && (
             <Link href={`/bookings/${b.id}/invoice`} className="rounded-lg border border-brand px-4 py-2 text-sm font-bold text-brand hover:bg-brand/5">Xem phiếu thanh toán</Link>
           )}
+          {canReschedule && <RescheduleForm bookingId={b.id} checkIn={isoDate(b.checkIn)} checkOut={isoDate(b.checkOut)} min={isoDate(today)} />}
           {canCancel && <CancelButton bookingId={b.id} confirmText={confirmText} />}
           <Link href="/bookings" className="rounded-lg px-4 py-2 text-sm font-semibold text-muted hover:bg-background">← Tất cả đặt phòng</Link>
         </div>

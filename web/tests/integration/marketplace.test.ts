@@ -194,7 +194,7 @@ describe("đối soát và chi trả", () => {
     const done = await mk({ userId: guest.id, roomId: a.roomId, ...stay, status: "COMPLETED", paymentStatus: "PAID", total: 1_000_000 });
     const lateCancel = await mk({ userId: guest.id, roomId: a.roomId, ...stay, status: "CANCELLED", paymentStatus: "REFUNDED", total: 800_000 });
     const fullRefund = await mk({ userId: guest.id, roomId: a.roomId, ...stay, status: "CANCELLED", paymentStatus: "REFUNDED", total: 500_000 });
-    const notDone = await mk({ userId: guest.id, roomId: a.roomId, ...stay, status: "CONFIRMED", paymentStatus: "PAID", total: 300_000 });
+    const notDone = await mk({ userId: guest.id, roomId: a.roomId, ...stay, checkIn: daysFromToday(1), checkOut: daysFromToday(3), status: "CONFIRMED", paymentStatus: "PAID", total: 300_000 });
     const platformDone = await mk({ userId: guest.id, roomId: platform.roomId, ...stay, status: "COMPLETED", paymentStatus: "PAID", total: 700_000 });
     await prisma.booking.updateMany({ where: { id: { in: [done.id, lateCancel.id, fullRefund.id, notDone.id] } }, data: { commissionPercent: 10 } });
     await prisma.booking.update({ where: { id: lateCancel.id }, data: { refundAmount: 300_000 } }); // khách sạn giữ 500.000

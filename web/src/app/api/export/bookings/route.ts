@@ -1,6 +1,6 @@
 import { NextResponse, connection, type NextRequest } from "next/server";
 import type { BookingStatus, Prisma } from "@prisma/client";
-import { STATUS_LABEL, isoDate, paymentLabel } from "@/lib/booking";
+import { isoDate, paymentLabel, statusLabel } from "@/lib/booking";
 import { csvResponse, toCsv } from "@/lib/csv";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     isoDate(b.checkIn),
     isoDate(b.checkOut),
     Math.round((b.checkOut.getTime() - b.checkIn.getTime()) / 86_400_000),
-    STATUS_LABEL[b.status]?.text ?? b.status,
+    statusLabel(b.status, b.noShow)?.text ?? b.status,
     paymentLabel(b.status, b.paymentStatus, b.refundAmount),
     b.voucherCode,
     b.discount,

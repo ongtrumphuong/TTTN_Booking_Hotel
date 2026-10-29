@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { BookingStatus } from "@prisma/client";
 import { CheckInButton } from "@/components/admin/check-in-button";
+import { NoShowButton } from "@/components/admin/no-show-button";
 import { RefundButton } from "@/components/admin/refund-button";
 import { SelectAction } from "@/components/admin/select-action";
-import { NEXT_STATUS, STATUS_LABEL, needsRefund, paymentLabel, todayUTC } from "@/lib/booking";
+import { NEXT_STATUS, STATUS_LABEL, needsRefund, paymentLabel, statusLabel, todayUTC } from "@/lib/booking";
+import { canMarkNoShow, noShowQuote } from "@/lib/lifecycle";
 import { formatDate, formatDateTime, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import type { SessionUser } from "@/lib/session";
@@ -27,6 +29,15 @@ const ACTION_LABEL: Record<BookingStatus, string> = {
 
 type SP = Record<string, string | string[] | undefined>;
 
+/** Nội dung hộp xác nhận báo "không đến": nêu số tiền giữ lại và hoàn, tính bằng đúng công thức server dùng. */
+function noShowConfirm(b: { code: string; totalPrice: number; paymentStatus: string; checkIn: Date; room: { hotel: { freeCancelDays: number; lateCancelFeePercent: number } } }) {
+  const paid = b.paymentStatus === "PAID" ? b.totalPrice : 0;
+  const q = noShowQuote({ checkIn: b.checkIn, paid, freeCancelDays: b.room.hotel.freeCancelDays, lateFeePercent: b.room.hotel.lateCancelFeePercent });
+  return paid > 0
+    ? `Báo khách không đến đơn ${b.code}? Khách sạn giữ ${formatVND(q.fee)}, hoàn khách ${formatVND(q.refund)}. Không hoàn tác được.`
+    : `Báo khách không đến đơn ${b.code}? Đơn chưa thanh toán nên không phát sinh phí. Không hoàn tác được.`;
+}
+
 /**
  * Danh sách đơn đặt phòng dùng chung. Quản trị viên thấy mọi đơn và xử lý hoàn tiền; đối tác chỉ thấy đơn của khách sạn mình
  * và không xác nhận thanh toán hay hoàn tiền được (tiền do sàn thu và hoàn).
@@ -46,7 +57,7 @@ export async function BookingsView({ searchParams, user }: { searchParams: Promi
     where: { ...scope, ...(refundOnly ? { status: "CANCELLED", paymentStatus: "PAID", OR: [{ refundAmount: null }, { refundAmount: { gt: 0 } }] } : status ? { status } : {}) },
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { user: { select: { name: true, email: true } }, room: { include: { hotel: { select: { name: true } } } } },
+    include: { user: { select: { name: true, email: true } }, room: { include: { hotel: { select: { name: true, freeCancelDays: true, lateCancelFeePercent: true } } } } },
   });
 
   return (
@@ -105,10 +116,10 @@ export async function BookingsView({ searchParams, user }: { searchParams: Promi
                     {paymentLabel(b.status, b.paymentStatus, b.refundAmount)}
                     {needsRefund(b.status, b.paymentStatus, b.refundAmount) && ` ${formatVND(b.refundAmount ?? b.totalPrice)}`}
                   </p>
-                  {b.status === "CANCELLED" && b.refundAmount !== null && b.refundAmount < b.totalPrice && <p className="text-xs text-muted">Hủy muộn: {b.refundAmount === 0 ? "giữ toàn bộ tiền" : `hoàn ${formatVND(b.refundAmount)}, giữ ${formatVND(b.totalPrice - b.refundAmount)}`}</p>}
+                  {b.status === "CANCELLED" && b.refundAmount !== null && b.refundAmount < b.totalPrice && <p className="text-xs text-muted">{b.noShow ? "Không đến" : "Hủy muộn"}: {b.refundAmount === 0 ? "giữ toàn bộ tiền" : `hoàn ${formatVND(b.refundAmount)}, giữ ${formatVND(b.totalPrice - b.refundAmount)}`}</p>}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_LABEL[b.status].cls}`}>{STATUS_LABEL[b.status].text}</span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${statusLabel(b.status, b.noShow).cls}`}>{statusLabel(b.status, b.noShow).text}</span>
                   {b.checkedInAt && <p className="mt-1 text-xs text-muted">Nhận phòng: {formatDateTime(b.checkedInAt)}</p>}
                   {b.checkedOutAt && <p className="text-xs text-muted">Trả phòng: {formatDateTime(b.checkedOutAt)}</p>}
                 </td>
@@ -118,6 +129,7 @@ export async function BookingsView({ searchParams, user }: { searchParams: Promi
                   ) : (
                   <div className="space-y-2">
                   {b.status === "CONFIRMED" && !b.checkedInAt && b.checkIn <= today && b.checkOut > today && <CheckInButton bookingId={b.id} />}
+                  {canMarkNoShow(b, today) && <NoShowButton bookingId={b.id} confirmText={noShowConfirm(b)} />}
                   <SelectAction
                     target={{ kind: "booking-status", id: b.id }}
                     options={NEXT_STATUS[b.status].filter((s) => !(s === "CANCELLED" && b.checkedInAt) && (isAdmin || s !== "CONFIRMED")).map((s) => ({ value: s, label: ACTION_LABEL[s] }))}

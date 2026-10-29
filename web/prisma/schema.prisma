@@ -162,6 +162,10 @@ model Booking {
   payout            Payout?       @relation(fields: [payoutId], references: [id], onDelete: SetNull)
   checkedInAt       DateTime?
   checkedOutAt      DateTime?
+  // Khách không đến: đơn được chuyển CANCELLED (giữ phí theo chính sách hủy) và đánh dấu để phân biệt với hủy thường.
+  noShow            Boolean       @default(false)
+  // Số lần khách đã đổi ngày ở (tối đa 1).
+  dateChanges       Int           @default(0)
   createdAt         DateTime      @default(now())
   payments          Payment[]
   dispute           Dispute?

@@ -9,7 +9,9 @@ import { sendBookingCancelled, sendBookingConfirmation } from "@/lib/email";
 import { notifyBookingEvent } from "@/lib/notify";
 import { isVnpayConfigured } from "@/lib/payments/vnpay";
 import { requireUser } from "@/lib/session";
-import { PENDING_HOLD_MINUTES, parseStay, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
+import { PENDING_HOLD_MINUTES, holdExpired, parseStay, paymentStatusAfterCancel, todayUTC, unavailableQuantity } from "@/lib/booking";
+import { checkReschedule } from "@/lib/lifecycle";
+import { Prisma } from "@prisma/client";
 import { cancelQuote } from "@/lib/cancellation";
 import { createPendingBooking } from "@/lib/booking-create";
 import { stayPrice } from "@/lib/pricing";
@@ -106,6 +108,77 @@ export async function payBookingAction(bookingId: string, _: BookingState, formD
   }
   revalidatePath("/bookings");
   redirect(`/bookings/${bookingId}?paid=1`);
+}
+
+export type RescheduleState = { error?: string; ok?: boolean };
+
+/**
+ * Khách đổi ngày ở của đơn (cùng loại phòng, cùng số phòng). Luật ở lib/lifecycle.ts#checkReschedule: chưa nhận phòng, 1 lần,
+ * còn trong hạn hủy miễn phí, đơn đã trả tiền/có mã chỉ đổi sang ngày cùng giá. Kiểm tra phòng trống và tính giá lại ở máy chủ trong giao dịch Serializable.
+ */
+export async function rescheduleBookingAction(bookingId: string, checkInRaw: string, checkOutRaw: string): Promise<RescheduleState> {
+  const user = await requireUser(`/bookings/${bookingId}`);
+  const stay = parseStay(checkInRaw, checkOutRaw);
+  if (!stay) return { error: "Ngày nhận/trả phòng không hợp lệ." };
+  const today = todayUTC();
+
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        const b = await tx.booking.findFirst({
+          where: { id: bookingId, userId: user.id },
+          include: { room: { include: { hotel: { select: { isActive: true, freeCancelDays: true } } } } },
+        });
+        if (!b) throw new Error("Không tìm thấy đơn đặt phòng.");
+        if (b.status === "PENDING" && holdExpired(b.createdAt)) throw new Error("Đơn đã quá thời gian giữ phòng, vui lòng đặt lại.");
+        if (!b.room.isActive || !b.room.hotel.isActive) throw new Error("Loại phòng này không còn khả dụng.");
+
+        const newSubtotal = stayPrice(await loadRoomPricing(tx, b.room, stay.checkIn, stay.checkOut), stay.checkIn, stay.checkOut) * b.rooms;
+        const rule = checkReschedule({
+          status: b.status,
+          paymentStatus: b.paymentStatus,
+          checkIn: b.checkIn,
+          oldCheckOut: b.checkOut,
+          checkedInAt: b.checkedInAt,
+          dateChanges: b.dateChanges,
+          voucherCode: b.voucherCode,
+          oldSubtotal: b.totalPrice + b.discount,
+          newCheckIn: stay.checkIn,
+          newCheckOut: stay.checkOut,
+          newSubtotal,
+          today,
+          freeCancelDays: b.room.hotel.freeCancelDays,
+        });
+        if (!rule.ok) throw new Error(rule.error);
+
+        // Đơn của chính khách không tự chặn mình khi các khoảng ngày chồng lên nhau.
+        const left = b.room.quantity - (await unavailableQuantity(tx, b.roomId, stay.checkIn, stay.checkOut, b.id));
+        if (left < b.rooms) throw new Error("Rất tiếc, phòng đã hết trong khoảng ngày mới.");
+
+        const res = await tx.booking.updateMany({
+          // Điều kiện trong where để hai lần đổi cùng lúc, hoặc đổi cùng lúc với hủy/nhận phòng, chỉ một bên thắng.
+          where: { id: b.id, status: b.status, checkedInAt: null, dateChanges: b.dateChanges },
+          data: {
+            checkIn: stay.checkIn,
+            checkOut: stay.checkOut,
+            dateChanges: { increment: 1 },
+            ...(rule.keepsPrice ? {} : { totalPrice: newSubtotal }),
+          },
+        });
+        if (res.count === 0) throw new Error("Đơn vừa được cập nhật, vui lòng tải lại trang.");
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") return { error: "Hệ thống đang bận, vui lòng thử lại." };
+    if (e instanceof Error && !(e instanceof Prisma.PrismaClientKnownRequestError)) return { error: e.message };
+    throw e;
+  }
+
+  after(() => notifyBookingEvent(bookingId, "RESCHEDULED"));
+  revalidatePath("/bookings");
+  revalidatePath(`/bookings/${bookingId}`);
+  return { ok: true };
 }
 
 export type CancelState = { error?: string };

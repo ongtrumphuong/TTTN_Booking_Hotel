@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { BookingStatus, Prisma } from "@prisma/client";
+import { autoCompleteBefore, autoCompleteUnattendedBefore } from "@/lib/lifecycle";
 
 const DAY_MS = 86_400_000;
 export const PENDING_HOLD_MINUTES = 30;
@@ -37,16 +38,17 @@ export function holdingWhere(): Prisma.BookingWhereInput {
   return { OR: [{ status: "CONFIRMED" }, { status: "PENDING", createdAt: { gt: cutoff } }] };
 }
 
-/** Số phòng của một loại phòng đã bị giữ trong khoảng ngày. */
+/** Số phòng của một loại phòng đã bị giữ trong khoảng ngày. `excludeBookingId`: bỏ qua một đơn (khi đổi ngày, đơn đó không tự chặn chính nó). */
 export async function bookedQuantity(
   db: Pick<Prisma.TransactionClient, "booking">,
   roomId: string,
   checkIn: Date,
   checkOut: Date,
+  excludeBookingId?: string,
 ) {
   const agg = await db.booking.aggregate({
     _sum: { rooms: true },
-    where: { roomId, checkIn: { lt: checkOut }, checkOut: { gt: checkIn }, ...holdingWhere() },
+    where: { roomId, checkIn: { lt: checkOut }, checkOut: { gt: checkIn }, ...holdingWhere(), ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}) },
   });
   return agg._sum.rooms ?? 0;
 }
@@ -82,8 +84,9 @@ export async function unavailableQuantity(
   roomId: string,
   checkIn: Date,
   checkOut: Date,
+  excludeBookingId?: string,
 ) {
-  const [booked, blocked] = await Promise.all([bookedQuantity(db, roomId, checkIn, checkOut), blockedQuantity(db, roomId, checkIn, checkOut)]);
+  const [booked, blocked] = await Promise.all([bookedQuantity(db, roomId, checkIn, checkOut, excludeBookingId), blockedQuantity(db, roomId, checkIn, checkOut)]);
   return booked + blocked;
 }
 
@@ -95,6 +98,34 @@ export async function expireStaleBookings(db: Pick<Prisma.TransactionClient, "bo
     data: { status: "CANCELLED", cancelledAt: new Date() },
   });
   return res.count;
+}
+
+/**
+ * Tự chuyển các đơn đã ở xong sang Hoàn tất để doanh thu vào đối soát mà không cần ai bấm:
+ *  - đơn đã nhận phòng: ngay khi qua ngày trả phòng;
+ *  - đơn không có ghi nhận nhận phòng: sau thêm NO_SHOW_REPORT_DAYS ngày, là hạn khách sạn báo "khách không đến".
+ * Trả về số đơn đã hoàn tất.
+ */
+export async function completeFinishedStays(db: Pick<Prisma.TransactionClient, "booking">, today = todayUTC()) {
+  const now = new Date();
+  const checkedIn = await db.booking.updateMany({
+    where: { status: "CONFIRMED", checkedInAt: { not: null }, checkOut: { lte: autoCompleteBefore(today) } },
+    data: { status: "COMPLETED", checkedOutAt: now },
+  });
+  const unattended = await db.booking.findMany({
+    where: { status: "CONFIRMED", checkedInAt: null, checkOut: { lte: autoCompleteUnattendedBefore(today) } },
+    select: { id: true, checkIn: true },
+  });
+  let n = checkedIn.count;
+  for (const b of unattended) {
+    // Điều kiện trong where để không ghi đè đơn vừa được xử lý (nhận phòng, báo không đến) giữa hai câu lệnh.
+    const res = await db.booking.updateMany({
+      where: { id: b.id, status: "CONFIRMED", checkedInAt: null },
+      data: { status: "COMPLETED", checkedInAt: b.checkIn, checkedOutAt: now },
+    });
+    n += res.count;
+  }
+  return n;
 }
 
 // Trạng thái kế tiếp admin được phép chuyển; CANCELLED và COMPLETED là trạng thái cuối.
@@ -141,3 +172,7 @@ export const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   CANCELLED: { text: "Đã hủy", cls: "bg-red-100 text-red-700" },
   COMPLETED: { text: "Hoàn tất", cls: "bg-slate-200 text-slate-700" },
 };
+
+/** Nhãn trạng thái có tính đến đơn "khách không đến" (vẫn là CANCELLED trong cơ sở dữ liệu để dùng chung luồng hoàn tiền và đối soát). */
+export const statusLabel = (status: string, noShow?: boolean) =>
+  status === "CANCELLED" && noShow ? { text: "Không đến", cls: "bg-orange-100 text-orange-800" } : STATUS_LABEL[status];

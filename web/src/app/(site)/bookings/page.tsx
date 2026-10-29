@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { STATUS_LABEL, expireStaleBookings } from "@/lib/booking";
+import { expireStaleBookings, statusLabel } from "@/lib/booking";
 import { formatDate, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
@@ -43,7 +43,7 @@ async function List() {
   return (
     <ul className="space-y-3">
       {bookings.map((b) => {
-        const s = STATUS_LABEL[b.status];
+        const s = statusLabel(b.status, b.noShow);
         return (
           <li key={b.id}>
             <Link href={`/bookings/${b.id}`} className="group flex flex-wrap items-center gap-4 rounded-3xl border border-border bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ink/10">

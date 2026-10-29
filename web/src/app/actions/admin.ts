@@ -13,6 +13,7 @@ import { after } from "next/server";
 import { sendBookingCancelled, sendRefundCompleted } from "@/lib/email";
 import { NO_ACCESS, baseFor, canManageBooking, canManageHotel, canManageRoom } from "@/lib/access";
 import { requireAdmin, requireStaff } from "@/lib/session";
+import { canMarkNoShow, noShowQuote } from "@/lib/lifecycle";
 import { NEXT_STATUS, STATUS_LABEL, unavailableQuantity, needsRefund, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
 import { ALLOWED_IMAGE_HOSTS } from "@/lib/image-hosts";
 import { normalizeCode } from "@/lib/voucher";
@@ -247,6 +248,55 @@ export async function checkInBookingAction(bookingId: string): Promise<AdminStat
   await audit(user, "BOOKING_CHECKIN", `Ghi nhận nhận phòng đơn ${bookingId}`, { type: "Booking", id: bookingId });
   revalidatePath("/admin/bookings");
   revalidatePath("/host/bookings");
+  return { ok: true };
+}
+
+/** Khách sạn báo khách không đến. Đơn chuyển CANCELLED (đánh dấu noShow), giữ phí như hủy muộn, hoàn phần còn lại, rồi đi tiếp luồng hoàn tiền/đối soát như đơn hủy muộn. */
+export async function markNoShowAction(bookingId: string): Promise<AdminState> {
+  const user = await requireStaff("/admin/bookings");
+  if (!(await canManageBooking(user, bookingId))) return { error: NO_ACCESS };
+
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        const b = await tx.booking.findUnique({
+          where: { id: bookingId },
+          include: { room: { include: { hotel: { select: { freeCancelDays: true, lateCancelFeePercent: true } } } } },
+        });
+        if (!b) throw new Error("Không tìm thấy đơn đặt phòng.");
+        if (b.status !== "CONFIRMED") throw new Error("Chỉ đơn đã xác nhận mới báo khách không đến được.");
+        if (b.checkedInAt) throw new Error("Khách đã nhận phòng rồi.");
+        if (!canMarkNoShow(b, todayUTC())) throw new Error("Chỉ báo khách không đến từ ngày sau ngày nhận phòng.");
+
+        const paid = b.paymentStatus === "PAID" ? b.totalPrice : 0;
+        const quote = noShowQuote({ checkIn: b.checkIn, paid, freeCancelDays: b.room.hotel.freeCancelDays, lateFeePercent: b.room.hotel.lateCancelFeePercent });
+        const refund = paid > 0 ? quote.refund : null;
+        // Điều kiện trong where để báo hai lần cùng lúc, hoặc báo cùng lúc với nhận phòng, chỉ một bên thắng.
+        const res = await tx.booking.updateMany({
+          where: { id: b.id, status: "CONFIRMED", checkedInAt: null },
+          data: {
+            status: "CANCELLED",
+            noShow: true,
+            cancelledAt: new Date(),
+            refundAmount: refund,
+            paymentStatus: await paymentStatusAfterCancel(tx, b.id, b.paymentStatus, refund),
+          },
+        });
+        if (res.count === 0) throw new Error("Đơn vừa được cập nhật, vui lòng tải lại trang.");
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") return { error: "Hệ thống đang bận, vui lòng thử lại." };
+    if (e instanceof Error && !(e instanceof Prisma.PrismaClientKnownRequestError)) return { error: e.message };
+    throw e;
+  }
+
+  await audit(user, "BOOKING_NOSHOW", `Báo khách không đến, đơn ${bookingId}`, { type: "Booking", id: bookingId });
+  after(() => sendBookingCancelled(bookingId));
+  revalidatePath("/admin/bookings");
+  revalidatePath("/host/bookings");
+  revalidatePath("/admin");
   return { ok: true };
 }
 
