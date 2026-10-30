@@ -4,13 +4,17 @@ import { MAX_FILES_PER_REQUEST, MAX_REQUEST_BYTES, UploadError, saveImage } from
 
 const json = (body: object, status = 200) => NextResponse.json(body, { status });
 
-/** Tải ảnh lên (chỉ quản trị viên). Trả về danh sách đường dẫn đã lưu và lỗi riêng của từng tệp. */
+/**
+ * Tải ảnh lên (quản trị viên và đối tác, vì form khách sạn/phòng dùng chung ở cả hai khu vực). Khách thường bị từ chối.
+ * Route chỉ lưu ảnh và trả đường dẫn; quyền gắn ảnh vào khách sạn nào vẫn do server action kiểm bằng canManageHotel.
+ * Trả về danh sách đường dẫn đã lưu và lỗi riêng của từng tệp.
+ */
 export async function POST(req: NextRequest) {
   await connection();
 
   const user = await getCurrentUser();
   if (!user) return json({ error: "Bạn cần đăng nhập." }, 401);
-  if (user.role !== "ADMIN") return json({ error: "Bạn không có quyền tải ảnh lên." }, 403);
+  if (user.role !== "ADMIN" && user.role !== "HOST") return json({ error: "Bạn không có quyền tải ảnh lên." }, 403);
 
   // Chặn gửi chéo trang: yêu cầu phải xuất phát từ chính website này.
   const origin = req.headers.get("origin");

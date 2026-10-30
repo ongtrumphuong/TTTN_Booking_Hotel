@@ -74,7 +74,10 @@ Mã ở `web/src/lib/assistant/` (`search.ts` công cụ tìm phòng, `agent.ts`
 - Khách sạn đối tác: `ownerId` + `approval` (PENDING/APPROVED/REJECTED) + `commissionPercent`; chưa duyệt thì `isActive = false` (nên các truy vấn công khai không cần biết đến `approval`). `Booking.commissionPercent` được chốt lúc đặt (0 nếu khách sạn của sàn). Doanh thu đối soát = `settlementGross` (đơn hoàn tất: **giá trước giảm giá = totalPrice + discount**, vì mã giảm giá do sàn tạo nên **sàn chịu** (`promoCost`, `Payout.promoCost`), hoa hồng cũng tính trên giá trước giảm; hủy muộn: phần phí giữ lại, tính trên số tiền khách thực trả). `Payout` gom đơn, đơn gắn bằng `payoutId = null`.
 - Đối tác không được: xác nhận đã nhận tiền (CONFIRMED), hoàn tiền, đặt hoa hồng, duyệt khách sạn.
 
-## Trạng thái (cập nhật: 2026-10-29)
+## Chia việc cho 3 thực tập sinh (2026-10-30)
+Tài liệu ở `docs/`: `PHAN_CONG_3_THUC_TAP_SINH.md` (ma trận phân công, sở hữu tệp, quyền ghi cột `Booking`, quy trình, kế hoạch 10 tuần, hiện trạng kiểm chứng), `QUY_TAC_NGHIEP_VU.md` (quy tắc BR-TK/TC/VH có mã, trỏ tới mã và test), `ADR.md` (quyết định kiến trúc). **Đổi hành vi nghiệp vụ thì cập nhật BR cùng lúc.** Test mới: `tests/unit/properties.test.ts` (kiểm thử theo thuộc tính, thư viện `fast-check`), `tests/integration/authz-matrix.test.ts` (thử từng thao tác bằng người không có quyền), `tests/integration/uploads-route.test.ts`. Route `/api/admin/uploads` nay cho cả ADMIN và HOST (form khách sạn/phòng của đối tác dùng chung bộ tải ảnh). CI đã có ở `.github/workflows/ci.yml`. Đo hiệu năng gốc (40.000 đơn, máy dev): tìm khách sạn ~100 ms, bốn truy vấn báo cáo đều dùng chỉ mục, nên chưa thêm chỉ mục.
+
+## Trạng thái (cập nhật: 2026-10-30)
 Vòng đời đơn đã đủ: đặt, thanh toán, hủy, đổi ngày, không đến, tự hoàn tất, đối soát, khiếu nại (kể cả đơn không đến). Đã thử bằng trình duyệt thật (2026-10-29): đổi ngày (từ chối khác giá, chấp nhận cùng giá), báo không đến, cron tự hoàn tất. Báo cáo Word ở `D:\DoAnTotNghiep\Thực tập tốt nghiệp\` (bản `_v2` mới nhất) và kịch bản demo có bước 7b5.
 
 Mốc cũ (2026-10-20):
