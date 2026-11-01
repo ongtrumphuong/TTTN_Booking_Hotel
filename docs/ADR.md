@@ -6,10 +6,10 @@ Mỗi mục ghi lại một quyết định đã được áp dụng trong mã, 
 
 - **Trạng thái:** đã áp dụng.
 - **Bối cảnh:** hai khách có thể đặt cùng lúc loại phòng chỉ còn một phòng. Nếu mỗi giao dịch cùng đọc "còn 1 phòng" rồi cùng ghi, hệ thống bán vượt.
-- **Quyết định:** tạo đơn, xác nhận đơn, và áp kết quả cổng thanh toán đều chạy trong giao dịch mức cô lập `Serializable` của PostgreSQL. Khi PostgreSQL phát hiện xung đột (mã `P2034`), người dùng thấy "hệ thống bận, thử lại"; với IPN thì trả mã `99` để cổng gọi lại sau.
-- **Hệ quả:** đúng đắn mà không cần quản lý khóa thủ công, mã đơn giản. Đổi lại, khi tải đồng thời cao trên cùng một loại phòng sẽ có giao dịch bị hủy và phải thử lại.
-- **Phương án khác:** khóa hàng bi quan (`SELECT ... FOR UPDATE` trên dòng phòng); khóa lạc quan bằng cột phiên bản; bộ đếm tồn kho (xem ADR-002).
-- **Cần nghiên cứu:** đo tỷ lệ giao dịch bị hủy theo số người đặt đồng thời (từ `tests/integration/booking-concurrency.test.ts`); so sánh với khóa hàng.
+- **Quyết định:** tạo đơn, xác nhận đơn, và áp kết quả cổng thanh toán đều chạy trong giao dịch mức cô lập `Serializable` của PostgreSQL. Khi PostgreSQL phát hiện xung đột (mã `P2034`): với IPN thì trả mã `99` để cổng gọi lại sau; với tạo đơn (`createPendingBooking`) thì **tự thử lại tối đa 10 lần** (`BOOKING_MAX_ATTEMPTS`), mỗi lần kiểm tra lại phòng trống từ đầu, chỉ báo "hệ thống bận" khi hết số lần thử. Cập nhật 2026-11-01.
+- **Hệ quả:** đúng đắn mà không cần quản lý khóa thủ công, mã đơn giản. Xung đột không có nghĩa là hết phòng, nên không thử lại sẽ làm mất đơn vô ích: thí nghiệm (`tests/perf/concurrency.test.ts`, kết quả ở `docs/data/concurrency.json`) cho thấy 20 khách cùng đặt một loại phòng đủ chỗ thì 1 lần thử chỉ được 2 đơn, 4 lần thử 8,4 đơn, 10 lần thử 19,2 đơn (tổng thời gian khoảng 1,3 s). Mọi cấu hình đều không bán vượt phòng; tranh phòng cuối luôn bán đúng một phòng. Đổi lại, 20 khách cùng đặt một loại phòng làm thời gian xử lý tăng vì các giao dịch phải nối đuôi nhau.
+- **Phương án khác:** khóa hàng bi quan (`SELECT ... FOR UPDATE` trên dòng phòng) để tránh hủy giao dịch; khóa lạc quan bằng cột phiên bản; bộ đếm tồn kho (xem ADR-002); hàng đợi cho loại phòng bán chạy.
+- **Cần nghiên cứu:** so sánh với khóa hàng (tỷ lệ thành công, độ trễ); thử ở tải lớn hơn 20 khách và trên máy chủ thật (số liệu hiện đo ở máy phát triển).
 
 ## ADR-002: Phòng trống được tính từ các đơn, không lưu bộ đếm tồn kho
 

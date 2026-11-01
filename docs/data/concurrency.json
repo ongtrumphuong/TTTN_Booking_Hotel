@@ -1,0 +1,270 @@
+{
+  "repeats": 5,
+  "defaultAttempts": 10,
+  "rows": [
+    {
+      "n": 2,
+      "scenario": "enough",
+      "attempts": 1,
+      "ok": 1,
+      "soldOut": 0,
+      "busy": 1,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 65
+    },
+    {
+      "n": 2,
+      "scenario": "last",
+      "attempts": 1,
+      "ok": 1,
+      "soldOut": 0,
+      "busy": 1,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 42
+    },
+    {
+      "n": 2,
+      "scenario": "enough",
+      "attempts": 4,
+      "ok": 2,
+      "soldOut": 0,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 90
+    },
+    {
+      "n": 2,
+      "scenario": "last",
+      "attempts": 4,
+      "ok": 1,
+      "soldOut": 1,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 98
+    },
+    {
+      "n": 2,
+      "scenario": "enough",
+      "attempts": 10,
+      "ok": 2,
+      "soldOut": 0,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 99
+    },
+    {
+      "n": 2,
+      "scenario": "last",
+      "attempts": 10,
+      "ok": 1,
+      "soldOut": 1,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 113
+    },
+    {
+      "n": 5,
+      "scenario": "enough",
+      "attempts": 1,
+      "ok": 1,
+      "soldOut": 0,
+      "busy": 4,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 75
+    },
+    {
+      "n": 5,
+      "scenario": "last",
+      "attempts": 1,
+      "ok": 1,
+      "soldOut": 0,
+      "busy": 4,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 50
+    },
+    {
+      "n": 5,
+      "scenario": "enough",
+      "attempts": 4,
+      "ok": 4.8,
+      "soldOut": 0,
+      "busy": 0.2,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 227
+    },
+    {
+      "n": 5,
+      "scenario": "last",
+      "attempts": 4,
+      "ok": 1,
+      "soldOut": 4,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 116
+    },
+    {
+      "n": 5,
+      "scenario": "enough",
+      "attempts": 10,
+      "ok": 5,
+      "soldOut": 0,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 316
+    },
+    {
+      "n": 5,
+      "scenario": "last",
+      "attempts": 10,
+      "ok": 1,
+      "soldOut": 4,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 113
+    },
+    {
+      "n": 10,
+      "scenario": "enough",
+      "attempts": 1,
+      "ok": 1,
+      "soldOut": 0,
+      "busy": 9,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 104
+    },
+    {
+      "n": 10,
+      "scenario": "last",
+      "attempts": 1,
+      "ok": 1,
+      "soldOut": 0,
+      "busy": 9,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 86
+    },
+    {
+      "n": 10,
+      "scenario": "enough",
+      "attempts": 4,
+      "ok": 5.4,
+      "soldOut": 0,
+      "busy": 4.6,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 382
+    },
+    {
+      "n": 10,
+      "scenario": "last",
+      "attempts": 4,
+      "ok": 1,
+      "soldOut": 9,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 168
+    },
+    {
+      "n": 10,
+      "scenario": "enough",
+      "attempts": 10,
+      "ok": 10,
+      "soldOut": 0,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 721
+    },
+    {
+      "n": 10,
+      "scenario": "last",
+      "attempts": 10,
+      "ok": 1,
+      "soldOut": 9,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 118
+    },
+    {
+      "n": 20,
+      "scenario": "enough",
+      "attempts": 1,
+      "ok": 2,
+      "soldOut": 0,
+      "busy": 18,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 178
+    },
+    {
+      "n": 20,
+      "scenario": "last",
+      "attempts": 1,
+      "ok": 1,
+      "soldOut": 3,
+      "busy": 16,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 172
+    },
+    {
+      "n": 20,
+      "scenario": "enough",
+      "attempts": 4,
+      "ok": 8.4,
+      "soldOut": 0,
+      "busy": 11.6,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 566
+    },
+    {
+      "n": 20,
+      "scenario": "last",
+      "attempts": 4,
+      "ok": 1,
+      "soldOut": 19,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 225
+    },
+    {
+      "n": 20,
+      "scenario": "enough",
+      "attempts": 10,
+      "ok": 19.2,
+      "soldOut": 0,
+      "busy": 0.8,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 1295
+    },
+    {
+      "n": 20,
+      "scenario": "last",
+      "attempts": 10,
+      "ok": 1,
+      "soldOut": 19,
+      "busy": 0,
+      "other": 0,
+      "oversold": 0,
+      "wallMs": 237
+    }
+  ]
+}

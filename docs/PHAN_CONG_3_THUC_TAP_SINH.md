@@ -103,7 +103,9 @@ Trước khi giao việc, dự án đã được kiểm lại để cả nhóm b
 
 **Phân quyền:** rà toàn bộ server action và route API; thêm `tests/integration/authz-matrix.test.ts` thử từng thao tác bằng người không có quyền rồi kiểm dữ liệu không đổi. Kết quả: phía máy chủ kiểm quyền đúng. Tìm thấy **một lỗi chức năng**: route tải ảnh `/api/admin/uploads` chỉ cho quản trị viên, trong khi form khách sạn và phòng của đối tác dùng chung bộ tải ảnh này, nên đối tác tải ảnh lên bị từ chối. Đã sửa cho phép đối tác (không cho khách thường) và có test `uploads-route.test.ts`.
 
-**Hiệu năng** (`npm run test:perf`, 300 khách sạn, 900 phòng, 40.000 đơn): trung vị 5 lần chạy, tìm khách sạn không lọc 99 ms, tìm có ngày 101 ms, tổng quan quản trị 90 ngày 84 ms, tính phòng trống một loại phòng 1 ms. Bốn truy vấn báo cáo đều dùng chỉ mục. Chưa có bằng chứng cần thêm chỉ mục.
+**Hiệu năng** (`npm run test:perf`, 300 khách sạn, 900 phòng, 40.000 đơn): trung vị 5 lần chạy, tìm khách sạn không lọc 99 đến 177 ms, tìm có ngày 101 đến 169 ms, tổng quan quản trị 90 ngày 84 đến 95 ms (khác nhau giữa các lần chạy), tính phòng trống một loại phòng 1 ms. Bốn truy vấn báo cáo đều dùng chỉ mục. Chưa có bằng chứng cần thêm chỉ mục.
+
+**Cải tiến có đo đạc (2026-11-01):** tạo đơn nay tự thử lại tối đa 10 lần khi giao dịch Serializable bị hủy do xung đột (`createPendingBooking`, tham số `maxAttempts` chỉ để thí nghiệm). Thí nghiệm `tests/perf/concurrency.test.ts` (chạy bằng `npm run test:perf`, kết quả lưu ở `docs/data/concurrency.json`) với 20 khách cùng đặt một loại phòng đủ chỗ: 1 lần thử được 2 đơn, 4 lần thử 8,4 đơn, 10 lần thử 19,2 đơn; không cấu hình nào bán vượt. Đo ở máy phát triển, tối đa 20 khách. Người 1 có thể mở rộng: so sánh với khóa hàng, tải lớn hơn, hàng đợi cho loại phòng bán chạy.
 
 **Đã có sẵn, không cần làm lại:** CI (`.github/workflows/ci.yml`: typecheck, lint, test, build, kèm PostgreSQL); IPN lặp, hai yêu cầu đồng thời, trả muộn khi đơn đã hết hạn (`payments-apply.test.ts`); chặn quét vé lại (điều kiện `checkedInAt: null` trong cùng câu `updateMany`).
 

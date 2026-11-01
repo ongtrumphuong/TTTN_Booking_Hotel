@@ -1,0 +1,77 @@
+{
+  "paid": 2900000,
+  "freeCancelDays": 3,
+  "lateFeePercent": 50,
+  "rows": [
+    {
+      "daysLeft": 10,
+      "refund": 2900000,
+      "fee": 0,
+      "free": true
+    },
+    {
+      "daysLeft": 9,
+      "refund": 2900000,
+      "fee": 0,
+      "free": true
+    },
+    {
+      "daysLeft": 8,
+      "refund": 2900000,
+      "fee": 0,
+      "free": true
+    },
+    {
+      "daysLeft": 7,
+      "refund": 2900000,
+      "fee": 0,
+      "free": true
+    },
+    {
+      "daysLeft": 6,
+      "refund": 2900000,
+      "fee": 0,
+      "free": true
+    },
+    {
+      "daysLeft": 5,
+      "refund": 2900000,
+      "fee": 0,
+      "free": true
+    },
+    {
+      "daysLeft": 4,
+      "refund": 2900000,
+      "fee": 0,
+      "free": true
+    },
+    {
+      "daysLeft": 3,
+      "refund": 2900000,
+      "fee": 0,
+      "free": true
+    },
+    {
+      "daysLeft": 2,
+      "refund": 1450000,
+      "fee": 1450000,
+      "free": false
+    },
+    {
+      "daysLeft": 1,
+      "refund": 1450000,
+      "fee": 1450000,
+      "free": false
+    },
+    {
+      "daysLeft": 0,
+      "refund": 1450000,
+      "fee": 1450000,
+      "free": false
+    }
+  ],
+  "noShow": {
+    "refund": 1450000,
+    "fee": 1450000
+  }
+}

@@ -20,11 +20,10 @@ describe("đặt phòng đồng thời", () => {
 
     const ok = results.filter((r) => r.ok).length;
     const held = await prisma.booking.aggregate({ _sum: { rooms: true }, where: { roomId, status: "PENDING" } });
-    expect(ok).toBeGreaterThanOrEqual(1); // ít nhất một khách đặt được
-    expect(ok).toBeLessThanOrEqual(2); // tối đa bằng số phòng
-    expect(held._sum.rooms ?? 0).toBe(ok); // số phòng đang giữ khớp số đơn thành công
-    // Khách không đặt được nhận thông báo rõ ràng (hết phòng hoặc hệ thống bận), không bị lỗi bất ngờ.
-    for (const r of results) if (!r.ok) expect(r.error).toMatch(/hết|bận/);
+    expect(ok).toBe(2); // đủ số phòng được bán: xung đột giao dịch được tự thử lại nên không mất đơn dù còn phòng
+    expect(held._sum.rooms ?? 0).toBe(ok); // số phòng đang giữ khớp số đơn thành công, không bán vượt
+    // Khách không đặt được nhận thông báo rõ ràng là hết phòng (không phải "hệ thống bận" khi phòng thật ra đã hết).
+    for (const r of results) if (!r.ok) expect(r.error).toMatch(/hết/);
   });
 
   it("các khoảng ngày không giao nhau thì không cản nhau (ngày trả phòng của đơn này là ngày nhận phòng của đơn kia)", async () => {
