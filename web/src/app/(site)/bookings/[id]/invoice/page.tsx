@@ -21,7 +21,7 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
     include: {
       user: { select: { name: true, email: true, phone: true } },
       room: { include: { hotel: { select: { name: true, address: true, city: true } } } },
-      payments: { where: { status: "SUCCESS" }, orderBy: { paidAt: "desc" }, take: 1 },
+      payments: { where: { status: "SUCCESS", duplicate: false }, orderBy: { paidAt: "desc" }, take: 1 },
     },
   });
   // Chỉ đơn đã thanh toán mới có phiếu; đơn khác báo như không tồn tại.

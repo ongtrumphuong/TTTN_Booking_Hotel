@@ -20,7 +20,10 @@ export const metadata: Metadata = { title: "Chi tiết đặt phòng", robots: N
 async function Detail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ paid?: string; payment?: string }> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const user = await requireUser(`/bookings/${id}`);
-  const b = await prisma.booking.findFirst({ where: { id, userId: user.id }, include: { room: { include: { hotel: true } }, dispute: true } });
+  const b = await prisma.booking.findFirst({
+    where: { id, userId: user.id },
+    include: { room: { include: { hotel: true } }, dispute: true, payments: { where: { duplicate: true, status: "SUCCESS" }, select: { id: true, amount: true, refundedAt: true } } },
+  });
   if (!b) notFound();
 
   const status = statusLabel(b.status, b.noShow);
@@ -51,6 +54,12 @@ async function Detail({ params, searchParams }: { params: Promise<{ id: string }
           <p>Đơn đã được hủy và bộ phận hỗ trợ sẽ hoàn tiền cho bạn. Xin lỗi vì sự bất tiện này.</p>
         </div>
       )}
+      {b.payments.map((p) => (
+        <div key={p.id} role="status" className="mb-6 rounded-2xl bg-amber-50 p-5 text-sm text-amber-900">
+          <p className="font-bold">{p.refundedAt ? `Đã hoàn khoản thanh toán trùng ${formatVND(p.amount)}.` : `Bạn đã thanh toán trùng ${formatVND(p.amount)} cho đơn này.`}</p>
+          {!p.refundedAt && <p>Đơn đã được thanh toán trước đó nên khoản này sẽ được bộ phận hỗ trợ hoàn lại về phương thức bạn đã dùng.</p>}
+        </div>
+      ))}
       {sp.paid && b.status === "CONFIRMED" && <BookingSteps current={3} />}
       {sp.paid && b.status === "CONFIRMED" && (
         <div className="mb-6 flex items-center gap-3 rounded-2xl bg-emerald-50 p-5 text-emerald-900">

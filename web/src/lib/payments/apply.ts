@@ -14,9 +14,10 @@ export type GatewayResult = {
 
 /** Mã RspCode theo quy định của VNPay cho IPN. */
 export type Rsp = "00" | "01" | "02" | "04" | "99";
-export type Outcome = "paid" | "failed" | "cancelled" | "needs-refund";
+/** duplicate: đơn đã được thanh toán trước đó, giao dịch này là khoản trả trùng và phải hoàn lại. */
+export type Outcome = "paid" | "failed" | "cancelled" | "needs-refund" | "duplicate";
 
-export type ApplyResult = { rsp: Rsp; bookingId?: string; outcome?: Outcome; confirmedNow?: boolean };
+export type ApplyResult = { rsp: Rsp; bookingId?: string; outcome?: Outcome; confirmedNow?: boolean; paymentId?: string };
 
 /**
  * Áp dụng kết quả thanh toán từ cổng, an toàn khi gọi nhiều lần (IPN và trang quay về đều gọi):
@@ -24,11 +25,11 @@ export type ApplyResult = { rsp: Rsp; bookingId?: string; outcome?: Outcome; con
  * Người gọi phải kiểm tra chữ ký trước khi gọi hàm này.
  */
 export async function applyGatewayResult(r: GatewayResult): Promise<ApplyResult> {
-  const payment = await prisma.payment.findUnique({ where: { txnRef: r.txnRef }, select: { id: true, bookingId: true, amount: true, status: true, responseCode: true } });
+  const payment = await prisma.payment.findUnique({ where: { txnRef: r.txnRef }, select: { id: true, bookingId: true, amount: true, status: true, responseCode: true, duplicate: true } });
   if (!payment) return { rsp: "01" };
   if (r.amountMinor !== String(payment.amount * 100)) return { rsp: "04", bookingId: payment.bookingId };
   if (payment.status !== "PENDING") {
-    const outcome: Outcome = payment.status === "SUCCESS" ? "paid" : payment.responseCode === "24" ? "cancelled" : "failed";
+    const outcome: Outcome = payment.status === "SUCCESS" ? (payment.duplicate ? "duplicate" : "paid") : payment.responseCode === "24" ? "cancelled" : "failed";
     return { rsp: "02", bookingId: payment.bookingId, outcome };
   }
 
@@ -52,6 +53,16 @@ export async function applyGatewayResult(r: GatewayResult): Promise<ApplyResult>
 
         const booking = await tx.booking.findUniqueOrThrow({ where: { id: payment.bookingId }, include: { room: true } });
         const base = { rsp: "00" as const, bookingId: booking.id };
+
+        // Đơn đã được thanh toán trước đó (bằng giao dịch khác, hoặc quản trị viên đã xác nhận nhận tiền): khách trả hai lần.
+        // Không đổi đơn; đánh dấu riêng giao dịch này để quản trị viên hoàn toàn bộ số tiền của nó.
+        if (booking.paymentStatus !== "UNPAID") {
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: { duplicate: true, note: "Thanh toán trùng: đơn đã được thanh toán trước đó, cần hoàn toàn bộ giao dịch này." },
+          });
+          return { ...base, outcome: "duplicate", paymentId: payment.id };
+        }
 
         if (booking.status === "CONFIRMED") return { ...base, outcome: "paid" };
 

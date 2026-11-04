@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { applyGatewayResult, type GatewayResult } from "@/lib/payments/apply";
+import { REFUND_WHERE } from "@/lib/booking";
 import { d, minutesAgo, mkBooking, mkHotel, mkUser, prisma, resetDb } from "../helpers/db";
 
 const AMOUNT = 2_900_000;
@@ -125,12 +126,64 @@ describe("thanh toán thành công", () => {
     expect((await booking(b.id)).status).toBe("CONFIRMED");
   });
 
-  it("đơn đã được xác nhận trước đó (ví dụ quản trị viên) không bị xác nhận lại", async () => {
+  it("đơn đã được xác nhận trước đó (ví dụ quản trị viên) không bị xác nhận lại; tiền về sau là khoản trùng", async () => {
     const b = await pending({ status: "CONFIRMED", paymentStatus: "PAID" });
     const p = await payment(b.id);
     const r = await applyGatewayResult(ok(p.txnRef));
-    expect(r).toMatchObject({ rsp: "00", outcome: "paid" });
+    expect(r).toMatchObject({ rsp: "00", outcome: "duplicate", paymentId: p.id });
     expect(r.confirmedNow).toBeUndefined();
+    expect((await pay(p.txnRef)).duplicate).toBe(true);
+  });
+});
+
+describe("khách trả tiền hai lần cho một đơn -> khoản sau là thanh toán trùng cần hoàn", () => {
+  it("hai giao dịch cùng thành công: đơn xác nhận một lần, giao dịch sau được đánh dấu trùng", async () => {
+    const b = await pending();
+    const p1 = await payment(b.id);
+    const p2 = await payment(b.id);
+    expect(await applyGatewayResult(ok(p1.txnRef))).toMatchObject({ outcome: "paid", confirmedNow: true });
+    const r = await applyGatewayResult(ok(p2.txnRef));
+    expect(r).toMatchObject({ rsp: "00", outcome: "duplicate", paymentId: p2.id });
+    expect(r.confirmedNow).toBeUndefined();
+
+    expect(await pay(p1.txnRef)).toMatchObject({ status: "SUCCESS", duplicate: false });
+    expect(await pay(p2.txnRef)).toMatchObject({ status: "SUCCESS", duplicate: true });
+    expect((await pay(p2.txnRef)).note).toContain("trùng");
+    // đơn giữ nguyên: không bị hủy, không đổi số tiền hoàn
+    expect(await booking(b.id)).toMatchObject({ status: "CONFIRMED", paymentStatus: "PAID", refundAmount: null });
+    // IPN hoặc trang quay về báo lặp: 02 và vẫn là khoản trùng
+    expect(await applyGatewayResult(ok(p2.txnRef))).toMatchObject({ rsp: "02", outcome: "duplicate" });
+    // điều kiện "cần hoàn tiền" của quản trị viên thấy đơn này
+    expect(await prisma.booking.count({ where: { id: b.id, ...REFUND_WHERE } })).toBe(1);
+  });
+
+  it("hai giao dịch thành công đồng thời: đúng một xác nhận đơn, đúng một khoản trùng", async () => {
+    const b = await pending();
+    const p1 = await payment(b.id);
+    const p2 = await payment(b.id);
+    const refs = [p1.txnRef, p2.txnRef];
+    const rs = await Promise.all(refs.map((t) => applyGatewayResult(ok(t))));
+    // xung đột Serializable thì bên thua nhận 99 và VNPay sẽ gọi lại; ở đây gọi lại cho tới khi xong
+    for (let i = 0; i < rs.length; i++) while (rs[i].rsp === "99") rs[i] = await applyGatewayResult(ok(refs[i]));
+    expect(rs.map((r) => r.outcome).sort()).toEqual(["duplicate", "paid"]);
+    expect(await prisma.payment.count({ where: { bookingId: b.id, duplicate: true } })).toBe(1);
+    expect((await booking(b.id)).status).toBe("CONFIRMED");
+  });
+
+  it("đơn đã hủy và đã hoàn tiền: khoản trả sau đó là khoản trùng, số tiền hoàn của đơn không bị ghi đè", async () => {
+    const b = await pending({ status: "CANCELLED", paymentStatus: "REFUNDED" });
+    await prisma.booking.update({ where: { id: b.id }, data: { refundAmount: 1_450_000 } });
+    const p = await payment(b.id);
+    expect((await applyGatewayResult(ok(p.txnRef))).outcome).toBe("duplicate");
+    expect(await booking(b.id)).toMatchObject({ status: "CANCELLED", paymentStatus: "REFUNDED", refundAmount: 1_450_000 });
+  });
+
+  it("giao dịch thất bại không bao giờ bị coi là trùng", async () => {
+    const b = await pending({ status: "CONFIRMED", paymentStatus: "PAID" });
+    const p = await payment(b.id);
+    expect((await applyGatewayResult(ok(p.txnRef, { responseCode: "51" }))).outcome).toBe("failed");
+    expect((await pay(p.txnRef)).duplicate).toBe(false);
+    expect(await prisma.booking.count({ where: { id: b.id, ...REFUND_WHERE } })).toBe(0);
   });
 });
 

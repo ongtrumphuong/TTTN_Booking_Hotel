@@ -150,6 +150,17 @@ export function paymentLabel(status: string, paymentStatus: string, refundAmount
   return needsRefund(status, paymentStatus, refundAmount) ? "Chờ hoàn tiền" : PAYMENT_LABEL[paymentStatus];
 }
 
+/** Giao dịch trả trùng còn chưa hoàn (xem Payment.duplicate). */
+export const OPEN_DUPLICATE = { duplicate: true, status: "SUCCESS", refundedAt: null } satisfies Prisma.PaymentWhereInput;
+
+/** Đơn cần quản trị viên hoàn tiền: đơn hủy còn tiền phải hoàn (needsRefund), hoặc có giao dịch trả trùng chưa hoàn. */
+export const REFUND_WHERE = {
+  OR: [
+    { status: "CANCELLED", paymentStatus: "PAID", OR: [{ refundAmount: null }, { refundAmount: { gt: 0 } }] },
+    { payments: { some: OPEN_DUPLICATE } },
+  ],
+} satisfies Prisma.BookingWhereInput;
+
 /**
  * Trạng thái thanh toán sau khi hủy đơn. Đơn trả tiền thật qua VNPay phải giữ "Đã thanh toán" cho tới khi quản trị viên
  * hoàn tiền xong và xác nhận; đơn giả lập hoặc chưa trả tiền thì không có tiền thật để hoàn nên được chuyển ngay.
@@ -162,7 +173,7 @@ export async function paymentStatusAfterCancel(
 ): Promise<"UNPAID" | "PAID" | "REFUNDED"> {
   if (current !== "PAID") return current;
   if (refundAmount === 0) return "PAID"; // giữ toàn bộ tiền theo chính sách hủy: không có khoản nào để hoàn
-  const real = await db.payment.count({ where: { bookingId, provider: "VNPAY", status: "SUCCESS" } });
+  const real = await db.payment.count({ where: { bookingId, provider: "VNPAY", status: "SUCCESS", duplicate: false } });
   return real > 0 ? "PAID" : "REFUNDED";
 }
 

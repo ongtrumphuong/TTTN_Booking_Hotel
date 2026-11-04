@@ -1,6 +1,6 @@
 import { NextResponse, after, connection, type NextRequest } from "next/server";
 import { sendBookingConfirmation } from "@/lib/email";
-import { notifyBookingEvent } from "@/lib/notify";
+import { notifyBookingEvent, notifyDuplicatePayment } from "@/lib/notify";
 import { applyGatewayResult } from "@/lib/payments/apply";
 import { verifySignature, vnpayConfig } from "@/lib/payments/vnpay";
 
@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
     after(() => sendBookingConfirmation(bookingId));
     after(() => notifyBookingEvent(bookingId, "PAID"));
   }
+  const duplicateId = res.paymentId;
+  if (res.outcome === "duplicate" && res.rsp === "00" && duplicateId) after(() => notifyDuplicatePayment(duplicateId));
 
   if (!bookingId || res.rsp === "01" || res.rsp === "04") return to("/bookings?payment=invalid");
   switch (res.outcome) {
@@ -41,6 +43,8 @@ export async function GET(req: NextRequest) {
       return to(`/bookings/${bookingId}?paid=1`);
     case "needs-refund":
       return to(`/bookings/${bookingId}?payment=refund`);
+    case "duplicate":
+      return to(`/bookings/${bookingId}?payment=duplicate`);
     case "cancelled":
       return to(`/bookings/${bookingId}/pay?error=cancelled`);
     default:

@@ -14,10 +14,11 @@ import { sendBookingCancelled, sendRefundCompleted } from "@/lib/email";
 import { NO_ACCESS, baseFor, canManageBooking, canManageHotel, canManageRoom } from "@/lib/access";
 import { requireAdmin, requireStaff } from "@/lib/session";
 import { canMarkNoShow, noShowQuote } from "@/lib/lifecycle";
-import { NEXT_STATUS, STATUS_LABEL, unavailableQuantity, needsRefund, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
+import { NEXT_STATUS, OPEN_DUPLICATE, STATUS_LABEL, unavailableQuantity, needsRefund, paymentStatusAfterCancel, todayUTC } from "@/lib/booking";
 import { ALLOWED_IMAGE_HOSTS } from "@/lib/image-hosts";
 import { normalizeCode } from "@/lib/voucher";
 import { slugify } from "@/lib/slug";
+import { formatVND } from "@/lib/format";
 import { UPLOAD_URL } from "@/lib/uploads";
 
 export type AdminState = { error?: string; ok?: boolean };
@@ -366,7 +367,7 @@ export async function markRefundedAction(bookingId: string, note: string): Promi
     if (!b || !needsRefund(b.status, b.paymentStatus, b.refundAmount)) return false;
     await tx.booking.update({ where: { id: b.id }, data: { paymentStatus: "REFUNDED" } });
     await tx.payment.updateMany({
-      where: { bookingId: b.id, status: "SUCCESS", refundedAt: null },
+      where: { bookingId: b.id, status: "SUCCESS", refundedAt: null, duplicate: false },
       data: { refundedAt: new Date(), refundNote: `${admin.name}${cleanNote ? `: ${cleanNote}` : ""}` },
     });
     return true;
@@ -374,6 +375,26 @@ export async function markRefundedAction(bookingId: string, note: string): Promi
   if (!done) return { error: "Đơn này không ở trạng thái chờ hoàn tiền." };
   await audit(admin, "REFUND_DONE", `Xác nhận đã hoàn tiền đơn ${bookingId}${cleanNote ? ` (${cleanNote})` : ""}`, { type: "Booking", id: bookingId });
   after(() => sendRefundCompleted(bookingId));
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** Quản trị viên xác nhận đã hoàn (ngoài hệ thống) một giao dịch khách trả trùng. Đơn giữ nguyên trạng thái. */
+export async function markDuplicateRefundedAction(paymentId: string, note: string): Promise<AdminState> {
+  const admin = await requireAdmin("/admin/bookings");
+  const cleanNote = String(note ?? "").trim().slice(0, 300);
+  const p = await prisma.payment.findUnique({ where: { id: String(paymentId ?? "") }, select: { id: true, amount: true, txnRef: true, bookingId: true } });
+  // Điều kiện trong where để hai lần bấm cùng lúc chỉ ghi nhận một lần.
+  const res = p
+    ? await prisma.payment.updateMany({
+        where: { id: p.id, ...OPEN_DUPLICATE },
+        data: { refundedAt: new Date(), refundNote: `${admin.name}${cleanNote ? `: ${cleanNote}` : ""}` },
+      })
+    : { count: 0 };
+  if (!p || res.count === 0) return { error: "Giao dịch này không phải khoản trả trùng đang chờ hoàn." };
+  await audit(admin, "REFUND_DONE", `Xác nhận đã hoàn khoản trả trùng ${formatVND(p.amount)} (giao dịch ${p.txnRef})${cleanNote ? ` (${cleanNote})` : ""}`, { type: "Booking", id: p.bookingId });
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");

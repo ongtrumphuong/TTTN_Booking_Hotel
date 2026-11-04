@@ -1,6 +1,6 @@
 # Phân công 3 thực tập sinh kỹ thuật phần mềm (10 tuần)
 
-Tài liệu này chia dự án **Không Gian Số Stay** cho ba thực tập sinh cùng chuyên ngành kỹ thuật phần mềm. Cả ba đều là lập trình viên: mỗi người **làm trọn chu trình** (phân tích, thiết kế, lập trình, kiểm thử) cho một mảng nghiệp vụ, và nghiên cứu sâu một chủ đề kỹ thuật xuyên suốt. Không chia theo vai trò BA/Dev/QA, để mỗi người có sản phẩm riêng để trình bày.
+Tài liệu này chia dự án **KGS Stay** cho ba thực tập sinh cùng chuyên ngành kỹ thuật phần mềm. Cả ba đều là lập trình viên: mỗi người **làm trọn chu trình** (phân tích, thiết kế, lập trình, kiểm thử) cho một mảng nghiệp vụ, và nghiên cứu sâu một chủ đề kỹ thuật xuyên suốt. Không chia theo vai trò BA/Dev/QA, để mỗi người có sản phẩm riêng để trình bày.
 
 Tài liệu đi kèm: [QUY_TAC_NGHIEP_VU.md](QUY_TAC_NGHIEP_VU.md) (danh mục quy tắc có mã BR-xx), [ADR.md](ADR.md) (các quyết định kiến trúc đã có), [KICH_BAN_DEMO.md](KICH_BAN_DEMO.md).
 

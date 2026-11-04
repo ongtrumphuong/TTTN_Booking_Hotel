@@ -21,7 +21,7 @@ vi.mock("next/server", async (orig) => ({ ...(await orig<typeof import("next/ser
 vi.mock("next/navigation", () => ({ redirect: vi.fn(), notFound: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendBookingCancelled: vi.fn(), sendRefundCompleted: vi.fn(), sendBookingConfirmation: vi.fn(), sendPasswordResetEmail: vi.fn(), sendStaffNotice: vi.fn() }));
 
-import { markRefundedAction, replyReviewAction, updateRoomAction } from "@/app/actions/admin";
+import { markDuplicateRefundedAction, markRefundedAction, replyReviewAction, updateRoomAction } from "@/app/actions/admin";
 import { setCommissionAction } from "@/app/actions/partner";
 import { GET as exportBookings } from "@/app/api/export/bookings/route";
 import { GET as exportPayouts } from "@/app/api/export/payouts/route";
@@ -103,6 +103,37 @@ describe("nhật ký thao tác", () => {
     expect(logs[0].summary).toMatch(/→ 15%/);
     expect(logs[1].summary).toMatch(/2000000/);
     expect(logs[2].summary).toContain("Đã chuyển khoản");
+  });
+
+  it("hoàn khoản trả trùng: chỉ đánh dấu đúng giao dịch đó, ghi nhật ký, bấm lần hai bị từ chối", async () => {
+    const { admin, guest, mine } = await setup();
+    as(admin, "ADMIN");
+    const b = await mkBooking({ userId: guest.id, roomId: mine.rooms[0].id, checkIn: daysFromToday(3), checkOut: daysFromToday(5), status: "CONFIRMED", paymentStatus: "PAID" });
+    const first = await prisma.payment.create({ data: { bookingId: b.id, provider: "VNPAY", txnRef: "GD1", amount: b.totalPrice, status: "SUCCESS" } });
+    const dup = await prisma.payment.create({ data: { bookingId: b.id, provider: "VNPAY", txnRef: "GD2", amount: b.totalPrice, status: "SUCCESS", duplicate: true } });
+
+    expect(await markDuplicateRefundedAction(first.id, "")).toHaveProperty("error"); // giao dịch thật của đơn, không phải khoản trùng
+    expect(await markDuplicateRefundedAction(dup.id, "Hoàn qua VNPay")).toEqual({ ok: true });
+    expect(await markDuplicateRefundedAction(dup.id, "")).toHaveProperty("error");
+
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: dup.id } })).refundedAt).not.toBeNull();
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: first.id } })).refundedAt).toBeNull();
+    expect(await prisma.booking.findUniqueOrThrow({ where: { id: b.id } })).toMatchObject({ status: "CONFIRMED", paymentStatus: "PAID" });
+    const logs = await prisma.auditLog.findMany();
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ action: "REFUND_DONE", targetId: b.id });
+    expect(logs[0].summary).toContain("GD2");
+  });
+
+  it("hoàn tiền đơn hủy không đánh dấu luôn khoản trả trùng", async () => {
+    const { admin, guest, mine } = await setup();
+    as(admin, "ADMIN");
+    const b = await mkBooking({ userId: guest.id, roomId: mine.rooms[0].id, checkIn: daysFromToday(3), checkOut: daysFromToday(5), status: "CANCELLED", paymentStatus: "PAID" });
+    await prisma.booking.update({ where: { id: b.id }, data: { refundAmount: b.totalPrice } });
+    await prisma.payment.create({ data: { bookingId: b.id, provider: "VNPAY", txnRef: "GD1", amount: b.totalPrice, status: "SUCCESS" } });
+    const dup = await prisma.payment.create({ data: { bookingId: b.id, provider: "VNPAY", txnRef: "GD2", amount: b.totalPrice, status: "SUCCESS", duplicate: true } });
+    expect(await markRefundedAction(b.id, "")).toEqual({ ok: true });
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: dup.id } })).refundedAt).toBeNull();
   });
 
   it("thao tác bị từ chối không để lại nhật ký", async () => {

@@ -1,4 +1,4 @@
-# Kịch bản demo và điểm nhấn kỹ thuật – Không Gian Số Stay
+# Kịch bản demo và điểm nhấn kỹ thuật – KGS Stay
 
 Tài liệu dùng cho buổi báo cáo thực tập tốt nghiệp. Phần 1 là kịch bản demo (khoảng 12–15 phút), phần 2 là các điểm nhấn kỹ thuật để trình bày, phần 3 là câu hỏi hội đồng thường hỏi và cách trả lời.
 

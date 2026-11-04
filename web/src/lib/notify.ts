@@ -67,6 +67,23 @@ export async function notifyBookingEvent(bookingId: string, event: "PAID" | "CAN
   }
 }
 
+/** Báo các quản trị viên có khoản thanh toán trùng cần hoàn (khách trả hai lần cho một đơn). Không bao giờ ném lỗi. */
+export async function notifyDuplicatePayment(paymentId: string) {
+  try {
+    const p = await prisma.payment.findUnique({ where: { id: paymentId }, select: { txnRef: true, amount: true, booking: { select: { code: true } } } });
+    if (!p) return;
+    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+    await notifyUsers(admins.map((a) => a.id), {
+      kind: "DUPLICATE_PAYMENT",
+      title: "Thanh toán trùng cần hoàn",
+      body: `Đơn ${p.booking.code} đã được thanh toán trước đó nhưng khách trả thêm ${formatVND(p.amount)} (giao dịch ${p.txnRef}).`,
+      href: "/admin/bookings?status=REFUND",
+    });
+  } catch (e) {
+    console.error("[notify] Gửi thông báo thanh toán trùng thất bại:", e instanceof Error ? e.message : e);
+  }
+}
+
 /** Báo các quản trị viên có khách sạn của đối tác đang chờ duyệt. */
 export async function notifyHotelPending(hotelId: string) {
   try {

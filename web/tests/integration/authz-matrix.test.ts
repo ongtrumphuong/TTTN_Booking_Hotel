@@ -34,6 +34,7 @@ import {
   deleteReviewAction,
   lookupTicketAction,
   markNoShowAction,
+  markDuplicateRefundedAction,
   markRefundedAction,
   toggleReviewHiddenAction,
   toggleRoomAction,
@@ -154,6 +155,7 @@ describe("hành động chỉ dành cho quản trị viên sàn", () => {
     const voucher = await prisma.voucher.create({ data: { code: "GIAM10", percentOff: 10 } });
     const cancelled = await mkBooking({ userId: guest1.id, roomId, checkIn: daysFromToday(10), checkOut: daysFromToday(12), status: "CANCELLED", paymentStatus: "PAID" });
     await prisma.booking.update({ where: { id: cancelled.id }, data: { refundAmount: cancelled.totalPrice } });
+    const dup = await prisma.payment.create({ data: { bookingId: cancelled.id, provider: "VNPAY", txnRef: "TRUNG1", amount: cancelled.totalPrice, status: "SUCCESS", duplicate: true } });
 
     for (const who of [hostA, guest2]) {
       as(who);
@@ -164,7 +166,9 @@ describe("hành động chỉ dành cho quản trị viên sàn", () => {
       await expect(createVoucherAction({}, fd({ code: "HACK100", kind: "PERCENT", value: "100" }))).rejects.toThrow(Denied);
       await expect(toggleVoucherAction(voucher.id)).rejects.toThrow(Denied);
       await expect(markRefundedAction(cancelled.id, "đã hoàn")).rejects.toThrow(Denied);
+      await expect(markDuplicateRefundedAction(dup.id, "đã hoàn")).rejects.toThrow(Denied);
     }
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: dup.id } })).refundedAt).toBeNull();
 
     expect(await prisma.review.findUniqueOrThrow({ where: { id: review.id } })).toMatchObject({ isHidden: false });
     expect(await prisma.user.findUniqueOrThrow({ where: { id: guest1.id } })).toMatchObject({ role: "USER" });

@@ -4,7 +4,7 @@ import { CheckInButton } from "@/components/admin/check-in-button";
 import { NoShowButton } from "@/components/admin/no-show-button";
 import { RefundButton } from "@/components/admin/refund-button";
 import { SelectAction } from "@/components/admin/select-action";
-import { NEXT_STATUS, STATUS_LABEL, needsRefund, paymentLabel, statusLabel, todayUTC } from "@/lib/booking";
+import { NEXT_STATUS, OPEN_DUPLICATE, REFUND_WHERE, STATUS_LABEL, needsRefund, paymentLabel, statusLabel, todayUTC } from "@/lib/booking";
 import { canMarkNoShow, noShowQuote } from "@/lib/lifecycle";
 import { formatDate, formatDateTime, formatVND } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -54,10 +54,14 @@ export async function BookingsView({ searchParams, user }: { searchParams: Promi
 
   const today = todayUTC();
   const bookings = await prisma.booking.findMany({
-    where: { ...scope, ...(refundOnly ? { status: "CANCELLED", paymentStatus: "PAID", OR: [{ refundAmount: null }, { refundAmount: { gt: 0 } }] } : status ? { status } : {}) },
+    where: { ...scope, ...(refundOnly ? REFUND_WHERE : status ? { status } : {}) },
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { user: { select: { name: true, email: true } }, room: { include: { hotel: { select: { name: true, freeCancelDays: true, lateCancelFeePercent: true } } } } },
+    include: {
+      user: { select: { name: true, email: true } },
+      room: { include: { hotel: { select: { name: true, freeCancelDays: true, lateCancelFeePercent: true } } } },
+      payments: { where: OPEN_DUPLICATE, select: { id: true, amount: true, txnRef: true } },
+    },
   });
 
   return (
@@ -116,6 +120,9 @@ export async function BookingsView({ searchParams, user }: { searchParams: Promi
                     {paymentLabel(b.status, b.paymentStatus, b.refundAmount)}
                     {needsRefund(b.status, b.paymentStatus, b.refundAmount) && ` ${formatVND(b.refundAmount ?? b.totalPrice)}`}
                   </p>
+                  {b.payments.map((p) => (
+                    <p key={p.id} className="text-xs font-bold text-amber-700">Trả trùng {formatVND(p.amount)} (GD {p.txnRef}): cần hoàn</p>
+                  ))}
                   {b.status === "CANCELLED" && b.refundAmount !== null && b.refundAmount < b.totalPrice && <p className="text-xs text-muted">{b.noShow ? "Không đến" : "Hủy muộn"}: {b.refundAmount === 0 ? "giữ toàn bộ tiền" : `hoàn ${formatVND(b.refundAmount)}, giữ ${formatVND(b.totalPrice - b.refundAmount)}`}</p>}
                 </td>
                 <td className="px-4 py-3">
@@ -124,6 +131,9 @@ export async function BookingsView({ searchParams, user }: { searchParams: Promi
                   {b.checkedOutAt && <p className="text-xs text-muted">Trả phòng: {formatDateTime(b.checkedOutAt)}</p>}
                 </td>
                 <td className="px-4 py-3">
+                  {isAdmin && b.payments.map((p) => (
+                    <div key={p.id} className="mb-2"><RefundButton bookingId={b.id} paymentId={p.id} label="Đã hoàn khoản trùng" /></div>
+                  ))}
                   {isAdmin && needsRefund(b.status, b.paymentStatus, b.refundAmount) ? (
                     <RefundButton bookingId={b.id} />
                   ) : (

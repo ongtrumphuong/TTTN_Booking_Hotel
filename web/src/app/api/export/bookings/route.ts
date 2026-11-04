@@ -1,6 +1,6 @@
 import { NextResponse, connection, type NextRequest } from "next/server";
 import type { BookingStatus, Prisma } from "@prisma/client";
-import { isoDate, paymentLabel, statusLabel } from "@/lib/booking";
+import { REFUND_WHERE, isoDate, paymentLabel, statusLabel } from "@/lib/booking";
 import { csvResponse, toCsv } from "@/lib/csv";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const where: Prisma.BookingWhereInput = user.role === "ADMIN" ? {} : { room: { hotel: { ownerId: user.id } } };
   if (status === "REFUND") {
     if (user.role !== "ADMIN") return NextResponse.json({ error: "Bộ lọc này chỉ dành cho quản trị viên." }, { status: 403 });
-    Object.assign(where, { status: "CANCELLED", paymentStatus: "PAID", OR: [{ refundAmount: null }, { refundAmount: { gt: 0 } }] });
+    Object.assign(where, REFUND_WHERE);
   } else if (status) {
     if (!(STATUSES as readonly string[]).includes(status)) return NextResponse.json({ error: "Trạng thái không hợp lệ." }, { status: 400 });
     where.status = status as BookingStatus;

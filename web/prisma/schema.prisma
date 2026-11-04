@@ -221,6 +221,9 @@ model Payment {
   paidAt        DateTime?
   refundedAt    DateTime?
   refundNote    String?
+  // Thanh toán trùng: đơn đã được thanh toán trước khi giao dịch này thành công (khách trả hai lần), nên cả số tiền
+  // của giao dịch này phải hoàn lại; quản trị viên xác nhận bằng refundedAt.
+  duplicate     Boolean          @default(false)
 
   @@index([bookingId])
 }

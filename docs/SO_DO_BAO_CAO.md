@@ -1,4 +1,4 @@
-# Sơ đồ cho báo cáo – Không Gian Số Stay
+# Sơ đồ cho báo cáo – KGS Stay
 
 Các sơ đồ dưới đây viết bằng **Mermaid**. GitHub và VS Code (có tiện ích xem Markdown Mermaid) hiển thị trực tiếp. Muốn chèn vào Word hoặc slide, dán mã vào https://mermaid.live rồi xuất ảnh PNG/SVG.
 
@@ -18,7 +18,7 @@ Danh sách:
 
 ## 0. Mô hình hoạt động: sàn trung gian
 
-Không Gian Số Stay là **sàn đặt phòng trung gian** (giống Booking, Traveloka ở quy mô nhỏ): nhiều khách sạn của các đối tác cùng bán phòng trên một nền tảng.
+KGS Stay là **sàn đặt phòng trung gian** (giống Booking, Traveloka ở quy mô nhỏ): nhiều khách sạn của các đối tác cùng bán phòng trên một nền tảng.
 Có ba bên: **khách** tìm và đặt phòng; **đối tác** (chủ khách sạn) đăng khách sạn và vận hành; **sàn** (quản trị viên) duyệt đối tác, thu tiền của khách, thu hoa hồng và chi trả cho đối tác.
 
 ```mermaid

@@ -1,6 +1,6 @@
 import { NextResponse, after, connection, type NextRequest } from "next/server";
 import { sendBookingConfirmation } from "@/lib/email";
-import { notifyBookingEvent } from "@/lib/notify";
+import { notifyBookingEvent, notifyDuplicatePayment } from "@/lib/notify";
 import { applyGatewayResult, type Rsp } from "@/lib/payments/apply";
 import { verifySignature, vnpayConfig } from "@/lib/payments/vnpay";
 
@@ -37,9 +37,12 @@ export async function GET(req: NextRequest) {
     });
     const bookingId = res.bookingId;
     if (res.confirmedNow && bookingId) {
-    after(() => sendBookingConfirmation(bookingId));
-    after(() => notifyBookingEvent(bookingId, "PAID"));
-  }
+      after(() => sendBookingConfirmation(bookingId));
+      after(() => notifyBookingEvent(bookingId, "PAID"));
+    }
+    // rsp 00 chỉ có ở lần xử lý đầu tiên nên mỗi khoản trùng chỉ báo một lần dù IPN và trang quay về cùng đến.
+    const duplicateId = res.paymentId;
+    if (res.outcome === "duplicate" && res.rsp === "00" && duplicateId) after(() => notifyDuplicatePayment(duplicateId));
     return reply(res.rsp);
   } catch (e) {
     console.error("[vnpay ipn]", e instanceof Error ? e.message : e);
